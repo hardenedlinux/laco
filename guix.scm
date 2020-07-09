@@ -23,7 +23,9 @@
       ("texinfo" ,texinfo)))
   (inputs `(("guile" ,guile-3.0)))
   (propagated-inputs `())
-  (synopsis "")
-  (description "")
-  (home-page "")
+  (synopsis "Lambda Compiler")
+  (description
+    "Laco is a r7rs Scheme compiler for LambdaChip VM which is designed for functional programming on embedded system.")
+  (home-page "https://lambdachip.com")
   (license license:gpl3+))
+
