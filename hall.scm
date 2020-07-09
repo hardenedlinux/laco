@@ -1,0 +1,26 @@
+(hall-description
+  (name "laco")
+  (prefix "")
+  (version "0.0.1")
+  (author "Mu Lei known as NalaGinrut")
+  (copyright (2020))
+  (synopsis "Lambda Compiler")
+  (description "Laco is a r7rs Scheme compiler for LambdaChip VM which is designed for functional programming on embedded system.")
+  (home-page "https://lambdachip.com")
+  (license gpl3+)
+  (dependencies `())
+  (skip ())
+  (files (libraries
+           ((scheme-file "laco") (directory "laco" ())))
+         (tests ((directory "tests" ())))
+         (programs ((directory "scripts" ())))
+         (documentation
+           ((org-file "README")
+            (symlink "README" "README.org")
+            (text-file "HACKING")
+            (text-file "COPYING")
+            (directory "doc" ((texi-file "laco")))))
+         (infrastructure
+           ((scheme-file "guix")
+            (text-file ".gitignore")
+            (scheme-file "hall")))))

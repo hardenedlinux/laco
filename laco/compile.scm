@@ -1,0 +1,77 @@
+;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
+;;  Copyright (C) 2020
+;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
+;;  Laco is free software: you can redistribute it and/or modify
+;;  it under the terms of the GNU General Public License published
+;;  by the Free Software Foundation, either version 3 of the License,
+;;  or (at your option) any later version.
+
+;;  Laco is distributed in the hope that it will be useful,
+;;  but WITHOUT ANY WARRANTY; without even the implied warranty of
+;;  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+;;  GNU General Public License for more details.
+
+;;  You should have received a copy of the GNU General Public License
+;;  along with this program. If not, see <http://www.gnu.org/licenses/>.
+
+(define-module (laco compile)
+  #:use-module (laco utils)
+  #:use-module (laco module)
+  #:use-module (laco env)
+  #:use-module (laco parser)
+  #:use-module (laco pass)
+  #:use-module (laco cps)
+  #:use-module (laco lir)
+  #:use-module (laco types)
+  #:use-module (laco codegen)
+  #:use-module (srfi srfi-1)
+  #:use-module (ice-9 regex)
+  #:use-module (ice-9 ftw)
+  #:export (compile))
+
+(define (init-optimizations)
+  (process-use-modules
+   (map (lambda (s) `((laco pass ,(string->symbol (file-basename s)))))
+        (scandir (string-append (dirname (current-filename)) "/pass")
+                 (lambda (s) (string-match "\\.scm" s))))))
+
+(define (optimize cexpr)
+  (define (do-optimize cexpr)
+    (run-pass
+     cexpr
+     normalize
+     dead-function-elimination
+     fold-constant
+     (constant-propagation 2)
+     useless-cont
+     fold-branch
+     function-inline
+     dead-variable-elimination
+     elre
+     eta-cont
+     eta-function
+     delta-reduction
+     closure-conversion
+     lambda-lifting))
+  (init-optimizations)
+  (parameterize ((current-kont 'global))
+    ;; Prevent unecessary lifting and inline for global functions
+    (top-level-for-each (lambda (_ e) (do-optimize e))))
+  (do-optimize cexpr))
+
+(define (compile filename)
+  (define outfile (gen-outfile filename))
+  (when (not (file-exists? filename))
+    (error "File doens't exist!" filename))
+  (when (file-exists? outfile)
+    (delete-file outfile))
+  (let* ((mod (read-as-mod filename))
+         (exprs (mod-exprs mod))
+         (ast (map parser exprs))
+         (cexpr (ast->cps ast))
+         (cooked (optimize cexpr)))
+    (parameterize ((current-kont 'global))
+      (top-level-for-each
+       (lambda (v e)
+         (top-level-set! v (cps->lir e)))))
+    (codegen (cps->lir cooked) outfile)))
