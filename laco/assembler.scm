@@ -18,7 +18,11 @@
   #:use-module (laco assembler sasm)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
-  #:use-module (rnrs)
+  #:use-module ((rnrs) #:select (make-bytevector
+                                 bytevector-u32-set!
+                                 bytevector-length
+                                 put-bytevector
+                                 define-record-type))
   #:export (assembler))
 
 ;; sasm stands for S-expr ASM
@@ -56,18 +60,17 @@
   (for-each (lambda (b) (put-bytevector port b)) p)
   (for-each (lambda (b) (put-bytevector port b)) c))
 
-(define (assembler sasm output)
-  (let ((out (open-file output "w")))
-    (apply
-     gen-lef
-     out
-     (match sasm
-       (('lef ('memory m-expr ...) ('program p-expr ...) ('clean c-expr ...))
-        (list (memory->bytecode m-expr) (program->bytecode p-expr) (clean->bytecode c-expr)))
-       (('lef ('memory m-expr ...) ('program p-expr ...))
-        (list (memory->bytecode m-expr) (program->bytecode p-expr) '()))
-       (('lef ('program p-expr ...) ('clean c-expr ...))
-        (list '() (program->bytecode p-expr) (clean->bytecode c-expr)))
-       (('lef ('program p-expr ...))
-        (list '() (program->bytecode p-expr) '()))
-       (else (throw 'laco-error assembler "Invalid assembler code!" sasm))))))
+(define (assembler out sasm)
+  (apply
+   gen-lef
+   out
+   (match sasm
+     (('lef ('memory m-expr ...) ('program p-expr ...) ('clean c-expr ...))
+      (list (memory->bytecode m-expr) (program->bytecode p-expr) (clean->bytecode c-expr)))
+     (('lef ('memory m-expr ...) ('program p-expr ...))
+      (list (memory->bytecode m-expr) (program->bytecode p-expr) '()))
+     (('lef ('program p-expr ...) ('clean c-expr ...))
+      (list '() (program->bytecode p-expr) (clean->bytecode c-expr)))
+     (('lef ('program p-expr ...))
+      (list '() (program->bytecode p-expr) '()))
+     (else (throw 'laco-error assembler "Invalid assembler code!" sasm)))))

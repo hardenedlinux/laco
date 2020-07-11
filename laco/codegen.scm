@@ -89,6 +89,6 @@
   (call-with-input-string (lir->sasm-string lir) read))
 
 (define (codegen outfile sasm)
-  (call-with-output-file outfile
-    (lambda (port)
-      (assembler sasm port))))
+  (let ((out (open-file outfile "w")))
+    (assembler out sasm)
+    (close out)))

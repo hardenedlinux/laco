@@ -37,6 +37,8 @@
       ('stay (gen-spaces))
       ('in (set! level (1+ level)))
       ('out (set! level (1- level)))))
+  (define (drop-hash label)
+    (substring/shared label 1))
   (format port "(lef~%")
   (indent-spaces 'in)
   (for-each
@@ -45,10 +47,10 @@
        (('label-begin label)
         (indent-spaces 'in)
         (format port "~a((label ~a) ; Label ~a begin~%" (indent-spaces)
-                label label)
+                (drop-hash label) (drop-hash label))
         (indent-spaces 'in))
        (('label-end label)
-        (format port "~a) ; Label ~a end~%" (indent-spaces) label)
+        (format port "~a) ; Label ~a end~%" (indent-spaces) (drop-hash label))
         (indent-spaces 'out))
        ('prog-begin
         (format port "~a(program~%" (indent-spaces))

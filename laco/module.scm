@@ -37,13 +37,14 @@
    (env env?)))
 
 ;; If mod-path is #f, then it's the main script
-(define* (read-as-mod filename #:optional (mod-path #f))
+(define* (read-as-mod filename #:optional (mod-path '()))
   (define (read-all-exprs)
     (define port (open-file filename "r"))
     (let lp ((ret '()))
       (cond
        ((eof-object? (peek-char port))
         (close port)
-        `(begin ,@(reverse! ret)))
+        ;; skip <eof>
+        `(begin ,@(reverse! (cdr ret))))
        (else (lp (cons (read port) ret))))))
   (make-mod filename mod-path (read-all-exprs) (new-env)))

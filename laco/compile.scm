@@ -147,7 +147,7 @@ Options:
 (define (run-stages outfile mod)
   (if (output-type)
       (run-till-stage mod (output-type))
-      (codegen outfile (fold (lambda (x p) ((cadr x) p)) mod *stages*))))
+      (codegen outfile (fold (lambda (x p) (car x) ((cadr x) p)) mod *stages*))))
 
 (define (do-compile filename)
   (define outfile (if (output-file) (output-file) (gen-outfile filename)))
@@ -157,7 +157,7 @@ Options:
     (delete-file outfile))
   (run-stages outfile (read-as-mod filename)))
 
-(define (laco-compile . args)
+(define (laco-compile args)
   (let ((options (if (null? args)
                      '()
                      (getopt-long args (append option-spec hidden-option-spec)))))
