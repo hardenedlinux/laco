@@ -22,11 +22,12 @@
   #:use-module (laco lir)
   #:use-module (laco sasm)
   #:use-module (laco object)
+  #:use-module (laco assembler)
   #:use-module (ice-9 match)
   #:use-module (ice-9 format)
-  #:export (codegen
-            lir->sasm-string
-            lir->sasm))
+  #:export (lir->sasm-string
+            lir->sasm
+            codegen))
 
 (define (gen-binding-frame env)
   (let lp ((next (env-bindings env)) (ret '()))
@@ -79,10 +80,6 @@
   (emit-sasm-clean lir)
   (sasm-clean-end))
 
-(define (codegen lir filename)
-  (gen-sasm lir)
-  (call-with-output-file filename sasm-output))
-
 ;; debug helper function
 (define (lir->sasm-string lir)
   (gen-sasm lir)
@@ -90,3 +87,8 @@
 
 (define (lir->sasm lir)
   (call-with-input-string (lir->sasm-string lir) read))
+
+(define (codegen outfile sasm)
+  (call-with-output-file outfile
+    (lambda (port)
+      (assembler sasm port))))

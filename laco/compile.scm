@@ -24,16 +24,67 @@
   #:use-module (laco lir)
   #:use-module (laco types)
   #:use-module (laco codegen)
+  #:use-module (laco assembler)
   #:use-module (srfi srfi-1)
   #:use-module (ice-9 regex)
   #:use-module (ice-9 ftw)
-  #:export (compile))
+  #:use-module (ice-9 getopt-long)
+  #:use-module (ice-9 match)
+  #:use-module (ice-9 pretty-print)
+  #:export (laco-compile))
+
+(define option-spec
+  '((help (value #f))
+    (output (single-char #\o) (value #t))
+    (output-type (single-char #\t) (value #t))
+    (version (single-char #\v) (value #f))))
+
+(define hidden-option-spec
+  '((options-list (value #f))))
+
+(define (option-spec-str)
+  (fold (lambda (value acc) (string-append acc " --" (symbol->string (car value))))
+        (string-append "--" (symbol->string (caar option-spec)))
+        (cdr option-spec)))
+
+(define (display-it x)
+  (format #t "~a\n" x))
 
 (define (init-optimizations)
   (process-use-modules
    (map (lambda (s) `((laco pass ,(string->symbol (file-basename s)))))
         (scandir (string-append (dirname (current-filename)) "/pass")
                  (lambda (s) (string-match "\\.scm" s))))))
+
+(define announce-head
+  "
+Laco is a functional programming language compiler for embedded system.
+Author: NalaGinrut <mulei@gnu.org>
+")
+
+(define announce-foot
+  (format #f "~%~a~%Version: ~a.~%God bless hacking.~%~%" "GPLv3+"
+          "0.0.1"))
+
+(define help-str
+  "
+Usage:
+  laco [options] filename
+
+Options:
+  -o, [--output=file]            # Specify output filename
+                                   Default: <input-filename>.lef
+  -t, [--output-type=type]       # Output specified stage result
+                                   Default: LEF bytecode
+  -v, [--version]                # Show current version
+
+  --help                         # Show this screen
+")
+
+(define (show-help)
+  (display announce-head)
+  (display help-str)
+  (display announce-foot))
 
 (define (optimize cexpr)
   (define (do-optimize cexpr)
@@ -59,19 +110,69 @@
     (top-level-for-each (lambda (_ e) (do-optimize e))))
   (do-optimize cexpr))
 
-(define (compile filename)
-  (define outfile (gen-outfile filename))
+(define output-file (make-parameter #f))
+(define output-type (make-parameter #f))
+
+;; (type, generator, printer)
+(define *stages*
+  `((ast ,parse-module ,ast->src)
+    (cps ,ast->cps ,cps->expr/g)
+    (opt ,optimize ,cps->expr/g)
+    (lir ,cps->lir/g ,lir->expr/g)
+    (sasm ,lir->sasm ,lir->sasm-string)))
+
+(define (run-till-stage exprs t)
+  (when (not (assoc-ref *stages* t))
+    (format (current-error-port)
+            "Invalid type `~a'! The valid types are:~%" t)
+    (for-each
+     (lambda (s) (format (current-error-port) "~a~%" (car s)))
+     *stages*))
+  (let lp ((next *stages*) (stop? #f) (ret exprs))
+    (cond
+     ((or (null? next) stop?)
+      (if (string? ret)
+          (display ret)
+          (pretty-print ret)))
+     (else
+      (match next
+        ((type generator printer)
+         (if (eq? t type)
+             (lp (cdr next) #t (generator ret))
+             (lp (cdr next) #f
+                 (if (eq? t 'sasm) (printer ret) (generator ret)))))
+        (else (throw 'laco-error run-till-stage "BUG: Invalid stage item `~a'!"
+                     next)))))))
+
+(define (run-stages outfile mod)
+  (if (output-type)
+      (run-till-stage mod (output-type))
+      (codegen outfile (fold (lambda (x p) ((cadr x) p)) mod *stages*))))
+
+(define (do-compile filename)
+  (define outfile (if (output-file) (output-file) (gen-outfile filename)))
   (when (not (file-exists? filename))
     (error "File doens't exist!" filename))
   (when (file-exists? outfile)
     (delete-file outfile))
-  (let* ((mod (read-as-mod filename))
-         (exprs (mod-exprs mod))
-         (ast (map parser exprs))
-         (cexpr (ast->cps ast))
-         (cooked (optimize cexpr)))
-    (parameterize ((current-kont 'global))
-      (top-level-for-each
-       (lambda (v e)
-         (top-level-set! v (cps->lir e)))))
-    (codegen (cps->lir cooked) outfile)))
+  (run-stages outfile (read-as-mod filename)))
+
+(define (laco-compile . args)
+  (let ((options (if (null? args)
+                     '()
+                     (getopt-long args (append option-spec hidden-option-spec)))))
+    (define-syntax-rule (->opt k) (option-ref options k #f))
+    (define-syntax-rule (get-intput-name args)
+      (match (->opt '())
+        ((filename) filename)
+        (else
+         (show-help)
+         #f)))
+    (cond
+     ((->opt 'help) (show-help))
+     ((->opt 'options-list) (display-it (option-spec-str)))
+     (else
+      (parameterize ((output-file (->opt 'output))
+                     (output-type (->opt 'type)))
+        (let ((filename (get-intput-name args)))
+          (when filename (do-compile filename))))))))

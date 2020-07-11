@@ -186,5 +186,5 @@
 (define (file-basename filename)
   (substring filename 0 (string-index-right filename #\.)))
 
-(define* (gen-outfile filename #:optional (ext ".sasm"))
+(define* (gen-outfile filename #:optional (ext ".lef"))
   (string-append (file-basename filename) ext))

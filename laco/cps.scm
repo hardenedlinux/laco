@@ -93,7 +93,8 @@
 
             ast->cps
             cps->expr
-            top-level->src))
+            top-level->src
+            cps->expr/g))
 
 ;; kontext means kontinuation-context
 
@@ -505,3 +506,6 @@
 
 (define (top-level->src)
   (hash-map->list (lambda (v e) `(define ,v ,(cps->expr e))) *top-level*))
+
+(define (cps->expr/g cpse)
+  `(,@(top-level->src) ,(cps->expr cpse)))

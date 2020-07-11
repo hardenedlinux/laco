@@ -64,7 +64,9 @@
 
             label-ref
             cps->lir
-            lir->expr))
+            cps->lir/g
+            lir->expr
+            lir->expr/g))
 
 ;; Instruction (insr) is a simple low-level IR, which is a instruction set of
 ;; ACM (Abstract Continuation Machine).
@@ -272,6 +274,13 @@
      (make-insr-prim '() p (primitive->number p)))
     (else (throw 'laco-error cps->lir "Invalid cps `~a'!" (id-name expr)))))
 
+(define (cps->lir/g expr)
+  (parameterize ((current-kont 'global))
+    (top-level-for-each
+     (lambda (v e)
+       (top-level-set! v (cps->lir e)))))
+  (cps->lir expr))
+
 (define (lir->expr lexpr)
   (match lexpr
     (($ insr-proc _ label _ nargs)
@@ -294,3 +303,6 @@
        `(global ,offset)))
     (($ integer-object _ value) `(integer ,value))
     (else (throw 'laco-error lir->expr "Invalid lir `~a'!" lexpr))))
+
+(define (lir->expr/g lexpr)
+  `(,@(hash-map->list lir->expr *top-level*) ,(lir->expr lexpr)))

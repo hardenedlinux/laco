@@ -16,13 +16,16 @@
 
 (define-module (laco parser)
   #:use-module (laco ast)
+  #:use-module (laco module)
   #:use-module (laco types)
   #:use-module (laco utils)
   #:use-module (laco primitives)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-11)
-  #:export (parser ast->src))
+  #:export (parser
+            parse-module
+            ast->src))
 
 ;; NOTE: we don't allow primitives-redefine, so this list is for checking.
 (define *wrong-op-lst*
@@ -228,6 +231,9 @@
 
 (define (parser expr)
   (parse-it expr #:body-begin? #t))
+
+(define (parse-module mod)
+  (parser (mod-exprs mod)))
 
 (define* (ast->src node #:optional (hide-begin? #t))
   (match node
