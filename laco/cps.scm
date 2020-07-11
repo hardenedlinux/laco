@@ -505,7 +505,7 @@
     (else (throw 'laco-error 'cps->expr "Wrong cps: " cpse))))
 
 (define (top-level->src)
-  (hash-map->list (lambda (v e) `(define ,v ,(cps->expr e))) *top-level*))
+  (top-level->body-list (lambda (v e) `(define ,v ,(cps->expr e)))))
 
 (define (cps->expr/g cpse)
   `(,@(top-level->src) ,(cps->expr cpse)))

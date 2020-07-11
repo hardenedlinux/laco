@@ -135,18 +135,18 @@ Options:
           (display ret)
           (pretty-print ret)))
      (else
-      (match next
+      (match (car next)
         ((type generator printer)
-         (if (eq? t type)
-             (lp (cdr next) #t (generator ret))
-             (lp (cdr next) #f
-                 (if (eq? t 'sasm) (printer ret) (generator ret)))))
+         (let ((is-stop? (eq? t type)))
+           (if (eq? type 'sasm)
+               (lp (cdr next) is-stop? (printer ret))
+               (lp (cdr next) is-stop? (generator ret)))))
         (else (throw 'laco-error run-till-stage "BUG: Invalid stage item `~a'!"
                      next)))))))
 
 (define (run-stages outfile mod)
   (if (output-type)
-      (run-till-stage mod (output-type))
+      (run-till-stage mod (string->symbol (output-type)))
       (codegen outfile (fold (lambda (x p) (car x) ((cadr x) p)) mod *stages*))))
 
 (define (do-compile filename)
@@ -173,6 +173,6 @@ Options:
      ((->opt 'options-list) (display-it (option-spec-str)))
      (else
       (parameterize ((output-file (->opt 'output))
-                     (output-type (->opt 'type)))
+                     (output-type (->opt 'output-type)))
         (let ((filename (get-intput-name args)))
           (when filename (do-compile filename))))))))

@@ -61,8 +61,8 @@
 
 (define *top-level* (new-toplevel))
 
-(define (top-level->body-list)
-  (hash-map->list (lambda (v _) v) (toplevel-definition *top-level*)))
+(define* (top-level->body-list #:optional (proc (lambda (v _) v)))
+  (hash-map->list proc (toplevel-definition *top-level*)))
 
 (define (top-level-ref k)
   (hash-ref (toplevel-definition *top-level*) k))
