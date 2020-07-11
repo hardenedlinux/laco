@@ -305,4 +305,4 @@
     (else (throw 'laco-error lir->expr "Invalid lir `~a'!" lexpr))))
 
 (define (lir->expr/g lexpr)
-  `(,@(hash-map->list lir->expr *top-level*) ,(lir->expr lexpr)))
+  `(,@(top-level->body-list lir->expr) ,(lir->expr lexpr)))

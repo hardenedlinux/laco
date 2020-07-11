@@ -75,7 +75,7 @@ Options:
   -o, [--output=file]            # Specify output filename
                                    Default: <input-filename>.lef
   -t, [--output-type=type]       # Output specified stage result
-                                   Default: LEF bytecode
+                                   Values: ast, cps, lir, opt, sasm
   -v, [--version]                # Show current version
 
   --help                         # Show this screen
@@ -127,7 +127,8 @@ Options:
             "Invalid type `~a'! The valid types are:~%" t)
     (for-each
      (lambda (s) (format (current-error-port) "~a~%" (car s)))
-     *stages*))
+     *stages*)
+    (exit -1))
   (let lp ((next *stages*) (stop? #f) (ret exprs))
     (cond
      ((or (null? next) stop?)
@@ -137,10 +138,12 @@ Options:
      (else
       (match (car next)
         ((type generator printer)
-         (let ((is-stop? (eq? t type)))
-           (if (eq? type 'sasm)
-               (lp (cdr next) is-stop? (printer ret))
-               (lp (cdr next) is-stop? (generator ret)))))
+         (let* ((is-stop? (eq? t type))
+                (return (if is-stop? printer identity))
+                (result (if (and is-stop? (eq? type 'sasm))
+                            (return ret)
+                            (return (generator ret)))))
+           (lp (cdr next) is-stop? result)))
         (else (throw 'laco-error run-till-stage "BUG: Invalid stage item `~a'!"
                      next)))))))
 
