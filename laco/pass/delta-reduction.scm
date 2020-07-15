@@ -59,14 +59,16 @@
      (seq/k-exprs-set! expr (map delta exprs))
      expr)
     (($ app/k _ (? id? f) args)
-     (id-name f)
      (app/k-args-set! expr (map delta args))
      expr)
     (($ app/k _ (? primitive? p) args)
-     (app/k-args-set! expr (map delta args))
-     (if (and (every cps-integer? args) (not (eq? (primitive-name p) 'return)))
-         (new-constant/k (prim-apply p (app/k-args expr)))
-         expr))
+     (let ((al (map delta args)))
+       (cond
+        ((and (every cps-integer? al) (applicable-primitive? p))
+         (new-constant/k (prim-apply p al)))
+        (else
+         (app/k-args-set! expr al)
+         expr))))
     (else expr)))
 
 (define-pass delta-reduction expr (delta expr))
