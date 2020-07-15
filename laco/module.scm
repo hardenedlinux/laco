@@ -45,6 +45,6 @@
        ((eof-object? (peek-char port))
         (close port)
         ;; skip <eof>
-        `(begin ,@(reverse! (cdr ret))))
+        `(begin ,@(reverse! ret)))
        (else (lp (cons (read port) ret))))))
   (make-mod filename mod-path (read-all-exprs) (new-env)))

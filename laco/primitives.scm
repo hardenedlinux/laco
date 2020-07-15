@@ -34,6 +34,7 @@
             define-primitive
             primitive->number
             print-primitives
+            applicable-primitive?
 
             special-form
             make-special-form:if
@@ -101,9 +102,15 @@
    (else (throw 'laco-error primitive->number "Invalid primitive name `~a'!"
                 (primitive-name p)))))
 
+(define *inapplicable-primitive*
+  '(halt return display))
+
+(define (applicable-primitive? p)
+  (not (memq (primitive-name p) *inapplicable-primitive* )))
+
 ;; halt can associate with primitive `halt', its activity is TOS.
 (define-primitive (halt x)
-  (throw 'laco-error "BUG: prim:halt shouldn't be called in compile time!"))
+  (throw 'laco-error 'prim:halt "BUG: shouldn't be called in compile time!"))
 
 (define-primitive (+ args ...)
   (gen-constant (+ args ...)))
@@ -121,4 +128,4 @@
   x)
 
 (define-primitive (display x)
-  (throw 'laco-error "BUG: prim:display shouldn't be called in compile time!"))
+  (throw 'laco-error 'prim:display "BUG: shouldn't be called in compile time!"))

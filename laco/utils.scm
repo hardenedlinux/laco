@@ -54,7 +54,8 @@
             get-all-defs
             new-counter
             file-basename
-            gen-outfile))
+            gen-outfile
+            flatten))
 
 (define (newsym sym) (gensym (symbol->string sym)))
 
@@ -188,3 +189,14 @@
 
 (define* (gen-outfile filename #:optional (ext ".lef"))
   (string-append (file-basename filename) ext))
+
+;; flatten tree-like list
+(define (flatten . args)
+  (define (extract e)
+    (match e
+      (((expr ...)) expr)
+      (else e)))
+  (let ((lst (extract args)))
+    (if (> (length lst) 1)
+        (fold-right (lambda (x p) (append (flatten x) p)) '() lst)
+        (extract lst))))

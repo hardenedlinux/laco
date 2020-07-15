@@ -94,6 +94,11 @@
 (define-public (halt)
   #u8(255))
 
+;; NOTE: return is useful for optimizing analysis, but it's useless for codegen,
+;;       since the result to return is already in the TOS.
+(define-public (return x)
+  #u8())
+
 ;; ----------- object creation -----------
 (define-public (push-integer-object i)
   (general-object-encode 0 i))

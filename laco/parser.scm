@@ -42,7 +42,7 @@
 
 ;; NOTE: we don't support forward-reference, although I'm willing to...
 (define* (parse-it expr #:key (pos 'toplevel) (body-begin? #f) (use 'test) (op? #f))
-  (match expr
+  (match (pk "expr" expr)
     (((or 'define 'define*) pattern e ...)
      (let ((head (case (car expr)
                    ((define) 'lambda)
@@ -249,7 +249,8 @@
     (($ closure ($ ast _ subx) params _) `(lambda ,(map ast->src params) ,(ast->src subx)))
     (($ seq ($ ast _ subx))
      (cond
-      ((zero? (length subx)) (throw 'laco-error "Well, null seq dude huh??"))
+      ((zero? (length subx))
+       (throw 'laco-error ast->src "Well, null seq dude huh??"))
       ((= (length subx) 1) (ast->src (car subx)))
       (hide-begin? (map ast->src subx))
       (else `(begin ,@(map ast->src subx)))))

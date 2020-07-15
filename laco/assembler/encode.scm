@@ -27,7 +27,7 @@
             primitive-encode/basic
             primitive-encode/extend
             special-encode
-            object-encode))
+            general-object-encode))
 
 (define label-counter (new-counter))
 
@@ -104,9 +104,9 @@
 
 (define (general-object-encode type data)
   (when (negative? type)
-    (throw 'laco-error object-encode "Invalid object type `~a'!" type))
+    (throw 'laco-error general-object-encode "Invalid object type `~a'!" type))
   (when (or (< data 0) (> data #xffffffff))
-    (throw 'laco-error object-encode
+    (throw 'laco-error general-object-encode
            "Invalid object `0x~a', should be 32bit!" (number->string data 16)))
   (let ((bv (make-bytevector 5 0)))
     (bytevector-u8-set! bv 0 type)

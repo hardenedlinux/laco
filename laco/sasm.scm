@@ -46,11 +46,11 @@
      (match pattern
        (('label-begin label)
         (indent-spaces 'in)
-        (format port "~a((label ~a) ; Label ~a begin~%" (indent-spaces)
+        (format port "~a(label ~a) ; Label ~a begin~%" (indent-spaces)
                 (drop-hash label) (drop-hash label))
         (indent-spaces 'in))
        (('label-end label)
-        (format port "~a) ; Label ~a end~%" (indent-spaces) (drop-hash label))
+        (format port "~a;; Label ~a end~%" (indent-spaces) (drop-hash label))
         (indent-spaces 'out))
        ('prog-begin
         (format port "~a(program~%" (indent-spaces))

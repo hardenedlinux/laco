@@ -15,6 +15,7 @@
 ;;  along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (laco assembler)
+  #:use-module (laco utils)
   #:use-module (laco assembler sasm)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
@@ -32,14 +33,17 @@
 (define (memory->bytecode me)
   '())
 
-(define (program->bytecode pe)
-  (match pe
-    (((('label name) label-body ...) rest ...)
-     `(,(label name) ,@(map program->bytecode label-body)
-       ,@(map program->bytecode rest)))
-    (((? asm-insr? insr) args ...)
-     (apply (insr->proc insr) args))
-    (else (map program->bytecode pe))))
+(define (program->bytecode p)
+  (define (->bytecode pe)
+    (match (pk "pe" pe)
+      (((exprs ...))
+       (map program->bytecode exprs))
+      ((('label name) label-body ...)
+       `(,(label name) ,@(map program->bytecode label-body)))
+      (((? asm-insr? insr) args ...)
+       (apply (insr->proc insr) args))
+      (else (map program->bytecode pe))))
+  (flatten (->bytecode p)))
 
 (define (clean->bytecode pc)
   '())
