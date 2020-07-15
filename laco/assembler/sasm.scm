@@ -17,6 +17,14 @@
 (define-module (laco assembler sasm)
   #:use-module (laco assembler encode))
 
+(define *label-table* (make-hash-table))
+(define (label-register! name)
+  (hash-set! *label-table* name (label-counter 0)))
+
+(define-public (label name)
+  (label-register! name)
+  #u8())
+
 ;; ------- single encoding -----------------
 (define-public (push-4bit-const i)
   (single-encode 0 i))
@@ -88,4 +96,4 @@
 
 ;; ----------- object creation -----------
 (define-public (push-integer-object i)
-  (object-encode 0 i))
+  (general-object-encode 0 i))

@@ -88,16 +88,16 @@
 
 (define-public (sasm-true)
   (sasm-emit
-   '((push-4bit-const 1) . "Boolean true")))
+   '((push-boolean-true) . "Boolean true")))
 
 (define-public (sasm-false)
   (sasm-emit
-   '((push-4bit-const 0) . "Boolean false")))
+   '((push-boolean-false) . "Boolean false")))
 
 (define-public (emit-constant type i)
   (if (integer-check i type)
       (sasm-emit `((push-4bit-const ,i) . (format #f "Constant 0x~X" ,i)))
-      (throw 'laco-error "Invalid integer value!" i)))
+      (throw 'laco-error emit-constant "Invalid integer value!" i)))
 
 (define-public (emit-integer-object i)
   (sasm-emit `((push-integer-object ,i) . "")))
@@ -110,8 +110,8 @@
 (define-public (emit-char c)
   (if (char? c)
       (sasm-emit
-       `((push-4bit-const ,(char->integer c)) . ,(format #f "Char `~a'" c)))
-      (throw 'laco-error "Invalid char value!" c)))
+       `((push-char-const ,(char->integer c)) . ,(format #f "Char `~a'" c)))
+      (throw 'laco-error emit-char "Invalid char value!" c)))
 
 (define-public (emit-integer i)
   (emit-constant (detect-minimum-range i) i))

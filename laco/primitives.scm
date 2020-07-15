@@ -86,7 +86,7 @@
 ;; Of course, we can record the primitive number when defining the primitive with
 ;; a macro. However, an explicit lookup table is useful for debug.
 (define *prim-table*
-  '(halt return + - * /))
+  '(halt return + - * / display))
 
 (define (print-primitives)
   (display "--------PRIMITIVES--------\n")
@@ -103,7 +103,7 @@
 
 ;; halt can associate with primitive `halt', its activity is TOS.
 (define-primitive (halt x)
-  (throw 'laco-error "prim:halt hasn't been implemented yet!"))
+  (throw 'laco-error "BUG: prim:halt shouldn't be called in compile time!"))
 
 (define-primitive (+ args ...)
   (gen-constant (+ args ...)))
@@ -119,3 +119,6 @@
 
 (define-primitive (return x)
   x)
+
+(define-primitive (display x)
+  (throw 'laco-error "BUG: prim:display shouldn't be called in compile time!"))

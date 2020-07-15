@@ -15,8 +15,12 @@
 ;;  along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (laco assembler encode)
-  #:use-module ((rnrs) #:select (define-record-type))
-  #:export (single-encode
+  #:use-module (laco utils)
+  #:use-module ((rnrs) #:select (make-bytevector
+                                 bytevector-u8-set!
+                                 define-record-type))
+  #:export (label-counter
+            single-encode
             double-encode
             triple-encode
             quadruple-encode
@@ -24,6 +28,8 @@
             primitive-encode/extend
             special-encode
             object-encode))
+
+(define label-counter (new-counter))
 
 (define (single-encode type data)
   (when (or (< type 0) (> type #b0111))
@@ -33,6 +39,7 @@
     (throw 'laco-error single-encode "Invalid data, should be 0 ~ 15" data))
   (let ((bv (make-bytevector 1 0)))
     (bytevector-u8-set! bv 0 (logior (ash type 4) data))
+    (label-counter 1)
     bv))
 
 (define (double-encode type data)
@@ -45,6 +52,7 @@
   (let ((bv (make-bytevector 2 0)))
     (bytevector-u8-set! bv 0 (logior #b1010 type))
     (bytevector-u8-set! bv 1 data)
+    (label-counter 2)
     bv))
 
 (define (triple-encode type data)
@@ -58,6 +66,7 @@
     (bytevector-u8-set! bv 0 (logior #b10100000 type))
     (bytevector-u8-set! bv 1 (ash (logand #xff00 data) -8))
     (bytevector-u8-set! bv 2 (logand #xff data))
+    (label-counter 3)
     bv))
 
 (define (quadruple-encode type data)
@@ -72,6 +81,7 @@
     (bytevector-u8-set! bv 1 (ash (logand #xff0000 data) -16))
     (bytevector-u8-set! bv 2 (ash (logand #xff00 data) -8))
     (bytevector-u8-set! bv 3 (logand #xff data))
+    (label-counter 4)
     bv))
 
 (define (primitive-encode/basic pn)
@@ -79,6 +89,7 @@
     (throw 'laco-error primitive-encode/basic "Invalid data, should be 0 ~ 15" pn))
   (let ((bv (make-bytevector 1 0)))
     (bytevector-u8-set! bv 0 (logior #b11000000 pn))
+    (label-counter 1)
     bv))
 
 (define (primitive-encode/extend pn)
@@ -88,18 +99,20 @@
   (let ((bv (make-bytevector 2 0)))
     (bytevector-u8-set! bv 0 (logior #b11010000 (ash pn -8)))
     (bytevector-u8-set! bv 1 (logand #xff pn))
+    (label-counter 2)
     bv))
 
-(define (object-encode type data)
-  (when (not (positve? type))
+(define (general-object-encode type data)
+  (when (negative? type)
     (throw 'laco-error object-encode "Invalid object type `~a'!" type))
   (when (or (< data 0) (> data #xffffffff))
     (throw 'laco-error object-encode
            "Invalid object `0x~a', should be 32bit!" (number->string data 16)))
   (let ((bv (make-bytevector 5 0)))
     (bytevector-u8-set! bv 0 type)
-    (bytevector-u8-set! bv 1 (logior #b10100000 type))
+    (bytevector-u8-set! bv 1 (logior #b11100010 type))
     (bytevector-u8-set! bv 2 (ash (logand #xff0000 data) -16))
     (bytevector-u8-set! bv 3 (ash (logand #xff00 data) -8))
     (bytevector-u8-set! bv 4 (logand #xff data))
+    (label-counter 5)
     bv))

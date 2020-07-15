@@ -25,15 +25,21 @@
                                  define-record-type))
   #:export (assembler))
 
-;; sasm stands for S-expr ASM
-(define (sasm->bytecode sasm)
-  (eval sasm (resolve-module '(laco assembler sasm))))
+(define sasm-module (resolve-module '(laco assembler sasm)))
+(define (asm-insr? x) (module-defined? sasm-module x))
+(define (insr->proc x) (module-ref sasm-module x))
 
 (define (memory->bytecode me)
   '())
 
 (define (program->bytecode pe)
-  (map sasm->bytecode pe))
+  (match pe
+    (((('label name) label-body ...) rest ...)
+     `(,(label name) ,@(map program->bytecode label-body)
+       ,@(map program->bytecode rest)))
+    (((? asm-insr? insr) args ...)
+     (apply (insr->proc insr) args))
+    (else (map program->bytecode pe))))
 
 (define (clean->bytecode pc)
   '())
