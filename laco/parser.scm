@@ -42,7 +42,7 @@
 
 ;; NOTE: we don't support forward-reference, although I'm willing to...
 (define* (parse-it expr #:key (pos 'toplevel) (body-begin? #f) (use 'test) (op? #f))
-  (match (pk "expr" expr)
+  (match expr
     (((or 'define 'define*) pattern e ...)
      (let ((head (case (car expr)
                    ((define) 'lambda)

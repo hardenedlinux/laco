@@ -79,7 +79,6 @@
     (($ seq/k ($ cps _ kont name attr) exprs)
      (make-seq/k (list kont name attr) (map cc exprs)))
     (($ letfun/k ($ bind-special-form/k ($ cps _ kont name attr) fname func body))
-     (pk "letfun" (id-name fname))
      (env-local-push! (current-env) fname)
      (make-letfun/k (list kont name attr)
                     fname
