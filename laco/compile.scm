@@ -158,7 +158,10 @@ Options:
     (error "File doens't exist!" filename))
   (when (file-exists? outfile)
     (delete-file outfile))
-  (run-stages outfile (read-as-mod filename)))
+  (let ((mod (read-as-mod filename)))
+    (if (mod-is-empty? mod)
+        (exit 0)
+        (run-stages outfile mod))))
 
 (define (laco-compile args)
   (let ((options (if (null? args)

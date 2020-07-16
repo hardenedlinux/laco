@@ -25,6 +25,7 @@
             mod-exprs
             mod-env
 
+            mod-is-empty?
             read-as-mod))
 
 ;; TODO: Support r7rs modules
@@ -35,6 +36,9 @@
    (path list?)
    (exprs list?)
    (env env?)))
+
+(define (mod-is-empty? mod)
+  (equal? '(begin) (mod-exprs mod)))
 
 ;; If mod-path is #f, then it's the main script
 (define* (read-as-mod filename #:optional (mod-path '()))
