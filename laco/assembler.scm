@@ -35,7 +35,7 @@
 
 (define (program->bytecode p)
   (define (->bytecode pe)
-    (match (pk "pe" pe)
+    (match pe
       (((exprs ...))
        (map program->bytecode exprs))
       ((('label name) label-body ...)

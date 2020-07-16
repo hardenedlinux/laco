@@ -57,6 +57,7 @@
         (indent-spaces 'in))
        ('prog-end
         (indent-spaces 'out)
+        (format port "~a(halt)~%" (indent-spaces))
         (format port "~a) ; Program end~%~%" (indent-spaces))
         (indent-spaces 'out))
        ('memory-begin
@@ -133,8 +134,11 @@
                . ,(format #f "Call primitive `~a'" (primitive-name p)))))
 
 (define-public (emit-prim p num)
-  (sasm-emit `((primitive ,num)
-               . ,(format #f "Call primitive `~a'" (primitive-name p)))))
+  ;; NOTE: `return' is useful for optimizing analysis, but it's useless for codegen,
+  ;;       since the result to return is already in the TOS.
+  (when (positive? num) ; skip `return'
+    (sasm-emit `((primitive ,num)
+                 . ,(format #f "Call primitive `~a'" (primitive-name p))))))
 
 (define-public (emit-fjump label)
   (sasm-emit `((fjump ,label) . "")))

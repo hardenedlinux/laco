@@ -18,6 +18,7 @@
   #:use-module (laco utils)
   #:use-module ((rnrs) #:select (make-bytevector
                                  bytevector-u8-set!
+                                 bytevector-s32-set!
                                  define-record-type))
   #:export (label-counter
             single-encode
@@ -27,7 +28,8 @@
             primitive-encode/basic
             primitive-encode/extend
             special-encode
-            general-object-encode))
+            general-object-encode
+            boolean-encode))
 
 (define label-counter (new-counter))
 
@@ -105,14 +107,21 @@
 (define (general-object-encode type data)
   (when (negative? type)
     (throw 'laco-error general-object-encode "Invalid object type `~a'!" type))
-  (when (or (< data 0) (> data #xffffffff))
+  (when (or (< data (- (1- (expt 2 31)))) (> data (1- (expt 2 31))))
     (throw 'laco-error general-object-encode
            "Invalid object `0x~a', should be 32bit!" (number->string data 16)))
-  (let ((bv (make-bytevector 5 0)))
-    (bytevector-u8-set! bv 0 type)
-    (bytevector-u8-set! bv 1 (logior #b11100010 type))
-    (bytevector-u8-set! bv 2 (ash (logand #xff0000 data) -16))
-    (bytevector-u8-set! bv 3 (ash (logand #xff00 data) -8))
-    (bytevector-u8-set! bv 4 (logand #xff data))
-    (label-counter 5)
+  (let ((bv (make-bytevector 6 0))
+        (d (if (>= data 0) data (- data))))
+    (bytevector-u8-set! bv 0 #b11100010)
+    (bytevector-u8-set! bv 1 type)
+    (bytevector-s32-set! bv 2 data 'big)
+    (label-counter 6)
+    bv))
+
+(define (boolean-encode value)
+  (when (or (< value 1) (> value 15))
+    (throw 'laco-error boolean-encode "Invalid boolean value `~a'!" value))
+  (let ((bv (make-bytevector 1 0)))
+    (bytevector-u8-set! bv 0 (logior (ash #b1110 4) value))
+    (label-counter 1)
     bv))
