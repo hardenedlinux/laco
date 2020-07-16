@@ -41,10 +41,11 @@
   (define (read-all-exprs)
     (define port (open-file filename "r"))
     (let lp ((ret '()))
-      (cond
-       ((eof-object? (peek-char port))
-        (close port)
-        ;; skip <eof>
-        `(begin ,@(reverse! ret)))
-       (else (lp (cons (read port) ret))))))
+      (let ((e (read port)))
+        (cond
+         ((eof-object? e)
+          (close port)
+          ;; skip <eof>
+          `(begin ,@(reverse! ret)))
+         (else (lp (cons e ret)))))))
   (make-mod filename mod-path (read-all-exprs) (new-env)))
