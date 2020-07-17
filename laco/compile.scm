@@ -159,9 +159,12 @@ Options:
   (when (file-exists? outfile)
     (delete-file outfile))
   (let ((mod (read-as-mod filename)))
-    (if (mod-is-empty? mod)
-        (exit 0)
-        (run-stages outfile mod))))
+    (cond
+     ((mod-is-empty? mod)
+      ;; TODO: Throw laco-warning here
+      (format (current-error-port) "WARNING: ~s is empty file!~%" filename)
+      (exit 0))
+     (else (run-stages outfile mod)))))
 
 (define (laco-compile args)
   (let ((options (if (null? args)

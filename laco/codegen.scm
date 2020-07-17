@@ -51,6 +51,8 @@
     (($ integer-object _ i)
      ;; TODO: how to associate the variable?
      (emit-integer-object i))
+    (($ string-object _ s)
+     (emit-string-object s))
     (($ insr-prim _ p num)
      (emit-prim p num))
     (($ insr-label _ label insrs)

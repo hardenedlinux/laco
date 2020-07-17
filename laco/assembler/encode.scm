@@ -16,6 +16,7 @@
 
 (define-module (laco assembler encode)
   #:use-module (laco utils)
+  #:use-module (ice-9 iconv)
   #:use-module ((rnrs) #:select (make-bytevector
                                  bytevector-u8-set!
                                  bytevector-s32-set!
@@ -28,7 +29,8 @@
             primitive-encode/basic
             primitive-encode/extend
             special-encode
-            general-object-encode
+            general-integer-encode
+            general-string-encode
             boolean-encode))
 
 (define label-counter (new-counter))
@@ -104,19 +106,31 @@
     (label-counter 2)
     bv))
 
-(define (general-object-encode type data)
-  (when (negative? type)
-    (throw 'laco-error general-object-encode "Invalid object type `~a'!" type))
+(define (general-integer-encode data)
   (when (or (< data (- (1- (expt 2 31)))) (> data (1- (expt 2 31))))
-    (throw 'laco-error general-object-encode
-           "Invalid object `0x~a', should be 32bit!" (number->string data 16)))
+    (throw 'laco-error general-integer-encode
+           "Invalid integer object `0x~a', should be 32bit!"
+           (number->string data 16)))
   (let ((bv (make-bytevector 6 0))
         (d (if (>= data 0) data (- data))))
     (bytevector-u8-set! bv 0 #b11100010)
-    (bytevector-u8-set! bv 1 type)
+    (bytevector-u8-set! bv 1 0)
     (bytevector-s32-set! bv 2 data 'big)
     (label-counter 6)
     bv))
+
+;; NOTE: String is mapped to C string exactly.
+(define (general-string-encode str)
+  (when (not (string? str))
+    (throw 'laco-error general-string-encode
+           "Invalid object `~a', should be a string!" str))
+  (let ((bv (make-bytevector 2 0))
+        ;; NOTE: We don't support UTF-8 for performance
+        (sbv (string->bytevector str "iso8859-1")))
+    (bytevector-u8-set! bv 0 #b11100110)
+    ;; encoding length = header + string + '\0'
+    (label-counter (+ 1 (string-length str) 1))
+    (list bv sbv)))
 
 (define (boolean-encode value)
   (when (or (< value 1) (> value 15))

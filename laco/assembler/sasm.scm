@@ -96,7 +96,10 @@
 
 ;; ----------- object creation -----------
 (define-public (push-integer-object i)
-  (general-object-encode 2 i))
+  (general-integer-encode i))
+
+(define-public (push-string-object s)
+  (general-string-encode s))
 
 (define-public (push-boolean-false)
   (boolean-encode 0))

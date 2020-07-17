@@ -223,7 +223,6 @@
     ((? symbol? k) (make-ref #f k))
     ;; NOTE: immediate check has to be the last one!!!
     ((? is-immediate? i) (gen-constant i))
-    ((? string? s) (throw 'laco-error parse-it "Sorry but string is not ready yet!"))
     (else
      (throw 'laco-error parse-it
             "source expression failed to match any pattern in form `~a'"

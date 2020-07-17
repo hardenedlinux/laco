@@ -36,7 +36,11 @@
 
             char-object
             char-object?
-            make-char-object))
+            make-char-object
+
+            string-object
+            string-object?
+            make-string-object))
 
 ;; NOTE:
 ;; 1. If the value can be unboxed, then we store them in unboxed style
@@ -70,6 +74,10 @@
   (fields
    (value is-boolean-node?)))
 
+(define-typed-record string-object (parent object)
+  (fields
+   (value string?)))
+
 ;; constant -> object
 (define (create-object c)
   (let ((val (constant-val c)))
@@ -78,6 +86,7 @@
       ('list (make-list-object '() val))
       ('vector (make-vector-object '() val))
       ('char (make-integer-object '() val))
+      ('string (make-string-object '() val))
       (else (throw 'laco-error create-object "Invalid type `~a'!"
                    (constant-type c))))))
 

@@ -75,6 +75,8 @@
        (('closure-prelude argc)
         (format port "~a) ; Closure ~a~%" (indent-spaces) argc)
         (indent-spaces 'out))
+       ((('push-string-object s) . descp)
+        (format port "~a(push-string-object ~s) ; ~a~%" (indent-spaces) s descp))
        ((insr . descp)
         (format port "~a~a ; ~a~%" (indent-spaces) insr descp))
        (() #t)
@@ -102,6 +104,9 @@
 
 (define-public (emit-integer-object i)
   (sasm-emit `((push-integer-object ,i) . "")))
+
+(define-public (emit-string-object s)
+  (sasm-emit `((push-string-object ,s) . "")))
 
 (define-public (emit-boolean b)
   (if b
