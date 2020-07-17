@@ -28,8 +28,12 @@
             mod-is-empty?
             read-as-mod))
 
+;; NOTE: We call the compilation-unit a `module'.
+
 ;; TODO: Support r7rs modules
 ;; TODO: Replace top-level with mod-env
+;; TODO: Distinct `library' and `program'
+
 (define-typed-record mod
   (fields
    (filename string?)
@@ -49,6 +53,7 @@
         (cond
          ((eof-object? e)
           (close port)
+          ;; TOD: Change `begin' to `module'
           ;; skip <eof>
           `(begin ,@(reverse! ret)))
          (else (lp (cons e ret)))))))
