@@ -76,11 +76,7 @@
    out
    (match sasm
      (('lef ('memory m-expr ...) ('program p-expr ...) ('clean c-expr ...))
-      (list (memory->bytecode m-expr) (program->bytecode p-expr) (clean->bytecode c-expr)))
-     (('lef ('memory m-expr ...) ('program p-expr ...))
-      (list (memory->bytecode m-expr) (program->bytecode p-expr) '()))
-     (('lef ('program p-expr ...) ('clean c-expr ...))
-      (list '() (program->bytecode p-expr) (clean->bytecode c-expr)))
-     (('lef ('program p-expr ...))
-      (list '() (program->bytecode p-expr) '()))
+      (list (memory->bytecode m-expr)
+            (program->bytecode p-expr)
+            (clean->bytecode c-expr)))
      (else (throw 'laco-error assembler "Invalid assembler code!" sasm)))))

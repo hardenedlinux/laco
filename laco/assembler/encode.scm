@@ -127,10 +127,11 @@
   (let ((bv (make-bytevector 2 0))
         ;; NOTE: We don't support UTF-8 for performance
         (sbv (string->bytevector str "iso8859-1")))
-    (bytevector-u8-set! bv 0 #b11100110)
-    ;; encoding length = header + string + '\0'
-    (label-counter (+ 1 (string-length str) 1))
-    (list bv sbv)))
+    (bytevector-u8-set! bv 0 #b11100010)
+    (bytevector-u8-set! bv 1 8)
+    ;; encoding length = header + type + string + '\0'
+    (label-counter (+ 2 (string-length str) 1))
+    (list bv sbv #u8(0))))
 
 (define (boolean-encode value)
   (when (or (< value 1) (> value 15))
