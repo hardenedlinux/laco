@@ -35,6 +35,13 @@
              ret)))
       (else (throw 'laco-error is-referenced? "BUG: Invalid pattern `~a'!" v)))))
 
+;; keep same order of new if the element appears in the old
+(define (keep-ordering old new)
+  (let ((nl (map id-name new)))
+    (fold-right (lambda (x p)
+                  (if (memq (id-name x) nl) (cons x p) p))
+                '() old)))
+
 (define (dve expr)
   (match expr
     ((? bind-special-form/k? sf)
@@ -63,9 +70,9 @@
     (($ lambda/k _ v body)
      (cond
       ((is-referenced? body v)
-       => (lambda (vv)
+       => (lambda (nv)
             ;; There could be side-effects, so we only drop the parameters
-            (lambda/k-args-set! expr vv))))
+            (lambda/k-args-set! expr (keep-ordering v nv)))))
      (lambda/k-body-set! expr (dve body))
      expr)
     (($ branch/k _ cnd b1 b2)
