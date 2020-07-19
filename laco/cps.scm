@@ -351,7 +351,7 @@
                                (alpha-renaming (ast->cps body fk) params nv)
                                #:name fk #:kont cont)))
        (new-letfun/k fname fun (new-app/k cont fname #:kont cont) #:kont cont)))
-    (($ binding ($ ast _ body) ($ ref _ var) val)
+    (($ binding ($ ast _ body) ($ ref _ var) value)
      (let* ((jname (new-id "#jcont-"))
             (ov (new-id var #f))
             (nv (new-id var))
@@ -361,7 +361,7 @@
                     (alpha-renaming (ast->cps body cont) (list var) (list nv))
                     #:kont cont)))
        (new-letcont/k jname jcont
-                      (alpha-renaming (ast->cps val jname) (list var) (list nv))
+                      (alpha-renaming (ast->cps value jname) (list var) (list nv))
                       #:kont cont)))
     (($ branch ($ ast _ (cnd b1 b2)))
      (let* ((arg (new-id))
