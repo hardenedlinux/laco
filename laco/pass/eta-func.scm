@@ -30,9 +30,8 @@
 ;; Eliminate all anonymouse functions
 (define (ef expr)
   (match expr
-    (($ letfun/k ($ bind-special-form/k _
-                    f ($ lambda/k _ args ($ app/k _ g _)) body))
-     (cfs body (list g) (list f)))
+    (($ letfun/k ($ bind-special-form/k _ f fbody ($ app/k _ prim:return (arg))))
+     (cfs arg (list f) (list fbody)))
     (($ seq/k _ exprs)
      (seq/k-exprs-set! expr (map ef exprs))
      expr)
