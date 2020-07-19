@@ -64,9 +64,8 @@
      (cond
       ((is-referenced? body v)
        => (lambda (vv)
-            (pk "v" (map id-name v))
             ;; There could be side-effects, so we only drop the parameters
-            (lambda/k-args-set! expr (pk "vv" (map id-name vv) vv)))))
+            (lambda/k-args-set! expr vv))))
      (lambda/k-body-set! expr (dve body))
      expr)
     (($ branch/k _ cnd b1 b2)
