@@ -15,6 +15,7 @@
 ;;  along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (laco pass useless-cont)
+  #:use-module (laco types)
   #:use-module (laco cps)
   #:use-module (laco pass)
   #:use-module (laco primitives)
@@ -22,9 +23,18 @@
 
 (define (uc expr)
   (match expr
-    (($ letcont/k ($ bind-special-form/k _ _ value
-                     ($ app/k _ prim:return ((? seq/k?)))))
-     (uc value))
+    (($ letfun/k ($ bind-special-form/k _ _
+                    ($ lambda/k _ largs
+                       ($ letcont/k ($ bind-special-form/k _ f
+                                       ($ app/k _ prim:return args)
+                                       ($ app/k _ g (($ seq/k _ (e))))))) _))
+     (=> failed!)
+     (cond
+      ((and (id-eq? (car largs) g) (id-eq? f e))
+       (lambda/k-body-set! (bind-special-form/k-value expr)
+                           (new-app/k g (map uc args)))
+       expr)
+      (else (failed!))))
     ((? bind-special-form/k?)
      (bind-special-form/k-value-set! expr (uc (bind-special-form/k-value expr)))
      (bind-special-form/k-body-set! expr (uc (bind-special-form/k-body expr)))
