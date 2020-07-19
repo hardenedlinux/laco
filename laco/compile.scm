@@ -107,7 +107,9 @@ Options:
   (init-optimizations)
   (parameterize ((current-kont 'global))
     ;; Prevent unecessary lifting and inline for global functions
-    (top-level-for-each (lambda (_ e) (do-optimize e))))
+    (top-level-for-each
+     (lambda (f e)
+       (top-level-set! f (do-optimize e)))))
   (do-optimize cexpr))
 
 (define output-file (make-parameter #f))
