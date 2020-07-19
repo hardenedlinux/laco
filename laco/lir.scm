@@ -211,8 +211,8 @@
      (make-insr-label '() (id->string name) (map cps->lir exprs)))
     (($ letfun/k ($ bind-special-form/k ($ cps _ kont name attr) fname fun body))
      ;; NOTE:
-     ;; 1. For common function, after lambda-lifting, the function must be lifted to a
-     ;;    function which can be looked up from top-level.
+     ;; 1. For common function, after lambda-lifting, the function must be lifted to
+     ;;    a function which can be looked up from top-level.
      ;; 2. For escaping function, there must be a closure. So we will take advantage
      ;;    of the specific instruction of the VM.
      (let* ((label (id->string name))
