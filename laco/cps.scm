@@ -508,4 +508,4 @@
   (top-level->body-list (lambda (v e) `(define ,v ,(cps->expr e)))))
 
 (define (cps->expr/g cpse)
-  `(,@(top-level->src) ,(cps->expr cpse)))
+  `(module ,@(top-level->src) ,(cps->expr cpse)))
