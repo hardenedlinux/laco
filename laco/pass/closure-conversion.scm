@@ -106,7 +106,8 @@
                  (map cc args)))
     ((? id? id)
      (let ((env (current-env))
-           (label (cps-name (current-kont)))
+           ;; FIXME: deal with it when current-kont is 'global
+           (label (current-kont))
            (name (id-name id)))
        (cond
         ((not (toplevel? env))
@@ -114,9 +115,9 @@
           ((bindings-index env id)
            => (lambda (offset)
                 (new-lvar id offset)))
-          ((frees-index env id)
+          ((and (not (eq? label 'global)) (frees-index env id))
            => (lambda (index)
-                (new-fvar id label index)))
+                (new-fvar id (id-name label) index)))
           (else (throw 'laco-error cc "Undefined local variable `~a'!" name))))
         ((top-level-ref name)  (new-gvar id))
         (else (throw 'laco-error cc "Undefined global variable `~a'!" name)))))
