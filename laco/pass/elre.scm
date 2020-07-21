@@ -15,19 +15,42 @@
 ;;  along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (laco pass elre)
+  #:use-module (laco types)
   #:use-module (laco cps)
   #:use-module (laco pass)
   #:use-module (ice-9 match))
 
 ;; Eliminate all the redundant code:
-;; 1. (begin (begin body ...)) -> (begin body ...)
+;; NOTE:
+;; 1. We're not going to eliminate (return ...) in thie pass. All the `return'
+;;    implies tail-call after elre, since `return` in non tail-calls are all
+;;    eliminated in case-2.
+;; 2. FIXME: Make should all the left `return' are tail-calls, we need them for
+;;    low-level TCO stack tweaking in LIR.
 (define (elre expr)
   (match expr
     (($ seq/k _ (($ seq/k _ _)))
+     ;; case-1: (begin (begin body ...)) -> (begin body ...)
+     ;;
      ;; Of course we can make sure no redundant seq was introduced in the parser,
      ;; however, you have to consider if users do it in their code, such like:
      ;; (let ((...)) (begin body ...))
      (elre (car (seq/k-exprs expr))))
+    (($ seq/k _ exprs)
+     (cond
+      ((= (length exprs) 1)
+       (let ((e (car exprs)))
+         (match e
+           (($ app/k _ prim:return (arg))
+            ;; case-2: (begin (return single-expr)) -> single-expr
+            (elre arg))
+           (else
+            ;; case-3: (begin single-expr) -> single-expr
+            (elre (car exprs))))))
+      (else
+       (let ((ne (map elre exprs)))
+         (seq/k-exprs-set! expr ne)
+         expr))))
     ((? bind-special-form/k?)
      (bind-special-form/k-value-set! expr (elre (bind-special-form/k-value expr)))
      (bind-special-form/k-body-set! expr (elre (bind-special-form/k-body expr)))
