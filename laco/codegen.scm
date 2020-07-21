@@ -61,12 +61,21 @@
      (sasm-label-end label))
     (($ insr-fjump _ label)
      (emit-fjump label))
-    (($ insr-local _ offset)
-     (emit-local offset))
-    (($ insr-free _ label offset)
-     (emit-free label offset))
-    (($ insr-global _ offset)
-     (emit-global offset))
+    (($ insr-local _ mode offset)
+     (case mode
+       ((push) (emit-push-local offset))
+       ((ref) (emit-local offset))
+       (else (throw 'laco-error emit-sasm "BUG: invalid mode of local!" mode))))
+    (($ insr-free _ label mode offset)
+     (case mode
+       ((push) (emit-push-free label offset))
+       ((ref) (emit-free label offset))
+       (else (throw 'laco-error emit-sasm "BUG: invalid mode of free!" mode))))
+    (($ insr-global _ mode offset)
+     (case mode
+       ((push) (emit-push-global offset))
+       ((ref) (emit-global offset))
+       (else (throw 'laco-error emit-sasm "BUG: invalid mode of global!" mode))))
     (else (throw 'laco-error emit-sasm "Invalid lir `~a'!" lir))))
 
 (define (emit-sasm-memory lir)

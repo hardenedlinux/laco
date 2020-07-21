@@ -147,6 +147,7 @@
 ;; Pop ss[offset] to TOS
 (define-typed-record insr-local (parent insr)
   (fields
+   (mode symbol?)
    (offset integer?)))
 
 ;; Pop ss[offset] to TOS
@@ -154,11 +155,13 @@
   (fields
    ;; We convert the label to string since we will generate label pattern in codegen
    (label string?)
+   (mode symbol?)
    (offset integer?)))
 
 ;; Global variables are stored in a special area
 (define-typed-record insr-global (parent insr)
   (fields
+   (mode symbol?)
    (offset integer?)))
 
 ;; jump if TOS is false
@@ -201,7 +204,7 @@
 (define (label-ref label)
   (hash-ref *labels* label))
 
-(define (cps->lir expr)
+(define* (cps->lir expr #:optional (var-mode 'ref))
   (match expr
     (($ lambda/k ($ cps _ kont name attr) args body)
      (let ((env (closure-ref name))
@@ -270,9 +273,10 @@
          (label-register! label (make-insr-label '() label `(,obj ,@cont))))
         (else (throw 'laco-error cps->lir "Invalid cont `~a' in letval/k!" cont)))))
     (($ app/k ($ cps _ kont name attr) func args)
-     ;; NOTE: After normalize, the func never be anonymous function, it must be an id.
+     ;; NOTE: After normalize, the func never be anonymous function, it must be
+     ;;       an id.
      (let ((f (cps->lir func))
-           (e (map cps->lir args))
+           (e (map (lambda (x) (cps->lir x 'push)) args))
            (env (closure-ref name))
            (label (id->string name)))
        (when (not env)
@@ -285,14 +289,14 @@
     (($ constant/k _ value)
      (create-object value))
     (($ lvar _ offset)
-     (make-insr-local '() offset))
+     (make-insr-local '() var-mode offset))
     (($ fvar _ label offset)
-     (make-insr-free '() (id->string label) offset))
+     (make-insr-free '() (id->string label) var-mode offset))
     (($ gvar ($ id _ name _))
      (let ((v (top-level-ref name)))
        (when (not v)
          (throw 'laco-error cps->lir "Invalid global var `~a'!" name))
-       (make-insr-global '() (get-global-offset name))))
+       (make-insr-global '() var-mode (get-global-offset name))))
     ((? primitive? p)
      (make-insr-prim '() p (primitive->number p)))
     (else (throw 'laco-error cps->lir "Invalid cps `~a'!" (id-name expr)))))
@@ -317,12 +321,12 @@
      `(prim-call ,(primitive-name p) ,num ,nargs))
     (($ insr-call _ label argc)
      `(call ,label ,argc))
-    (($ insr-local _ offset)
-     `(local ,offset))
-    (($ insr-free _ label offset)
-     `(free-var ,label ,offset))
-    (($ insr-global _ offset)
-     `(global ,offset))
+    (($ insr-local _ mode offset)
+     `(local ,mode ,offset))
+    (($ insr-free _ label mode offset)
+     `(free-var ,label ,mode ,offset))
+    (($ insr-global _ mode offset)
+     `(global ,mode ,offset))
     (($ integer-object _ value) `(integer ,value))
     (else (throw 'laco-error lir->expr "Invalid lir `~a'!" lexpr))))
 
