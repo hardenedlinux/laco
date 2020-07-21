@@ -61,6 +61,12 @@
      (sasm-label-end label))
     (($ insr-fjump _ label)
      (emit-fjump label))
+    (($ insr-local _ offset)
+     (emit-local offset))
+    (($ insr-free _ label offset)
+     (emit-free label offset))
+    (($ insr-global _ offset)
+     (emit-global offset))
     (else (throw 'laco-error emit-sasm "Invalid lir `~a'!" lir))))
 
 (define (emit-sasm-memory lir)
@@ -75,6 +81,7 @@
   (sasm-memory-end)
 
   (sasm-program-begin)
+  (top-level-for-each (lambda (_ v) (emit-sasm v)))
   (emit-sasm lir)
   (sasm-program-end)
 
