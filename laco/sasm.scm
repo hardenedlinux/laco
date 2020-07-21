@@ -148,6 +148,15 @@
 (define-public (emit-fjump label)
   (sasm-emit `((fjump ,label) . "")))
 
+(define-public (emit-local offset)
+  (sasm-emit `((local ,offset) . "")))
+
+(define-public (emit-free label offset)
+  (sasm-emit `((free ,label ,offset) . "")))
+
+(define-public (emit-global offset)
+  (sasm-emit `((global ,offset) . "")))
+
 (define-public (sasm-program-begin)
   (sasm-emit 'prog-begin))
 
