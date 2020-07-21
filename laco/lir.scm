@@ -23,44 +23,67 @@
   #:use-module (laco primitives)
   #:use-module (laco pass closure-conversion)
   #:use-module (ice-9 match)
+  #:use-module (ice-9 pretty-print)
   #:use-module ((rnrs) #:select (define-record-type))
   #:export (make-insr
             insr?
 
-            insr-proc make-insr-proc
+            insr-proc insr-proc?
+            make-insr-proc
             insr-proc-label
             insr-proc-env
             insr-proc-nargs
             insr-proc-body
 
-            insr-lit make-insr-lit
+            insr-lit insr-lit?
+            make-insr-lit
             insr-lit-val
 
-            insr-ref make-insr-ref
+            insr-ref insr-ref?
+            make-insr-ref
             insr-ref-var
 
-            insr-set make-insr-set
+            insr-set insr-set?
+            make-insr-set
             insr-set-var
 
-            insr-prim make-insr-prim
+            insr-prim insr-prim?
+            make-insr-prim
             insr-prim-op insr-prim-args
 
-            insr-pcall make-insr-pcall
+            insr-pcall insr-pcall?
+            make-insr-pcall
             insr-pcall-op
             insr-pcall-num
             insr-pcall-nargs
 
-            insr-call make-insr-call
+            insr-call insr-call?
+            make-insr-call
             insr-call-label insr-call-args
 
-            insr-fjump
+            insr-fjump insr-fjump?
             make-insr-fjump
 
+            insr-closure insr-closure?
             make-insr-closure
             insr-closure-env insr-closure-code
 
-            insr-label make-insr-label
+            insr-label insr-label?
+            make-insr-label
             insr-label-label insr-label-body
+
+            insr-local insr-local?
+            make-insr-local
+            insr-local-offset
+
+            insr-free insr-free?
+            make-insr-free
+            insr-local-label
+            insr-local-offset
+
+            insr-global insr-global?
+            make-insr-global
+            insr-global-name
 
             label-ref
             cps->lir
@@ -105,7 +128,7 @@
    (entry string?) ; entry should be a label
    (env env?)
    (nargs integer?)
-   (body valid-insr-list?)))
+   (body insr? object?)))
 
 (define-typed-record insr-label (parent insr)
   (fields
@@ -269,7 +292,7 @@
      (let ((v (top-level-ref name)))
        (when (not v)
          (throw 'laco-error cps->lir "Invalid global var `~a'!" name))
-       (cps->lir v)))
+       (make-insr-global '() (get-global-offset name))))
     ((? primitive? p)
      (make-insr-prim '() p (primitive->number p)))
     (else (throw 'laco-error cps->lir "Invalid cps `~a'!" (id-name expr)))))
@@ -298,11 +321,10 @@
      `(local ,offset))
     (($ insr-free _ label offset)
      `(free-var ,label ,offset))
-    (($ insr-global _ ($ id _ name _))
-     (let ((offset (get-global-offset name)))
-       `(global ,offset)))
+    (($ insr-global _ offset)
+     `(global ,offset))
     (($ integer-object _ value) `(integer ,value))
     (else (throw 'laco-error lir->expr "Invalid lir `~a'!" lexpr))))
 
 (define (lir->expr/g lexpr)
-  `(,@(top-level->body-list lir->expr) ,(lir->expr lexpr)))
+  `(,@(top-level->body-list (lambda (_ v) (lir->expr v))) ,(lir->expr lexpr)))
