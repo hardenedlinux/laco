@@ -22,9 +22,9 @@
 
 ;; Eliminate all the redundant code:
 ;; NOTE:
-;; 1. We're not going to eliminate (return ...) in thie pass. All the `return'
-;;    implies tail-call after elre, since `return` in non tail-calls are all
-;;    eliminated in case-2.
+;; 1. We're not going to eliminate tail-call (return ...) in thie pass.
+;;    The left `return' should imply tail-call after elre, since `return` in non
+;;    tail-calls are all eliminated in case-2.
 ;; 2. FIXME: Make sure all the left `return' are tail-calls, we need them for
 ;;    low-level TCO stack tweaking in LIR.
 (define (elre expr)
