@@ -98,12 +98,12 @@ Options:
      fold-branch
      function-inline
      dead-variable-elimination
-     elre
      eta-cont
      eta-function
      delta-reduction
      closure-conversion
-     lambda-lifting))
+     lambda-lifting
+     eliminate-redundant))
   (init-optimizations)
   (parameterize ((current-kont 'global))
     ;; Prevent unecessary lifting and inline for global functions
