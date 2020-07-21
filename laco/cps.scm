@@ -498,7 +498,7 @@
     (($ letval/k ($ bind-special-form/k _  var value body))
      `(letval ((,(cps->expr var) ,(cps->expr value))) ,(cps->expr body)))
     (($ app/k _ f e)
-     `(,(cps->expr f) ,@(map cps->expr e)))
+     `(,(cps->expr f) ,@(map (lambda (x) (cps->expr x #f)) e)))
     (($ constant/k _ ($ constant _ val type)) val)
     ((? id? id) (id-name id))
     (($ primitive _ name _ _ _) name)
