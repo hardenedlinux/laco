@@ -37,7 +37,8 @@
   '((help (value #f))
     (output (single-char #\o) (value #t))
     (output-type (single-char #\t) (value #t))
-    (version (single-char #\v) (value #f))))
+    (version (single-char #\v) (value #f))
+    (verbose (value #f))))
 
 (define hidden-option-spec
   '((options-list (value #f))))
@@ -114,6 +115,7 @@ Options:
 
 (define output-file (make-parameter #f))
 (define output-type (make-parameter #f))
+(define need-verbose? (make-parameter #f))
 
 ;; (type, generator, printer)
 (define *stages*
@@ -152,7 +154,17 @@ Options:
 (define (run-stages outfile mod)
   (if (output-type)
       (run-till-stage mod (string->symbol (output-type)))
-      (codegen outfile (fold (lambda (x p) (car x) ((cadr x) p)) mod *stages*))))
+      (codegen
+       outfile
+       (fold (lambda (x p)
+               (let ((ret ((cadr x) p)))
+                 (when (need-verbose?)
+                   (format #t "======= ~a =======~%" (car x))
+                   (if (eq? (car x) 'sasm)
+                       (pretty-print ret)
+                       (pretty-print ((caddr x) ret))))
+                 ret))
+             mod *stages*))))
 
 (define (do-compile filename)
   (define outfile (if (output-file) (output-file) (gen-outfile filename)))
@@ -184,6 +196,7 @@ Options:
      ((->opt 'options-list) (display-it (option-spec-str)))
      (else
       (parameterize ((output-file (->opt 'output))
-                     (output-type (->opt 'output-type)))
+                     (output-type (->opt 'output-type))
+                     (need-verbose? (->opt 'verbose)))
         (let ((filename (get-intput-name args)))
           (when filename (do-compile filename))))))))
