@@ -116,7 +116,7 @@
 ;; 2. Memory layout optimizing
 ;; 3. Stackwise optimizing
 ;; 4. Collection/struct access optimizing
-
+;; 5. Combine redundant labels
 
 (define-record-type insr)
 
@@ -204,7 +204,11 @@
 (define (label-ref label)
   (hash-ref *labels* label))
 
-(define* (cps->lir expr #:optional (var-mode 'ref))
+;; NOTE:
+;; We reuse prim:return for proc-return instruction, so the arity is 0.
+(define *proc-return* (make-insr-prim '() prim:return 0))
+
+(define* (cps->lir expr #:optional (mode 'push))
   (match expr
     (($ lambda/k ($ cps _ kont name attr) args body)
      (let ((env (closure-ref name))
@@ -275,29 +279,25 @@
     (($ app/k ($ cps _ kont name attr) func args)
      ;; NOTE: After normalize, the func never be anonymous function, it must be
      ;;       an id.
-     (let ((f (cps->lir func))
-           (e (map (lambda (x) (cps->lir x 'push)) args))
+     (let ((f (cps->lir func 'pop))
+           (e (map cps->lir args))
            (env (closure-ref name))
            (label (id->string name)))
        (when (not env)
          (throw 'laco-error cps->lir
                 "app/k: the closure label `~a' doesn't have an env!" label))
-       (make-insr-label
-        '()
-        label
-        `(,@e ,f))))
+       (make-insr-label '() label `(,@e ,f))))
     (($ constant/k _ value)
      (create-object value))
     (($ lvar _ offset)
-     (make-insr-local '() var-mode offset))
+     (make-insr-local '() mode offset))
     (($ fvar _ label offset)
-     (make-insr-free '() (id->string label) var-mode offset))
+     (make-insr-free '() (id->string label) mode offset))
     (($ gvar ($ id _ name _))
      (match (top-level-ref name)
        (($ insr-proc _ label _ nargs)
         (make-insr-call '() label nargs))
-       (($ insr-prim _ p num)
-        (make-insr-pcall '() p num))
+       ((? insr-prim? p) p)
        ((? object? obj) obj)
        (#f (throw 'laco-error cps->lir "Missing global var `~a'!" name))
        (else (throw 'laco-error cps->lir "Invalid global var `~a'!" name))))
@@ -314,8 +314,8 @@
 
 (define (lir->expr lexpr)
   (match lexpr
-    (($ insr-proc _ label _ nargs)
-     `(proc ,label ,nargs))
+    (($ insr-proc _ label _ nargs body)
+     `(proc ,label ,nargs ,(lir->expr body)))
     (($ insr-label _ label exprs)
      `((label ,label)
        ,@(map lir->expr exprs)))
@@ -330,6 +330,7 @@
     (($ insr-free _ label mode offset)
      `(free-var ,label ,mode ,offset))
     (($ integer-object _ value) `(integer ,value))
+    (($ string-object _ value) `(string ,value))
     (else (throw 'laco-error lir->expr "Invalid lir `~a'!" lexpr))))
 
 (define (lir->expr/g lexpr)
