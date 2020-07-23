@@ -23,7 +23,9 @@
              run-pass))
 
 (define *pass-table* (make-hash-table))
-(define (get-pass name) (hash-ref *pass-table* name identity))
+(define (get-pass name)
+  (hash-ref *pass-table* name
+            (lambda (_) (throw 'laco-error get-pass "Invalid pass `~a'!" name))))
 
 (define-syntax-rule (define-pass name cps body ...)
   (begin
