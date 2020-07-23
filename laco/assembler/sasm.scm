@@ -15,28 +15,34 @@
 ;;  along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (laco assembler sasm)
+  #:use-module ((rnrs) #:select (make-bytevector
+                                 bytevector-u8-set!))
   #:use-module (laco assembler encode))
 
 (define *label-table* (make-hash-table))
 (define (label-register! name)
-  (hash-set! *label-table* name (label-counter 0)))
+  (hash-set! *label-table* name (label-counter)))
+(define-syntax-rule (label-ref name)
+  (or (hash-ref *label-table* name)
+      (throw 'laco-error 'label-ref "Missing label `~a'!" name)))
 
 (define-public (label name)
   (label-register! name)
   #u8())
 
 ;; ------- single encoding -----------------
-(define-public (push-4bit-const i)
-  (single-encode 0 i))
+(define-public (local i)
+  (cond
+   ((and (>= i 0) (< i 16)) (single-encode 0 i))
+   ((> i 15) (single-encode 1 i))
+   (else (throw 'laco-error local "Invalid offset `~a'!" i))))
+
+(define-public (push-local i)
+  (push-bytes 1)
+  (local i))
 
 (define-public (ss-load-4bit-const i)
   (single-encode 0 1))
-
-(define-public (global-ref i)
-  (single-encode 2 i))
-
-(define-public (global-set! i)
-  (single-encode 3 i))
 
 (define-public (call-closure offset)
   (single-encode 4 offset))
@@ -49,6 +55,24 @@
 
 (define-public (jump-tos-false offset)
   (single-encode 7 offset))
+
+;; --------- special double encoding ----------
+(define-public (free label i)
+  (let ((frame (make-bytevector 1 0))
+        (f (label-ref label)))
+    (bytevector-u8-set! frame 0 f)
+    (cond
+     ((and (> i 0) (< 16))
+      (list (single-encode 4 i)
+            frame))
+     ((> i 15)
+      (single-encode 5 i)
+      frame)
+     (else (throw 'laco-error free "Invalid offset `~a'!" i)))))
+
+(define-public (push-free f i)
+  (push-bytes 2)
+  (free f i))
 
 ;; --------- double encoding -----------
 
@@ -68,8 +92,9 @@
   (double-encode 4 offset))
 
 ;; --------- triple encoding -----------
-(define-public (call-proc arity offset)
-  (double-encode 0 (logior (ash arity 8) offset)))
+(define-public (call-proc label arity)
+  (let ((offset (label-ref label)))
+    (triple-encode 0 arity offset)))
 
 (define-public (push-16bit-const arity i)
   (double-encode 1 i))

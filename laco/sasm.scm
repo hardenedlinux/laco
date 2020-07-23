@@ -77,6 +77,9 @@
         (indent-spaces 'out))
        ((('push-string-object s) . descp)
         (format port "~a(push-string-object ~s) ; ~a~%" (indent-spaces) s descp))
+       ((('call-proc label arity) . _)
+        (format port "~a(call-proc ~a ~a)~%" (indent-spaces)
+                (drop-hash label) arity))
        ((insr . descp)
         (format port "~a~a ; ~a~%" (indent-spaces) insr descp))
        (() #t)
@@ -131,8 +134,8 @@
    ((is-char-node? x) (emit-char (constant-val x)))
    (else (throw 'laco-error emit-const-imm "Invalid immediate `~a`!" x))))
 
-(define-public (emit-call-proc argc label)
-  (sasm-emit `((call-proc ,argc ,label) . "")))
+(define-public (emit-call-proc label argc)
+  (sasm-emit `((call-proc ,label ,argc) . "")))
 
 (define-public (emit-prim-call argc p)
   (sasm-emit `((prim-call ,argc ,(primitive->number p))
@@ -154,17 +157,11 @@
 (define-public (emit-push-free label offset)
   (sasm-emit `((push-free ,label ,offset) . "")))
 
-(define-public (emit-push-global offset)
-  (sasm-emit `((push-global ,offset) . "")))
-
 (define-public (emit-local offset)
   (sasm-emit `((local ,offset) . "")))
 
 (define-public (emit-free label offset)
   (sasm-emit `((free ,label ,offset) . "")))
-
-(define-public (emit-global offset)
-  (sasm-emit `((global ,offset) . "")))
 
 (define-public (sasm-program-begin)
   (sasm-emit 'prog-begin))

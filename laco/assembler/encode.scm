@@ -31,7 +31,8 @@
             special-encode
             general-integer-encode
             general-string-encode
-            boolean-encode))
+            boolean-encode
+            push-bytes))
 
 (define label-counter (new-counter))
 
@@ -59,17 +60,19 @@
     (label-counter 2)
     bv))
 
-(define (triple-encode type data)
+(define (triple-encode type data1 data2)
   (when (or (< type 0) (> type #b1111))
     (throw 'laco-error double-encode
            "Invalid type, should be #b10110000 ~ #b10111111!"
            (number->string (logior #b1011 type) 2)))
-  (when (or (< data 0) (> data #xffff))
-    (throw 'laco-error double-encode "Invalid data, should be 0 ~ 65535" data))
+  (when (or (< data1 0) (> data1 #xffff))
+    (throw 'laco-error double-encode "Invalid data1, should be 0 ~ 65535" data1))
+  (when (or (< data2 0) (> data2 #xffff))
+    (throw 'laco-error double-encode "Invalid data1, should be 0 ~ 65535" data2))
   (let ((bv (make-bytevector 3 0)))
-    (bytevector-u8-set! bv 0 (logior #b10100000 type))
-    (bytevector-u8-set! bv 1 (ash (logand #xff00 data) -8))
-    (bytevector-u8-set! bv 2 (logand #xff data))
+    (bytevector-u8-set! bv 0 (logior #b10110000 type))
+    (bytevector-u8-set! bv 1 data1)
+    (bytevector-u8-set! bv 2 data2)
     (label-counter 3)
     bv))
 
@@ -138,5 +141,14 @@
     (throw 'laco-error boolean-encode "Invalid boolean value `~a'!" value))
   (let ((bv (make-bytevector 1 0)))
     (bytevector-u8-set! bv 0 (logior (ash #b1110 4) value))
+    (label-counter 1)
+    bv))
+
+;; Push next n bytes
+(define (push-bytes n)
+  (when (or (<= n 0) (> n 16))
+    (throw 'laco-error push-bytes "Invalid byte `~a'!" n))
+  (let ((bv (make-bytevector 1 0)))
+    (bytevector-u8-set! bv 0 (1- n))
     (label-counter 1)
     bv))

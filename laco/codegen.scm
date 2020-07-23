@@ -45,7 +45,7 @@
      (emit-sasm body)
      (sasm-label-end label))
     (($ insr-call _ label argc)
-     (emit-call-proc argc label))
+     (emit-call-proc label argc))
     (($ insr-pcall _ label argc)
      (emit-prim-call argc label))
     (($ integer-object _ i)
@@ -72,10 +72,9 @@
        ((ref) (emit-free label offset))
        (else (throw 'laco-error emit-sasm "BUG: invalid mode of free!" mode))))
     (($ insr-global _ mode offset)
-     (case mode
-       ((push) (emit-push-global offset))
-       ((ref) (emit-global offset))
-       (else (throw 'laco-error emit-sasm "BUG: invalid mode of global!" mode))))
+     ;; 1. ref value from the global offset
+     ;; 2. there's global instruction in sasm, only the referneced value
+     #t)
     (else (throw 'laco-error emit-sasm "Invalid lir `~a'!" lir))))
 
 (define (emit-sasm-memory lir)

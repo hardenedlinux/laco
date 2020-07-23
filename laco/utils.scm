@@ -170,7 +170,7 @@
 
 (define (get-all-defs exprs)
   (let lp ((e exprs) (ret '()))
-    (match (pk "e" e)
+    (match e
       (() (values '() (reverse ret)))
       ((('define _ ...) rest ...)
        (lp rest (cons (car e) ret)))
