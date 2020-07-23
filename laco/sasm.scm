@@ -137,6 +137,9 @@
 (define-public (emit-call-proc label argc)
   (sasm-emit `((call-proc ,label ,argc) . "")))
 
+(define-public (emit-proc-return)
+  (sasm-emit `((ret) . "")))
+
 (define-public (emit-prim-call argc p)
   (sasm-emit `((prim-call ,argc ,(primitive->number p))
                . ,(format #f "Call primitive `~a'" (primitive-name p)))))
@@ -151,17 +154,11 @@
 (define-public (emit-fjump label)
   (sasm-emit `((fjump ,label) . "")))
 
-(define-public (emit-push-local offset)
-  (sasm-emit `((push-local ,offset) . "")))
+(define-public (emit-local mode offset)
+  (sasm-emit `((local ,mode ,offset) . "")))
 
-(define-public (emit-push-free label offset)
-  (sasm-emit `((push-free ,label ,offset) . "")))
-
-(define-public (emit-local offset)
-  (sasm-emit `((local ,offset) . "")))
-
-(define-public (emit-free label offset)
-  (sasm-emit `((free ,label ,offset) . "")))
+(define-public (emit-free label mode offset)
+  (sasm-emit `((free ,label ,mode ,offset) . "")))
 
 (define-public (sasm-program-begin)
   (sasm-emit 'prog-begin))

@@ -62,19 +62,9 @@
     (($ insr-fjump _ label)
      (emit-fjump label))
     (($ insr-local _ mode offset)
-     (case mode
-       ((push) (emit-push-local offset))
-       ((ref) (emit-local offset))
-       (else (throw 'laco-error emit-sasm "BUG: invalid mode of local!" mode))))
+     (emit-local mode offset))
     (($ insr-free _ label mode offset)
-     (case mode
-       ((push) (emit-push-free label offset))
-       ((ref) (emit-free label offset))
-       (else (throw 'laco-error emit-sasm "BUG: invalid mode of free!" mode))))
-    (($ insr-global _ mode offset)
-     ;; 1. ref value from the global offset
-     ;; 2. there's global instruction in sasm, only the referneced value
-     #t)
+     (emit-free label mode offset))
     (else (throw 'laco-error emit-sasm "Invalid lir `~a'!" lir))))
 
 (define (emit-sasm-memory lir)

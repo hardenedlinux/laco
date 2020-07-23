@@ -37,7 +37,7 @@
    ((> i 15) (single-encode 1 i))
    (else (throw 'laco-error local "Invalid offset `~a'!" i))))
 
-(define-public (push-local i)
+(define-public (pop-local i)
   (push-bytes 1)
   (local i))
 
@@ -57,22 +57,29 @@
   (single-encode 7 offset))
 
 ;; --------- special double encoding ----------
-(define-public (free label i)
+(define-public (free label mode i)
   (let ((frame (make-bytevector 1 0))
-        (f (label-ref label)))
+        (f (label-ref label))
+        (minstr (mode->instr mode)))
     (bytevector-u8-set! frame 0 f)
     (cond
      ((and (> i 0) (< 16))
-      (list (single-encode 4 i)
-            frame))
+      (list
+       minstr
+       (single-encode 4 i)
+       frame))
      ((> i 15)
-      (single-encode 5 i)
-      frame)
+      (list
+       minstr
+       (single-encode 5 i)
+       frame))
      (else (throw 'laco-error free "Invalid offset `~a'!" i)))))
 
-(define-public (push-free f i)
-  (push-bytes 2)
-  (free f i))
+(define-public (mode->instr mode)
+  (case mode
+    ((push) #u8(0))
+    ((pop) #u8())
+    (else (throw 'laco-error mode->instr "Invalid mode `~a'!" mode))))
 
 ;; --------- double encoding -----------
 
