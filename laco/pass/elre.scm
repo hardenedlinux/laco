@@ -18,6 +18,7 @@
   #:use-module (laco types)
   #:use-module (laco cps)
   #:use-module (laco pass)
+  #:use-module (laco primitives)
   #:use-module (ice-9 match))
 
 ;; Eliminate all the redundant code:
@@ -41,7 +42,7 @@
       ((= (length exprs) 1)
        (let ((e (car exprs)))
          (match e
-           (($ app/k _ prim:return (arg))
+           (($ app/k _ ($ primitive _ 'return _ _ _) (arg))
             ;; case-2: (begin (return single-expr)) -> single-expr
             (elre arg))
            (else
