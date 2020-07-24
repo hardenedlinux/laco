@@ -32,7 +32,7 @@
             make-insr-proc
             insr-proc-label
             insr-proc-env
-            insr-proc-nargs
+            insr-proc-arity
             insr-proc-body
 
             insr-lit insr-lit?
@@ -55,7 +55,7 @@
             make-insr-pcall
             insr-pcall-op
             insr-pcall-num
-            insr-pcall-nargs
+            insr-pcall-arity
 
             insr-call insr-call?
             make-insr-call
@@ -127,7 +127,7 @@
   (fields
    (entry string?) ; entry should be a label
    (env env?)
-   (nargs integer?)
+   (arity integer?)
    (body insr? object?)))
 
 (define-typed-record insr-label (parent insr)
@@ -180,13 +180,13 @@
   (fields
    (op primitive?)
    (num integer?)
-   (nargs integer?)))
+   (arity integer?)))
 
 ;; application
 (define-typed-record insr-call (parent insr)
   (fields
    (label string?)
-   (nargs integer?)))
+   (arity integer?)))
 
 ;; closure
 (define-typed-record insr-closure (parent insr)
@@ -266,7 +266,7 @@
                     ($ cps _ kont name attr) var ($ constant/k _ value) body))
      ;; NOTE: value is constant type.
      ;; NOTE: char and boolean shouldn't be unboxed.
-     (let ((obj (create-object value))
+     (let ((obj (create-constant-object value))
            (cont (cps->lir body))
            (label (id->string name)))
        ;; TODO: substitute all the var reference to the ref-number
@@ -279,7 +279,7 @@
     (($ app/k ($ cps _ kont name attr) func args)
      ;; NOTE: After normalize, the func never be anonymous function, it must be
      ;;       an id.
-     (let ((f (cps->lir func 'pop))
+     (let ((f (cps->lir func 'call))
            (e (map cps->lir args))
            (env (closure-ref name))
            (label (id->string name)))
@@ -288,15 +288,19 @@
                 "app/k: the closure label `~a' doesn't have an env!" label))
        (make-insr-label '() label `(,@e ,f))))
     (($ constant/k _ value)
-     (create-object value))
+     (create-constant-object value))
     (($ lvar _ offset)
      (make-insr-local '() mode offset))
     (($ fvar _ label offset)
      (make-insr-free '() (id->string label) mode offset))
     (($ gvar ($ id _ name _))
      (match (top-level-ref name)
-       (($ insr-proc _ label _ nargs)
-        (make-insr-call '() label nargs))
+       (($ insr-proc _ label _ arity)
+        (case mode
+          ((push) (make-proc-object '() arity label))
+          ((call) (make-insr-call '() label arity))
+          (else
+           (throw 'laco-error cps->lir "gvar: proc has invalid mode `~a'!" mode))))
        ((? insr-prim? p) p)
        ((? object? obj) obj)
        (#f (throw 'laco-error cps->lir "Missing global var `~a'!" name))
@@ -314,15 +318,15 @@
 
 (define (lir->expr lexpr)
   (match lexpr
-    (($ insr-proc _ label _ nargs body)
-     `(proc ,label ,nargs ,(lir->expr body)))
+    (($ insr-proc _ label _ arity body)
+     `(proc ,label ,arity ,(lir->expr body)))
     (($ insr-label _ label exprs)
      `((label ,label)
        ,@(map lir->expr exprs)))
     (($ insr-prim _ p num)
      `(primitive ,(primitive-name p) ,num))
-    (($ insr-pcall _ p num nargs)
-     `(prim-call ,(primitive-name p) ,num ,nargs))
+    (($ insr-pcall _ p num arity)
+     `(prim-call ,(primitive-name p) ,num ,arity))
     (($ insr-call _ label argc)
      `(call ,label ,argc))
     (($ insr-local _ mode offset)

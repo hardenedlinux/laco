@@ -19,7 +19,7 @@
   #:use-module (laco types)
   #:use-module (ice-9 match)
   #:use-module ((rnrs) #:select (define-record-type))
-  #:export (create-object
+  #:export (create-constant-object
             object?
 
             integer-object
@@ -40,7 +40,11 @@
 
             string-object
             string-object?
-            make-string-object))
+            make-string-object
+
+            proc-object
+            proc-object?
+            make-proc-object))
 
 ;; NOTE:
 ;; 1. If the value can be unboxed, then we store them in unboxed style
@@ -78,8 +82,13 @@
   (fields
    (value string?)))
 
+(define-typed-record proc-object (parent object)
+  (fields
+   (arity integer?)
+   (entry symbol?)))
+
 ;; constant -> object
-(define (create-object c)
+(define (create-constant-object c)
   (let ((val (constant-val c)))
     (match (constant-type c)
       ('integer (make-integer-object '() val))
@@ -87,7 +96,7 @@
       ('vector (make-vector-object '() val))
       ('char (make-integer-object '() val))
       ('string (make-string-object '() val))
-      (else (throw 'laco-error create-object "Invalid type `~a'!"
+      (else (throw 'laco-error create-constant-object "Invalid type `~a'!"
                    (constant-type c))))))
 
 ;; TODO: finish others

@@ -20,6 +20,7 @@
   #:use-module ((rnrs) #:select (make-bytevector
                                  bytevector-u8-set!
                                  bytevector-s32-set!
+                                 bytevector-u16-set!
                                  define-record-type))
   #:export (label-counter
             single-encode
@@ -32,7 +33,7 @@
             general-integer-encode
             general-string-encode
             boolean-encode
-            push-bytes))
+            pop-next))
 
 (define label-counter (new-counter))
 
@@ -122,6 +123,23 @@
     (label-counter 6)
     bv))
 
+(define (general-proc-encode arity offset)
+  (when (or (< arity (- (1- (expt 2 16)))) (> arity (1- (expt 2 16))))
+    (throw 'laco-error general-proc-encode
+           "Invalid proc object `0x~a', should be 16bit!"
+           (number->string arity 16)))
+  (when (or (< offset (- (1- (expt 2 16)))) (> offset (1- (expt 2 16))))
+    (throw 'laco-error general-proc-encode
+           "Invalid proc object `0x~a', should be 16bit!"
+           (number->string offset 16)))
+  (let ((bv (make-bytevector 6 0)))
+    (bytevector-u8-set! bv 0 #b11100000)
+    (bytevector-u8-set! bv 1 9)
+    (bytevector-u16-set! bv 2 arity 'big)
+    (bytevector-u16-set! bv 4 offset 'big)
+    (label-counter 6)
+    bv))
+
 ;; NOTE: String is mapped to C string exactly.
 (define (general-string-encode str)
   (when (not (string? str))
@@ -144,11 +162,11 @@
     (label-counter 1)
     bv))
 
-;; Push next n bytes
-(define (push-bytes n)
+;; Pop next n bytes
+(define (pop-next n)
   (when (or (<= n 0) (> n 16))
     (throw 'laco-error push-bytes "Invalid byte `~a'!" n))
   (let ((bv (make-bytevector 1 0)))
-    (bytevector-u8-set! bv 0 (1- n))
+    (bytevector-u8-set! bv 0 (logior #b01010000 (1- n)))
     (label-counter 1)
     bv))

@@ -111,6 +111,9 @@
 (define-public (emit-string-object s)
   (sasm-emit `((push-string-object ,s) . "")))
 
+(define-public (emit-proc-object arity entry)
+  (sasm-emit `((call-proc ,arity ,entry) . (foramt #f "Proc `~a'" entry))))
+
 (define-public (emit-boolean b)
   (if b
       (sasm-true)

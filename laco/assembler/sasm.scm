@@ -30,16 +30,23 @@
   (label-register! name)
   #u8())
 
-;; ------- single encoding -----------------
-(define-public (local i)
-  (cond
-   ((and (>= i 0) (< i 16)) (single-encode 0 i))
-   ((> i 15) (single-encode 1 i))
-   (else (throw 'laco-error local "Invalid offset `~a'!" i))))
+(define-public (mode->instr mode)
+  (case mode
+    ((push) #u8(0))
+    ((call) (pop-next 1))
+    (else (throw 'laco-error mode->instr "Invalid mode `~a'!" mode))))
 
-(define-public (pop-local i)
-  (push-bytes 1)
-  (local i))
+;; ------- single encoding -----------------
+(define-public (local mode i)
+  (let ((insr (mode->instr mode)))
+    (cond
+     ((and (>= i 0) (< i 16))
+      (list insr
+            (single-encode 0 i)))
+     ((> i 15)
+      (list insr
+            (single-encode 1 i)))
+     (else (throw 'laco-error local "Invalid offset `~a'!" i)))))
 
 (define-public (ss-load-4bit-const i)
   (single-encode 0 1))
@@ -74,12 +81,6 @@
        (single-encode 5 i)
        frame))
      (else (throw 'laco-error free "Invalid offset `~a'!" i)))))
-
-(define-public (mode->instr mode)
-  (case mode
-    ((push) #u8(0))
-    ((pop) #u8())
-    (else (throw 'laco-error mode->instr "Invalid mode `~a'!" mode))))
 
 ;; --------- double encoding -----------
 
@@ -130,8 +131,12 @@
 (define-public (push-integer-object i)
   (general-integer-encode i))
 
-(define-public (push-string-object s)
-  (general-string-encode s))
+(define-public (push-string-object arity entry)
+  (let ((offset (label-ref entry)))
+    (proc-encode arity offset)))
+
+(define-public (push-proc-object)
+  (boolean-encode 1))
 
 (define-public (push-boolean-false)
   (boolean-encode 0))
