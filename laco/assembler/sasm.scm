@@ -131,12 +131,12 @@
 (define-public (push-integer-object i)
   (general-integer-encode i))
 
-(define-public (push-string-object arity entry)
+(define-public (push-string-object s)
+  (general-string-encode s))
+
+(define-public (push-proc-object arity entry)
   (let ((offset (label-ref entry)))
     (proc-encode arity offset)))
-
-(define-public (push-proc-object)
-  (boolean-encode 1))
 
 (define-public (push-boolean-false)
   (boolean-encode 0))

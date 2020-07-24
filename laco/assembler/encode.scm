@@ -33,6 +33,7 @@
             general-integer-encode
             general-string-encode
             boolean-encode
+            proc-encode
             pop-next))
 
 (define label-counter (new-counter))
@@ -123,13 +124,13 @@
     (label-counter 6)
     bv))
 
-(define (general-proc-encode arity offset)
+(define (proc-encode arity offset)
   (when (or (< arity (- (1- (expt 2 16)))) (> arity (1- (expt 2 16))))
-    (throw 'laco-error general-proc-encode
+    (throw 'laco-error proc-encode
            "Invalid proc object `0x~a', should be 16bit!"
            (number->string arity 16)))
   (when (or (< offset (- (1- (expt 2 16)))) (> offset (1- (expt 2 16))))
-    (throw 'laco-error general-proc-encode
+    (throw 'laco-error proc-encode
            "Invalid proc object `0x~a', should be 16bit!"
            (number->string offset 16)))
   (let ((bv (make-bytevector 6 0)))
@@ -165,7 +166,7 @@
 ;; Pop next n bytes
 (define (pop-next n)
   (when (or (<= n 0) (> n 16))
-    (throw 'laco-error push-bytes "Invalid byte `~a'!" n))
+    (throw 'laco-error pop-next "Invalid byte `~a'!" n))
   (let ((bv (make-bytevector 1 0)))
     (bytevector-u8-set! bv 0 (logior #b01010000 (1- n)))
     (label-counter 1)
