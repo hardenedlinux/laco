@@ -21,6 +21,7 @@
                                  bytevector-u8-set!
                                  bytevector-s32-set!
                                  bytevector-u16-set!
+                                 bytevector-u32-set!
                                  define-record-type))
   #:export (label-counter
             single-encode
@@ -30,11 +31,11 @@
             primitive-encode/basic
             primitive-encode/extend
             special-encode
-            general-integer-encode
-            general-string-encode
+            integer-encode
+            string-encode
+            prim-encode
             boolean-encode
-            proc-encode
-            pop-next))
+            proc-encode))
 
 (define label-counter (new-counter))
 
@@ -111,9 +112,9 @@
     (label-counter 2)
     bv))
 
-(define (general-integer-encode data)
+(define (integer-encode data)
   (when (or (< data (- (1- (expt 2 31)))) (> data (1- (expt 2 31))))
-    (throw 'laco-error general-integer-encode
+    (throw 'laco-error integer-encode
            "Invalid integer object `0x~a', should be 32bit!"
            (number->string data 16)))
   (let ((bv (make-bytevector 6 0))
@@ -121,6 +122,15 @@
     (bytevector-u8-set! bv 0 #b11100010)
     (bytevector-u8-set! bv 1 0)
     (bytevector-s32-set! bv 2 data 'big)
+    (label-counter 6)
+    bv))
+
+(define (prim-encode pn)
+  ;; FIXME: Check pn
+  (let ((bv (make-bytevector 6 0)))
+    (bytevector-u8-set! bv 0 #b11100010)
+    (bytevector-u8-set! bv 1 10)
+    (bytevector-u32-set! bv 2 pn 'big)
     (label-counter 6)
     bv))
 
@@ -142,9 +152,9 @@
     bv))
 
 ;; NOTE: String is mapped to C string exactly.
-(define (general-string-encode str)
+(define (string-encode str)
   (when (not (string? str))
-    (throw 'laco-error general-string-encode
+    (throw 'laco-error string-encode
            "Invalid object `~a', should be a string!" str))
   (let ((bv (make-bytevector 2 0))
         ;; NOTE: We don't support UTF-8 for performance
@@ -160,14 +170,5 @@
     (throw 'laco-error boolean-encode "Invalid boolean value `~a'!" value))
   (let ((bv (make-bytevector 1 0)))
     (bytevector-u8-set! bv 0 (logior (ash #b1110 4) value))
-    (label-counter 1)
-    bv))
-
-;; Pop next n bytes
-(define (pop-next n)
-  (when (or (<= n 0) (> n 16))
-    (throw 'laco-error pop-next "Invalid byte `~a'!" n))
-  (let ((bv (make-bytevector 1 0)))
-    (bytevector-u8-set! bv 0 (logior #b01010000 (1- n)))
     (label-counter 1)
     bv))

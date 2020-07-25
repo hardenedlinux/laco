@@ -47,10 +47,6 @@
             make-insr-set
             insr-set-var
 
-            insr-prim insr-prim?
-            make-insr-prim
-            insr-prim-op insr-prim-args
-
             insr-pcall insr-pcall?
             make-insr-pcall
             insr-pcall-op
@@ -169,18 +165,10 @@
   (fields
    (label string?)))
 
-;; This is for passing arguments
-(define-typed-record insr-prim (parent insr)
-  (fields
-   (op primitive?)
-   (num integer?)))
-
 ;; This is for primitive calling
 (define-typed-record insr-pcall (parent insr)
   (fields
-   (op primitive?)
-   (num integer?)
-   (arity integer?)))
+   (op primitive?)))
 
 ;; application
 (define-typed-record insr-call (parent insr)
@@ -206,7 +194,7 @@
 
 ;; NOTE:
 ;; We reuse prim:return for proc-return instruction, so the arity is 0.
-(define *proc-return* (make-insr-prim '() prim:return 0))
+(define *proc-return* (make-insr-pcall '() prim:return))
 
 (define* (cps->lir expr #:optional (mode 'push))
   (match expr
@@ -301,12 +289,13 @@
           ((call) (make-insr-call '() label arity))
           (else
            (throw 'laco-error cps->lir "gvar: proc has invalid mode `~a'!" mode))))
-       ((? insr-prim? p) p)
        ((? object? obj) obj)
        (#f (throw 'laco-error cps->lir "Missing global var `~a'!" name))
        (else (throw 'laco-error cps->lir "Invalid global var `~a'!" name))))
     ((? primitive? p)
-     (make-insr-prim '() p (primitive->number p)))
+     (case mode
+       ((push) (make-prim-object '() p))
+       ((call) (make-insr-pcall '() p))))
     (else (throw 'laco-error cps->lir "Invalid cps `~a'!" (id-name expr)))))
 
 (define (cps->lir/g expr)
@@ -323,10 +312,8 @@
     (($ insr-label _ label exprs)
      `((label ,label)
        ,@(map lir->expr exprs)))
-    (($ insr-prim _ p num)
-     `(primitive ,(primitive-name p) ,num))
-    (($ insr-pcall _ p num arity)
-     `(prim-call ,(primitive-name p) ,num ,arity))
+    (($ insr-pcall _ p num)
+     `(prim-call ,(primitive-name p) ,(primitive->number p)))
     (($ insr-call _ label argc)
      `(call ,label ,argc))
     (($ insr-local _ mode offset)
@@ -335,6 +322,7 @@
      `(free-var ,label ,mode ,offset))
     (($ integer-object _ value) `(integer ,value))
     (($ string-object _ value) `(string ,value))
+    (($ prim-object _ p) `(primitive ,(primitive-name p)))
     (else (throw 'laco-error lir->expr "Invalid lir `~a'!" lexpr))))
 
 (define (lir->expr/g lexpr)

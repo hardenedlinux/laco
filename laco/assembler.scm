@@ -31,7 +31,7 @@
 (define (insr->proc x) (module-ref sasm-module x))
 
 (define (memory->bytecode me)
-  '())
+  (list (main-entry)))
 
 (define (program->bytecode p)
   (define (->bytecode pe)
@@ -76,7 +76,9 @@
    out
    (match sasm
      (('lef ('memory m-expr ...) ('program p-expr ...) ('clean c-expr ...))
-      (list (memory->bytecode m-expr)
-            (program->bytecode p-expr)
-            (clean->bytecode c-expr)))
+      ;; NOTE: The order matters
+      (let* ((p (program->bytecode p-expr))
+             (m (memory->bytecode m-expr))
+             (c (clean->bytecode c-expr)))
+        (list m p c)))
      (else (throw 'laco-error assembler "Invalid assembler code!" sasm)))))

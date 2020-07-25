@@ -50,6 +50,7 @@
                 (drop-hash label) (drop-hash label))
         (indent-spaces 'in))
        (('label-end label)
+        (indent-spaces 'out)
         (format port "~a;; Label ~a end~%" (indent-spaces) (drop-hash label))
         (indent-spaces 'out))
        ('prog-begin
@@ -92,6 +93,9 @@
 (define-public (sasm-nop)
   (sasm-emit '()))
 
+(define-public (sasm-main)
+  (sasm-emit '((main-entry) . "")))
+
 (define-public (sasm-true)
   (sasm-emit
    '((push-boolean-true) . "Boolean true")))
@@ -112,7 +116,12 @@
   (sasm-emit `((push-string-object ,s) . "")))
 
 (define-public (emit-proc-object arity entry)
-  (sasm-emit `((call-proc ,arity ,entry) . (foramt #f "Proc `~a'" entry))))
+  (sasm-emit `((push-proc-object ,arity ,entry)
+               . (foramt #f "Push Proc `~a'" entry))))
+
+(define-public (emit-prim-object p)
+  (sasm-emit `((push-prim-object ,(primitive->number p))
+               . ,(format #f "Push primitive `~a'" (primitive-name p)))))
 
 (define-public (emit-boolean b)
   (if b
@@ -143,25 +152,26 @@
 (define-public (emit-proc-return)
   (sasm-emit `((ret) . "")))
 
-(define-public (emit-prim-call argc p)
-  (sasm-emit `((prim-call ,argc ,(primitive->number p))
-               . ,(format #f "Call primitive `~a'" (primitive-name p)))))
-
-(define-public (emit-prim p num)
+(define-public (emit-prim-call p)
   ;; NOTE: `return' is useful for optimizing analysis, but it's useless for codegen,
   ;;       since the result to return is already in the TOS.
-  (when (positive? num) ; skip `return'
-    (sasm-emit `((primitive ,num)
-                 . ,(format #f "Call primitive `~a'" (primitive-name p))))))
+  (sasm-emit `((prim-call ,(primitive->number p))
+               . ,(format #f "Call primitive `~a'" (primitive-name p)))))
 
 (define-public (emit-fjump label)
   (sasm-emit `((fjump ,label) . "")))
 
 (define-public (emit-local mode offset)
-  (sasm-emit `((local ,mode ,offset) . "")))
+  (case mode
+    ((push) (sasm-emit `((local ,offset) . "")))
+    ((call) (sasm-emit `((call-local ,offset) . "")))
+    (else (throw 'laco-error emit-local "Invalid mode `~a'!" mode))))
 
 (define-public (emit-free label mode offset)
-  (sasm-emit `((free ,label ,mode ,offset) . "")))
+  (case mode
+    ((push) (sasm-emit `((free ,label ,offset) . "")))
+    ((call) (sasm-emit `((call-free ,label ,offset) . "")))
+    (else (throw 'laco-error emit-free "Invalid mode `~a'!" mode))))
 
 (define-public (sasm-program-begin)
   (sasm-emit 'prog-begin))

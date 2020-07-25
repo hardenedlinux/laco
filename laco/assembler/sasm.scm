@@ -16,71 +16,79 @@
 
 (define-module (laco assembler sasm)
   #:use-module ((rnrs) #:select (make-bytevector
-                                 bytevector-u8-set!))
-  #:use-module (laco assembler encode))
+                                 bytevector-u8-set!
+                                 bytevector-u32-set!))
+  #:use-module (laco assembler encode)
+  #:export (main-entry))
 
 (define *label-table* (make-hash-table))
 (define (label-register! name)
-  (hash-set! *label-table* name (label-counter)))
+  (hash-set! *label-table* name (label-counter 0)))
 (define-syntax-rule (label-ref name)
   (or (hash-ref *label-table* name)
       (throw 'laco-error 'label-ref "Missing label `~a'!" name)))
+
+(define (main-entry)
+  (let ((bv (make-bytevector 4 0))
+        (main (label-ref 'main)))
+    (when (not main)
+      (throw 'laco-error main-entry "BUG: main entry is missing!"))
+    (bytevector-u32-set! bv 0 main 'big)
+    bv))
 
 (define-public (label name)
   (label-register! name)
   #u8())
 
-(define-public (mode->instr mode)
-  (case mode
-    ((push) #u8(0))
-    ((call) (pop-next 1))
-    (else (throw 'laco-error mode->instr "Invalid mode `~a'!" mode))))
-
 ;; ------- single encoding -----------------
-(define-public (local mode i)
-  (let ((insr (mode->instr mode)))
-    (cond
-     ((and (>= i 0) (< i 16))
-      (list insr
-            (single-encode 0 i)))
-     ((> i 15)
-      (list insr
-            (single-encode 1 i)))
-     (else (throw 'laco-error local "Invalid offset `~a'!" i)))))
+(define-public (local i)
+  (cond
+   ((and (>= i 0) (< i 16))
+    (single-encode 0 i))
+   ((> i 15)
+    (single-encode 1 i))
+   (else (throw 'laco-error local "Invalid offset `~a'!" i))))
 
-(define-public (ss-load-4bit-const i)
-  (single-encode 0 1))
-
-(define-public (call-closure offset)
-  (single-encode 4 offset))
-
-(define-public (jump-closure offset)
-  (single-encode 5 offset))
-
-(define-public (jump offset)
-  (single-encode 6 offset))
-
-(define-public (jump-tos-false offset)
-  (single-encode 7 offset))
+(define-public (call-local i)
+  (cond
+   ((and (>= i 0) (< i 16))
+    (single-encode #b0100 i))
+   ((> i 15)
+    (single-encode #b0101 i))
+   (else (throw 'laco-error call-local "Invalid offset `~a'!" i))))
 
 ;; --------- special double encoding ----------
 (define-public (free label mode i)
   (let ((frame (make-bytevector 1 0))
-        (f (label-ref label))
-        (minstr (mode->instr mode)))
+        (f (label-ref label)))
     (bytevector-u8-set! frame 0 f)
+    (label-counter 1)
     (cond
      ((and (> i 0) (< 16))
       (list
-       minstr
-       (single-encode 4 i)
+       (single-encode #b0010 i)
        frame))
      ((> i 15)
       (list
-       minstr
-       (single-encode 5 i)
+       (single-encode #b0011 i)
        frame))
      (else (throw 'laco-error free "Invalid offset `~a'!" i)))))
+
+(define-public (call-free label mode i)
+  (let ((frame (make-bytevector 1 0))
+        (f (label-ref label)))
+    (bytevector-u8-set! frame 0 f)
+    (label-counter 1)
+    (cond
+     ((and (> i 0) (< 16))
+      (list
+       (single-encode #b0110 i)
+       frame))
+     ((> i 15)
+      (list
+       (single-encode #b0111 i)
+       frame))
+     (else (throw 'laco-error call-free "Invalid offset `~a'!" i)))))
 
 ;; --------- double encoding -----------
 
@@ -115,7 +123,8 @@
   (double-encode 0 (logior (ash offset 16) (ash i 8) v)))
 
 ;; --------- special encode -----------
-(define-public (primitive pn)
+;; TODO: detect if it's primitive/extend
+(define-public (prim-call pn)
   (primitive-encode/basic pn))
 
 (define-public (primitive/extend pn)
@@ -129,14 +138,17 @@
 
 ;; ----------- object creation -----------
 (define-public (push-integer-object i)
-  (general-integer-encode i))
+  (integer-encode i))
 
 (define-public (push-string-object s)
-  (general-string-encode s))
+  (string-encode s))
 
 (define-public (push-proc-object arity entry)
   (let ((offset (label-ref entry)))
     (proc-encode arity offset)))
+
+(define-public (push-prim-object pn)
+  (prim-encode pn))
 
 (define-public (push-boolean-false)
   (boolean-encode 0))

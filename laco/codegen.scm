@@ -46,17 +46,17 @@
      (sasm-label-end label))
     (($ insr-call _ label argc)
      (emit-call-proc label argc))
-    (($ insr-pcall _ label argc)
-     (emit-prim-call argc label))
+    (($ insr-pcall _ p)
+     (emit-prim-call p))
     (($ integer-object _ i)
      ;; TODO: how to associate the variable?
      (emit-integer-object i))
     (($ string-object _ s)
      (emit-string-object s))
     (($ proc-object _ arity entry)
-     (emit-proc-objectd arity entry))
-    (($ insr-prim _ p num)
-     (emit-prim p num))
+     (emit-proc-object arity entry))
+    (($ prim-object _ p)
+     (emit-prim-object p))
     (($ insr-label _ label insrs)
      (sasm-label-begin label)
      (for-each emit-sasm insrs)
@@ -70,7 +70,7 @@
     (else (throw 'laco-error emit-sasm "Invalid lir `~a'!" lir))))
 
 (define (emit-sasm-memory lir)
-  (sasm-nop))
+  (sasm-main))
 
 (define (emit-sasm-clean lir)
   (sasm-nop))
@@ -82,7 +82,9 @@
 
   (sasm-program-begin)
   (top-level-for-each (lambda (_ v) (emit-sasm v)))
+  (sasm-label-begin "#main")
   (emit-sasm lir)
+  (sasm-label-end "#main")
   (sasm-program-end)
 
   (sasm-clean-begin)

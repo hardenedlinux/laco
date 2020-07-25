@@ -17,6 +17,7 @@
 (define-module (laco object)
   #:use-module (laco utils)
   #:use-module (laco types)
+  #:use-module (laco primitives)
   #:use-module (ice-9 match)
   #:use-module ((rnrs) #:select (define-record-type))
   #:export (create-constant-object
@@ -44,7 +45,11 @@
 
             proc-object
             proc-object?
-            make-proc-object))
+            make-proc-object
+
+            prim-object
+            prim-object?
+            make-prim-object))
 
 ;; NOTE:
 ;; 1. If the value can be unboxed, then we store them in unboxed style
@@ -86,6 +91,10 @@
   (fields
    (arity integer?)
    (entry symbol?)))
+
+(define-typed-record prim-object (parent object)
+  (fields
+   (prim primitive?)))
 
 ;; constant -> object
 (define (create-constant-object c)

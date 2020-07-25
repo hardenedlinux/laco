@@ -19,6 +19,7 @@
   #:use-module (laco cps)
   #:use-module (laco pass)
   #:use-module (laco primitives)
+  #:use-module (srfi srfi-1)
   #:use-module (ice-9 match))
 
 ;; Eliminate all the redundant code:
@@ -28,6 +29,15 @@
 ;;    tail-calls are all eliminated in case-2.
 ;; 2. FIXME: Make sure all the left `return' are tail-calls, we need them for
 ;;    low-level TCO stack tweaking in LIR.
+
+(define (eliminate-non-tail-return exprs)
+  (fold (lambda (x p)
+          (match x
+            (($ app/k _ ($ primitive _ 'return _ _ _) (arg))
+             (cons arg p))
+            (else (cons x p))))
+        '() exprs))
+
 (define (elre expr)
   (match expr
     (($ seq/k _ (($ seq/k _ _)))
@@ -49,7 +59,7 @@
             ;; case-3: (begin single-expr) -> single-expr
             (elre (car exprs))))))
       (else
-       (let ((ne (map elre exprs)))
+       (let ((ne (map elre (eliminate-non-tail-return (reverse! exprs)))))
          (seq/k-exprs-set! expr ne)
          expr))))
     ((? bind-special-form/k?)
