@@ -78,9 +78,8 @@
         (indent-spaces 'out))
        ((('push-string-object s) . descp)
         (format port "~a(push-string-object ~s) ; ~a~%" (indent-spaces) s descp))
-       ((('call-proc label arity) . _)
-        (format port "~a(call-proc ~a ~a)~%" (indent-spaces)
-                (drop-hash label) arity))
+       ((('jmp label) . _)
+        (format port "~a(jmp ~a)~%" (indent-spaces) (drop-hash label)))
        ((insr . descp)
         (format port "~a~a ; ~a~%" (indent-spaces) insr descp))
        (() #t)
@@ -146,8 +145,11 @@
    ((is-char-node? x) (emit-char (constant-val x)))
    (else (throw 'laco-error emit-const-imm "Invalid immediate `~a`!" x))))
 
-(define-public (emit-call-proc label argc)
-  (sasm-emit `((call-proc ,label ,argc) . "")))
+(define-public (emit-prelude arity)
+  (sasm-emit `((prelude ,arity) . "")))
+
+(define-public (emit-call-proc label)
+  (sasm-emit `((jmp ,label) . "")))
 
 (define-public (emit-proc-return)
   (sasm-emit `((ret) . "")))

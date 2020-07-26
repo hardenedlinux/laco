@@ -58,7 +58,7 @@
   (when (or (< data 0) (> data #xff))
     (throw 'laco-error double-encode "Invalid data, should be 0 ~ 255" data))
   (let ((bv (make-bytevector 2 0)))
-    (bytevector-u8-set! bv 0 (logior #b1010 type))
+    (bytevector-u8-set! bv 0 (logior #b10100000 type))
     (bytevector-u8-set! bv 1 data)
     (label-counter 2)
     bv))

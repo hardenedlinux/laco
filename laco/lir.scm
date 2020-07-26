@@ -55,7 +55,11 @@
 
             insr-call insr-call?
             make-insr-call
-            insr-call-label insr-call-args
+            insr-call-label
+
+            insr-prelude insr-prelude?
+            make-insr-prelude
+            insr-prelude-arity
 
             insr-fjump insr-fjump?
             make-insr-fjump
@@ -170,11 +174,15 @@
   (fields
    (op primitive?)))
 
-;; application
+;; prelude will prepare the arity
+(define-typed-record insr-prelude (parent insr)
+  (fields
+   (arity integer?)))
+
+;; procedure call
 (define-typed-record insr-call (parent insr)
   (fields
-   (label string?)
-   (arity integer?)))
+   (label string?)))
 
 ;; closure
 (define-typed-record insr-closure (parent insr)
@@ -270,11 +278,14 @@
      (let ((f (cps->lir func 'call))
            (e (map cps->lir args))
            (env (closure-ref name))
-           (label (id->string name)))
+           (label (id->string name))
+           (prelude (make-insr-prelude '() (length args))))
        (when (not env)
          (throw 'laco-error cps->lir
                 "app/k: the closure label `~a' doesn't have an env!" label))
-       (make-insr-label '() label `(,@e ,f))))
+       (if (insr-pcall? f)
+           (make-insr-label '() label `(,@e ,f))
+           (make-insr-label '() label `(,prelude ,@e ,f)))))
     (($ constant/k _ value)
      (create-constant-object value))
     (($ lvar _ offset)
@@ -286,7 +297,7 @@
        (($ insr-proc _ label _ arity)
         (case mode
           ((push) (make-proc-object '() arity label))
-          ((call) (make-insr-call '() label arity))
+          ((call) (make-insr-call '() label))
           (else
            (throw 'laco-error cps->lir "gvar: proc has invalid mode `~a'!" mode))))
        ((? object? obj) obj)
@@ -314,8 +325,8 @@
        ,@(map lir->expr exprs)))
     (($ insr-pcall _ p num)
      `(prim-call ,(primitive-name p) ,(primitive->number p)))
-    (($ insr-call _ label argc)
-     `(call ,label ,argc))
+    (($ insr-call _ label)
+     `(call ,label))
     (($ insr-local _ mode offset)
      `(local ,mode ,offset))
     (($ insr-free _ label mode offset)

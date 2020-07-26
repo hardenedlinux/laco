@@ -91,30 +91,14 @@
      (else (throw 'laco-error call-free "Invalid offset `~a'!" i)))))
 
 ;; --------- double encoding -----------
+(define-public (prelude arity)
+  (double-encode #b0000 arity))
 
-(define-public (push-8bit-const i)
-  (double-encode 0 i))
-
-(define-public (long-jump offset)
-  (double-encode 1 offset))
-
-(define-public (long-jump-tos-false offset)
-  (double-encode 2 offset))
-
-(define-public (make-closure entry-offset)
-  (double-encode 3 entry-offset))
-
-(define-public (ss-pop-8bit-const offset)
-  (double-encode 4 offset))
+(define-public (jmp label)
+  (let ((offset (label-ref label)))
+    (double-encode #b0001 offset)))
 
 ;; --------- triple encoding -----------
-(define-public (call-proc label arity)
-  (let ((offset (label-ref label)))
-    (triple-encode 0 arity offset)))
-
-(define-public (push-16bit-const arity i)
-  (double-encode 1 i))
-
 (define-public (vec-ref offset i)
   (double-encode 2 (logior (ash offset 8) i)))
 
