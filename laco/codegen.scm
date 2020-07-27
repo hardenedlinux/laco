@@ -43,6 +43,7 @@
     (($ insr-proc _ label _ _ body)
      (sasm-label-begin label)
      (emit-sasm body)
+     (emit-prim-call prim:return)
      (sasm-label-end label))
     (($ insr-prelude _ arity)
      (emit-prelude arity))
