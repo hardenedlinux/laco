@@ -94,7 +94,7 @@
 (define-public (prelude arity)
   (double-encode #b0000 arity))
 
-(define-public (jmp label)
+(define-public (call-proc label)
   (let ((offset (label-ref label)))
     (double-encode #b0001 offset)))
 
@@ -127,9 +127,9 @@
 (define-public (push-string-object s)
   (string-encode s))
 
-(define-public (push-proc-object arity entry)
+(define-public (push-proc-object entry)
   (let ((offset (label-ref entry)))
-    (proc-encode arity offset)))
+    (proc-encode offset)))
 
 (define-public (push-prim-object pn)
   (prim-encode pn))

@@ -134,11 +134,7 @@
     (label-counter 6)
     bv))
 
-(define (proc-encode arity offset)
-  (when (or (< arity (- (1- (expt 2 16)))) (> arity (1- (expt 2 16))))
-    (throw 'laco-error proc-encode
-           "Invalid proc object `0x~a', should be 16bit!"
-           (number->string arity 16)))
+(define (proc-encode offset)
   (when (or (< offset (- (1- (expt 2 16)))) (> offset (1- (expt 2 16))))
     (throw 'laco-error proc-encode
            "Invalid proc object `0x~a', should be 16bit!"
@@ -146,8 +142,7 @@
   (let ((bv (make-bytevector 6 0)))
     (bytevector-u8-set! bv 0 #b11100000)
     (bytevector-u8-set! bv 1 9)
-    (bytevector-u16-set! bv 2 arity 'big)
-    (bytevector-u16-set! bv 4 offset 'big)
+    (bytevector-u16-set! bv 2 offset 'big)
     (label-counter 6)
     bv))
 

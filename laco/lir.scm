@@ -50,8 +50,6 @@
             insr-pcall insr-pcall?
             make-insr-pcall
             insr-pcall-op
-            insr-pcall-num
-            insr-pcall-arity
 
             insr-call insr-call?
             make-insr-call
@@ -323,8 +321,10 @@
     (($ insr-label _ label exprs)
      `((label ,label)
        ,@(map lir->expr exprs)))
-    (($ insr-pcall _ p num)
+    (($ insr-pcall _ p)
      `(prim-call ,(primitive-name p) ,(primitive->number p)))
+    (($ insr-prelude _ arity)
+     `(prelude ,arity))
     (($ insr-call _ label)
      `(call ,label))
     (($ insr-local _ mode offset)

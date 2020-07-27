@@ -80,6 +80,8 @@
         (format port "~a(push-string-object ~s) ; ~a~%" (indent-spaces) s descp))
        ((('jmp label) . _)
         (format port "~a(jmp ~a)~%" (indent-spaces) (drop-hash label)))
+       ((('call-proc label) . _)
+        (format port "~a(call-proc ~a)~%" (indent-spaces) (drop-hash label)))
        ((insr . descp)
         (format port "~a~a ; ~a~%" (indent-spaces) insr descp))
        (() #t)
@@ -114,8 +116,8 @@
 (define-public (emit-string-object s)
   (sasm-emit `((push-string-object ,s) . "")))
 
-(define-public (emit-proc-object arity entry)
-  (sasm-emit `((push-proc-object ,arity ,entry)
+(define-public (emit-proc-object entry)
+  (sasm-emit `((push-proc-object ,entry)
                . (foramt #f "Push Proc `~a'" entry))))
 
 (define-public (emit-prim-object p)
@@ -149,7 +151,7 @@
   (sasm-emit `((prelude ,arity) . "")))
 
 (define-public (emit-call-proc label)
-  (sasm-emit `((jmp ,label) . "")))
+  (sasm-emit `((call-proc ,label) . "")))
 
 (define-public (emit-proc-return)
   (sasm-emit `((ret) . "")))
