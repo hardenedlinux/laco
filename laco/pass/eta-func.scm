@@ -27,11 +27,20 @@
 ;; applicative-order?
 
 
-;; Eliminate all anonymouse functions
 (define (ef expr)
   (match expr
-    (($ letfun/k ($ bind-special-form/k _ f fbody ($ app/k _ prim:return (arg))))
+    (($ letfun/k ($ bind-special-form/k _ f fbody
+                    ($ app/k _ ($ primitive _ 'return _ _ _) (arg))))
+     ;; case-1: Eliminate all anonymouse functions
      (cfs arg (list f) (list fbody)))
+    (($ lambda/k _ (name1)
+        ($ app/k _ ($ primitive _ 'return _ _ _) (($ app/k _ f (name2)))
+           ))
+     ;; case-2: (lambda (x) (return (proc x))) -> proc
+     (=> failed!)
+     (if (eq? name1 name2)
+         (ef f)
+         (failed!)))
     (($ seq/k _ exprs)
      (seq/k-exprs-set! expr (map ef exprs))
      expr)
@@ -44,6 +53,7 @@
       (ef (bind-special-form/k-body expr)))
      expr)
     (($ app/k _ func args)
+     (app/k-func-set! expr func)
      (app/k-args-set! expr (map ef args))
      expr)
     (($ lambda/k _ _ body)
