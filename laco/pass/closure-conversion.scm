@@ -20,6 +20,7 @@
   #:use-module (laco cps)
   #:use-module (laco env)
   #:use-module (laco primitives)
+  #:use-module (laco pass normalize)
   #:use-module (laco pass)
   #:use-module (ice-9 match)
   #:use-module ((srfi srfi-1) #:select (fold))
@@ -55,17 +56,18 @@
        (closure-set! name env)
        (parameterize ((current-env env)
                       (current-kont expr))
-         (make-lambda/k (list kont name attr) args (cc body))))
+         (make-closure/k (list kont name attr) args (cc body))))
      ;; TODO:
      ;; 1. recording the current bindings by the label to lookup table
      ;; 2. replacing all the appeared free variable to `fvar' by label and order num
      ;; 3. counting frame size for each closure env in lir
      )
-    #;
-    (($ closure/k ($ cps _ kont name attr) env body)
-    ;; TODO: The escaping function will be converted to closure/k.
-    ;;       This will need escaping analysis or liveness analysis.
-    )
+    ;; (($ closure/k ($ cps _ kont name attr) env body)
+    ;;  ;; TODO: The escaping function will be converted to closure/k.
+    ;;  ;;       This will need escaping analysis or liveness analysis.
+    ;;  (closure-set! name (current-env))
+    ;;  (parameterize ((current-env env))
+    ;;    (make-closure/k (list kont name attr) (current-env) (cc body))))
     (($ branch/k ($ cps _ kont name attr) cnd b1 b2)
      (make-branch/k (list kont name attr)
                     (cc cnd)
@@ -85,15 +87,11 @@
                     (cc func)
                     (cc body)))
     (($ letcont/k ($ bind-special-form/k ($ cps _ kont name attr) jname jcont body))
-     (let ((env (new-env (list jname))))
-       (extend-env! (current-env) env)
-       (closure-set! name env)
-       (parameterize ((current-env env)
-                      (current-kont kont))
-         (make-letcont/k (list kont name attr)
-                         jname
-                         (cc jcont)
-                         (cc body)))))
+     ;; In closure-conversion, we eliminate all letcont/k, the bindings should be
+     ;; merged into the current-env
+     (cc (cfs body
+              (list jname)
+              (list (cc jcont)))))
     (($ letval/k ($ bind-special-form/k ($ cps _ kont name attr) var value body))
      (env-local-push! (current-env) var)
      (make-letval/k (list kont name attr)
