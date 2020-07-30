@@ -43,7 +43,6 @@
     (($ insr-proc _ label _ _ lexprs)
      (sasm-label-begin label)
      (map emit-sasm lexprs)
-     ;;(emit-prim-call prim:return)
      (sasm-label-end label))
     (($ insr-prelude _ arity)
      (emit-prelude arity))
