@@ -124,7 +124,8 @@ Options:
   (define (do-optimize lexpr)
     (run-pass
      lexpr
-     reduce-labels))
+     reduce-labels
+     reduce-ret))
   (init-lir-optimizations)
   (parameterize ((current-kont 'global))
     ;; Prevent unecessary lifting and inline for global functions

@@ -49,11 +49,6 @@
       (map rl `(,@(map (lambda (e) (rename-label! e label2 label)) lexprs2)
                 ,@rest)))
      (rl lexpr))
-    ;; (($ insr-proc _ label _ _ (($ insr-label _ label2
-    ;;                               ((? insr-prelude? prelude) lexprs2 ...))))
-    ;;  (pk "hit!!!" label label2)
-    ;;  (insr-proc-body-set! lexpr (map rl (insr-proc-body lexpr)))
-    ;;  lexpr)
     (($ insr-proc _ label _ _ (($ insr-label _ label2 lexprs2) rest ...))
      (insr-proc-body-set!
       lexpr
