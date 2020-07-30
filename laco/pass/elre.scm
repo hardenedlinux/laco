@@ -65,10 +65,9 @@
          expr))))
     (($ app/k _ ($ lambda/k _ args1 body) args2)
      ;; case-4: ((lambda params body) args) -> body[params/args]
-     (=> failed!)
      (when (not (= (length args1) (length args2)))
        (throw 'laco-error elre "Arguments list isn't equal in lambda apply"))
-     (elre (cfs body args1 args2)))
+     (elre (cfs body args1 (map elre args2))))
     ((? bind-special-form/k?)
      (bind-special-form/k-value-set! expr (elre (bind-special-form/k-value expr)))
      (bind-special-form/k-body-set! expr (elre (bind-special-form/k-body expr)))
