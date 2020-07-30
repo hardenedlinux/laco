@@ -40,10 +40,10 @@
 ;; lir -> unspecified
 (define (emit-sasm lir)
   (match lir
-    (($ insr-proc _ label _ _ body)
+    (($ insr-proc _ label _ _ lexprs)
      (sasm-label-begin label)
-     (emit-sasm body)
-     (emit-prim-call prim:return)
+     (map emit-sasm lexprs)
+     ;;(emit-prim-call prim:return)
      (sasm-label-end label))
     (($ insr-prelude _ arity)
      (emit-prelude arity))
@@ -85,9 +85,7 @@
 
   (sasm-program-begin)
   (top-level-for-each (lambda (_ v) (emit-sasm v)))
-  (sasm-label-begin "#main")
   (emit-sasm lir)
-  (sasm-label-end "#main")
   (sasm-program-end)
 
   (sasm-clean-begin)

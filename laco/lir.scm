@@ -21,7 +21,6 @@
   #:use-module (laco types)
   #:use-module (laco object)
   #:use-module (laco primitives)
-  #:use-module (laco pass closure-conversion)
   #:use-module (ice-9 match)
   #:use-module (ice-9 pretty-print)
   #:use-module ((rnrs) #:select (define-record-type))
@@ -30,10 +29,10 @@
 
             insr-proc insr-proc?
             make-insr-proc
-            insr-proc-label
+            insr-proc-label insr-proc-label-set!
             insr-proc-env
             insr-proc-arity
-            insr-proc-body
+            insr-proc-body insr-proc-body-set!
 
             insr-lit insr-lit?
             make-insr-lit
@@ -53,7 +52,7 @@
 
             insr-call insr-call?
             make-insr-call
-            insr-call-label
+            insr-call-label insr-call-label-set!
 
             insr-prelude insr-prelude?
             make-insr-prelude
@@ -68,16 +67,17 @@
 
             insr-label insr-label?
             make-insr-label
-            insr-label-label insr-label-body
+            insr-label-label insr-label-label-set!
+            insr-label-body insr-label-body-set!
 
             insr-local insr-local?
             make-insr-local
+            insr-local-label
             insr-local-offset
 
             insr-free insr-free?
             make-insr-free
-            insr-local-label
-            insr-local-offset
+            insr-free-label-set!
 
             insr-global insr-global?
             make-insr-global
@@ -126,7 +126,7 @@
    (entry string?) ; entry should be a label
    (env env?)
    (arity integer?)
-   (body insr? object?)))
+   (body valid-insr-list?)))
 
 (define-typed-record insr-label (parent insr)
   (fields
@@ -210,7 +210,7 @@
        (when (not env)
          (throw 'laco-error cps->lir
                 "lambda/k: the closure label `~a' doesn't have an env!" label))
-       (make-insr-proc '() label env (length args) (cps->lir body))))
+       (make-insr-proc '() label env (length args) (list (cps->lir body)))))
     #;
     (($ closure/k ($ cps _ kont name attr) env body) ;
     )
@@ -312,12 +312,12 @@
     (top-level-for-each
      (lambda (v e)
        (top-level-set! v (cps->lir e)))))
-  (cps->lir expr))
+  (make-insr-proc '() "#main" (current-env) 0 (list (cps->lir expr))))
 
 (define (lir->expr lexpr)
   (match lexpr
-    (($ insr-proc _ label _ arity body)
-     `(proc ,label ,arity ,(lir->expr body)))
+    (($ insr-proc _ label _ arity lexprs)
+     `(proc ,label ,arity ,(map lir->expr lexprs)))
     (($ insr-label _ label exprs)
      `((label ,label)
        ,@(map lir->expr exprs)))
