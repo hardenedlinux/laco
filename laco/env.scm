@@ -44,11 +44,11 @@
 ;; 2. We use closures to manage bindings, the env is defined for conversion.
 ;; 3. You can check existance in env, not referring the value from it.
 
-(define-record-type env
+(define-typed-record env
   (fields
-   (mutable prev)
-   (mutable bindings)
-   (mutable frees)))
+   (prev env? not)
+   (bindings queue? not)
+   (frees queue? not)))
 
 (define-record-type toplevel (parent env) (fields definition))
 (define (new-toplevel)
@@ -106,7 +106,8 @@
     (cond
      (bindings (queue-in! bindings id))
      (else
-      (throw 'laco-error env-local-push! "Invalid local var `~a'!" (id-name id))))))
+      (throw 'laco-error env-local-push! "Invalid local var `~a' in `~a'!"
+             (id-name id) bindings)))))
 
 (define (env->args env)
   (hash-map->list (lambda (k _) k) (env-bindings env)))
