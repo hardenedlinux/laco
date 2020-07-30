@@ -27,13 +27,6 @@
   #:use-module ((rnrs) #:select (define-record-type))
   #:export (closure-ref))
 
-(define *closure-lookup-table* (make-hash-table))
-(define (closure-set! label bindings)
-  (hash-set! *closure-lookup-table* label bindings))
-(define (closure-ref label)
-  ;; FIXME: Shouldn't create new env
-  (hash-ref *closure-lookup-table* label (new-env '())))
-
 ;; NOTE:
 ;; 1. We only perform CC after DCE, so there's no unused binding.
 ;; 2. We distinct local bindings and free vars. Both of them are ordered in a

@@ -37,7 +37,10 @@
             *top-level*
             new-env
             env-local-push!
-            env->args))
+            env->args
+
+            closure-set!
+            closure-ref))
 
 ;; NOTE:
 ;; 1. Only toplevel is used for storing actual value.
@@ -111,3 +114,10 @@
 
 (define (env->args env)
   (hash-map->list (lambda (k _) k) (env-bindings env)))
+
+(define *closure-lookup-table* (make-hash-table))
+(define (closure-set! label bindings)
+  (hash-set! *closure-lookup-table* label bindings))
+(define (closure-ref label)
+  ;; FIXME: Shouldn't create new env
+  (hash-ref *closure-lookup-table* label (new-env '())))
