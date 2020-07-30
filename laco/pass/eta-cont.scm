@@ -22,8 +22,7 @@
 
 (define (ec expr)
   (match expr
-    (($ letcont/k ($ bind-special-form/k _
-                     j (? app/k? app) body))
+    (($ letcont/k ($ bind-special-form/k _ j (? app/k? app) body))
      (ec (cfs body (list j) (list app))))
     ((? bind-special-form/k?)
      (bind-special-form/k-value-set!
