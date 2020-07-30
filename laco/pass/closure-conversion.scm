@@ -48,7 +48,7 @@
 ;;    We may do specific optimizings for tail call in the future.
 ;; 6. Different from the passes, we use CPS constructor here for taking advantage of
 ;;    type checking in record type.
-(define* (cc expr)
+(define* (cc expr #:optional (mode 'normal))
   (match expr
     (($ lambda/k ($ cps _ kont name attr) args body)
      (let ((env (new-env args)))
@@ -56,7 +56,7 @@
        (closure-set! name env)
        (parameterize ((current-env env)
                       (current-kont expr))
-         (make-closure/k (list kont name attr) args (cc body))))
+         (make-lambda/k (list kont name attr) args (cc body))))
      ;; TODO:
      ;; 1. recording the current bindings by the label to lookup table
      ;; 2. replacing all the appeared free variable to `fvar' by label and order num
@@ -87,11 +87,21 @@
                     (cc func)
                     (cc body)))
     (($ letcont/k ($ bind-special-form/k ($ cps _ kont name attr) jname jcont body))
-     ;; In closure-conversion, we eliminate all letcont/k, the bindings should be
-     ;; merged into the current-env
-     (cc (cfs body
-              (list jname)
-              (list (cc jcont)))))
+     ;; 1. In closure-conversion, we eliminate all letcont/k, the bindings should be
+     ;;    merged into the current-env.
+     ;; 2. For non-escaping situation, we perform inline to eliminate letcont/k.
+     ;;    For escaping, we will convert the escaped closure to closure/k.
+     ;; 3. For side-effect cases, we perform assignment-elimination (TODO).
+     ;; 4. Although we can set bindings to global, it's safe because of
+     ;;    alpha-renaming, however, it can't be released when the scope came to end.
+     (let ((env (if (toplevel? (current-env)) (new-env) (current-env))))
+       (extend-env! (current-env) env)
+       (env-local-push! env jname)
+       (closure-set! name env)
+       (parameterize ((current-env env))
+         (cc (cfs body
+                  (list jname)
+                  (list (cc jcont)))))))
     (($ letval/k ($ bind-special-form/k ($ cps _ kont name attr) var value body))
      (env-local-push! (current-env) var)
      (make-letval/k (list kont name attr)
