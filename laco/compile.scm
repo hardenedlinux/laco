@@ -57,6 +57,12 @@
         (scandir (string-append (dirname (current-filename)) "/pass")
                  (lambda (s) (string-match "\\.scm" s))))))
 
+(define (init-lir-optimizations)
+  (process-use-modules
+   (map (lambda (s) `((laco lpass ,(string->symbol (file-basename s)))))
+        (scandir (string-append (dirname (current-filename)) "/lpass")
+                 (lambda (s) (string-match "\\.scm" s))))))
+
 (define announce-head
   "
 Laco is a functional programming language compiler for embedded system.
@@ -113,6 +119,20 @@ Options:
        (top-level-set! f (do-optimize e)))))
   (do-optimize cexpr))
 
+
+(define (lir-optimize lexpr)
+  (define (do-optimize lexpr)
+    (run-pass
+     lexpr
+     reduce-labels))
+  (init-lir-optimizations)
+  (parameterize ((current-kont 'global))
+    ;; Prevent unecessary lifting and inline for global functions
+    (top-level-for-each
+     (lambda (f e)
+       (top-level-set! f (do-optimize e)))))
+  (do-optimize lexpr))
+
 (define output-file (make-parameter #f))
 (define output-type (make-parameter #f))
 (define need-verbose? (make-parameter #f))
@@ -123,6 +143,7 @@ Options:
     (cps ,ast->cps ,cps->expr/g)
     (opt ,optimize ,cps->expr/g)
     (lir ,cps->lir/g ,lir->expr/g)
+    (lopt ,lir-optimize ,lir->expr/g)
     (sasm ,lir->sasm ,lir->sasm-string)))
 
 (define (run-till-stage exprs t)

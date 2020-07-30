@@ -17,6 +17,7 @@
 (define-module (laco pass)
   #:use-module (laco utils)
   #:use-module (laco cps)
+  #:use-module (laco lir)
   #:use-module (ice-9 match)
   #:use-module (ice-9 pretty-print)
   #:export (define-pass
@@ -27,9 +28,9 @@
   (hash-ref *pass-table* name
             (lambda (_) (throw 'laco-error get-pass "Invalid pass `~a'!" name))))
 
-(define-syntax-rule (define-pass name cps body ...)
+(define-syntax-rule (define-pass name e body ...)
   (begin
-    (define (name cps) body ...)
+    (define (name e) body ...)
     (hash-set! *pass-table* 'name name)))
 
 (define-syntax-rule (run-pass expr lst ...)
@@ -53,7 +54,11 @@
                            (pass last)))
                      (else (fail!))))
                    (else (throw 'laco-error 'run-pass "Invalid pass: `~a'!" 'item)))))
-            ;;(pk "item"(object->string item))
-            ;;(pretty-print (cps->expr e))
+            ;; (pk "item"(object->string item))
+            ;; (pretty-print
+            ;;  (match e
+            ;;    ((? cps?) (cps->expr e))
+            ;;    ((? insr?) (lir->expr e))
+            ;;    (else (error "BUG: invalid type" e))))
             e))
         expr (list 'lst ...)))
