@@ -24,6 +24,8 @@
             extract-keys
             new-stack
             new-queue
+            queue?
+            stack?
             stack-slots
             queue-slots
             slot-index
@@ -77,6 +79,8 @@
   (assoc-remove! (car q) key)
   (sync-q! q))
 
+(define queue? q?)
+(define stack? q?)
 (define new-stack make-q)
 (define new-queue make-q)
 (define stack-slots car)
