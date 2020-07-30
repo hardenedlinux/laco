@@ -94,6 +94,8 @@
      (substitute expr))
     (($ id _ name _)
      (substitute expr))
+    (($ lvar ($ id _ name _) _)
+     (substitute expr))
     (else expr)))
 
 (define (beta-reduction expr)
