@@ -83,6 +83,7 @@
             make-insr-global
             insr-global-name
 
+            *proc-return*
             label-ref
             cps->lir
             cps->lir/g
@@ -123,7 +124,7 @@
 
 (define-typed-record insr-proc (parent insr)
   (fields
-   (entry string?) ; entry should be a label
+   (label string?) ; entry should be a label
    (env env?)
    (arity integer?)
    (body valid-insr-list?)))
@@ -210,7 +211,8 @@
        (when (not env)
          (throw 'laco-error cps->lir
                 "lambda/k: the closure label `~a' doesn't have an env!" label))
-       (make-insr-proc '() label env (length args) (list (cps->lir body)))))
+       (make-insr-proc '() label env (length args)
+                       (list (cps->lir body) *proc-return*))))
     #;
     (($ closure/k ($ cps _ kont name attr) env body) ;
     )
