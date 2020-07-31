@@ -111,6 +111,7 @@
            (label (current-kont))
            (name (id-name id)))
        (cond
+        ((top-level-ref name) (new-gvar id))
         ((not (toplevel? env))
          (cond
           ((bindings-index env id)
@@ -120,7 +121,6 @@
            => (lambda (index)
                 (new-fvar id (id-name label) index)))
           (else (throw 'laco-error cc "Undefined local variable `~a'!" name))))
-        ((top-level-ref name)  (new-gvar id))
         (else (throw 'laco-error cc "Undefined global variable `~a'!" name)))))
     (else expr)))
 
