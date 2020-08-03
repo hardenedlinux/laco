@@ -89,6 +89,7 @@
 
 (define-typed-record proc-object (parent object)
   (fields
+   (name string? not)
    (arity integer?)
    (entry symbol?)))
 

@@ -19,8 +19,15 @@
   #:use-module (laco utils)
   #:use-module (laco pass)
   #:use-module (laco pass normalize)
+  #:use-module (laco primitives)
   #:use-module (srfi srfi-1)
   #:use-module (ice-9 match))
+
+(define (const-arg? x)
+  (match x
+    ((? constant/k?) #t)
+    (($ primitive _ 'return _ _ _) #t)
+    (else #f)))
 
 (define (cp expr)
   (match expr
@@ -28,7 +35,7 @@
                      jname jcont ($ app/k _ jname args)))
      (=> fail!)
      (cond
-      ((every constant/k? args)
+      ((every const-arg? args)
        ;; FIXME: For partial constant/k situation, we can still propagate them,
        ;;        and reduce the number of args.
        (beta-reduction/preserving
@@ -37,7 +44,7 @@
                    (cp jcont))))
       (else (fail!))))
     (($ letcont/k ($ bind-special-form/k _ jname
-                     ($ app/k _ prim:return ((? constant/k? c)))
+                     ($ app/k _ _ ((? constant/k? c)))
                      (? app/k?)))
      (bind-special-form/k-value expr))
     ((? bind-special-form/k?)

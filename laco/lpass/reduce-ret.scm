@@ -35,9 +35,7 @@
 
 (define (rr lexpr)
   (match lexpr
-    (($ insr-proc _ "#main" _ _ lexprs)
-     (pk "label" (insr-proc-label lexpr))
-     (pk "lexprs" (map lir->expr lexprs))
+    (($ insr-proc _ _ "#principio" _ _ lexprs)
      (insr-proc-body-set!
       lexpr
       (let ((len (1- (length lexprs))))
@@ -45,7 +43,7 @@
           (((? is-ret?) rest ...) (reverse! rest))
           (else lexprs))))
      lexpr)
-    (($ insr-proc _ label _ _ lexprs)
+    (($ insr-proc _ _ label _ _ lexprs)
      (insr-proc-body-set!
       lexpr
       (reverse! (fold (lambda (e p)
@@ -54,10 +52,10 @@
                             p))
                       '() lexprs)))
      lexpr)
-    (($ insr-label _ label lexprs)
+    (($ insr-label _ _ label lexprs)
      (insr-label-body-set! lexpr (map rr lexprs))
      lexpr)
-    (($ insr-proc _ label _ _ body)
+    (($ insr-proc _ _ label _ _ body)
      (insr-proc-body-set! lexpr (rr body))
      lexpr)
     (else lexpr)))

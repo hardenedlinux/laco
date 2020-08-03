@@ -118,8 +118,8 @@
 (define-syntax-rule (type-check tr o preds ...)
   (or (any (lambda (p) (p o)) (list preds ...))
       (throw 'laco-error
-             (format #f "Wrong type in ~a, `~a' expect ~{`~a'~^,~}"
-                     'tr o (list 'preds ...)))))
+             (format #f "Wrong type in ~a-~a, `~a' expect ~{`~a'~^,~}"
+                     'tr 'o o (list 'preds ...)))))
 
 (define-syntax define-typed-record
   (syntax-rules (parent fields)

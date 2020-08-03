@@ -59,6 +59,7 @@
      (seq/k-exprs-set! expr (map delta exprs))
      expr)
     (($ app/k _ (? id? f) args)
+     (app/k-func-set! expr f)
      (app/k-args-set! expr (map delta args))
      expr)
     (($ app/k _ (? primitive? p) args)

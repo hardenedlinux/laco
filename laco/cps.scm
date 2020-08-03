@@ -27,11 +27,13 @@
 
             current-env
             current-kont
+            current-def
 
             cps cps?
             cps-kont cps-kont-set!
             cps-name cps-name-set!
             cps-attr cps-attr-set!
+            cps-property-set!
 
             lambda/k lambda/k?
             lambda/k-args lambda/k-args-set!
@@ -93,6 +95,15 @@
 
             ast->cps
             cps->expr
+            cps-show
+            cps->name
+            cps->name-string
+            kont-eq?
+
+            tag-proper-tail-recursion!
+            is-proper-tail-recursion?
+            is-tail-call?
+
             top-level->src
             cps->expr/g))
 
@@ -121,7 +132,8 @@
   (make-object-list-pred lst cps?))
 
 (define current-env (make-parameter *top-level*))
-(define current-kont (make-parameter prim:halt))
+(define current-kont (make-parameter prim:return))
+(define current-def (make-parameter #f))
 
 (define-typed-record cps
   (fields
@@ -130,6 +142,10 @@
    (kont (lambda (x) (or (id? x) (primitive? x) (cps? x))))
    (name id?) ; the unique name of the continuation
    (attr list?))) ; attributes of the continuation
+
+(define (cps-property-set! cexp k v)
+  (let ((attr (cps-attr cexp)))
+    (cps-attr-set! cexp (assoc-set! attr k v))))
 
 (define-typed-record lambda/k (parent cps)
   (fields
@@ -341,142 +357,166 @@
     ((? id?) (rename expr))
     (else expr)))
 
-(define (comp-cps expr cont)
-  (match expr
-    (($ closure ($ ast _ body) params _ _)
-     (let* ((fname (new-id "#func-"))
-            (fk (new-id "#kont-"))
-            (nv (map new-id params))
-            (fun (new-lambda/k `(,fk ,@nv)
-                               (alpha-renaming (ast->cps body fk) params nv)
-                               #:name fk #:kont cont)))
-       (new-letfun/k fname fun (new-app/k cont fname #:kont cont) #:kont cont)))
-    (($ binding ($ ast _ body) ($ ref _ var) value)
-     (let* ((jname (new-id "#jcont-"))
-            (ov (new-id var #f))
-            (nv (new-id var))
-            (fk (new-id "#letcont/k-"))
-            (jcont (new-lambda/k
-                    (list nv)
-                    (alpha-renaming (ast->cps body cont) (list var) (list nv))
-                    #:kont cont)))
-       (new-letcont/k jname jcont
-                      (alpha-renaming (ast->cps value jname) (list var) (list nv))
+(define (comp-cps expr)
+  (let ((cont (current-kont)))
+    (match expr
+      (($ closure ($ ast _ body) params _ _)
+       (let* ((fname (new-id "#func-"))
+              (fk (new-id "#kont-"))
+              (nv (map new-id params))
+              (fun (new-lambda/k `(,fk ,@nv)
+                                 (parameterize ((current-kont fk))
+                                   (alpha-renaming (ast->cps body) params nv))
+                                 #:name fk #:kont fk)))
+         (new-letfun/k fname fun (new-app/k cont fname #:kont cont) #:kont cont)))
+      (($ binding ($ ast _ body) ($ ref _ var) value)
+       (let* ((jname (new-id "#jcont-"))
+              (ov (new-id var #f))
+              (nv (new-id var))
+              (fk (new-id "#letcont/k-"))
+              (jcont (new-lambda/k
+                      (list nv)
+                      (alpha-renaming (ast->cps body) (list var) (list nv))
                       #:kont cont)))
-    (($ branch ($ ast _ (cnd b1 b2)))
-     (let* ((arg (new-id))
-            (jname (new-id "#jcont-"))
-            (kname (new-id "#kont-"))
-            (k1 (new-id "#letcont/k-"))
-            (k2 (new-id "#letcont/k-"))
-            (kont2 (new-letcont/k k2 (new-lambda/k '() (ast->cps b2 jname)
-                                                   #:kont cont)
-                                  (new-branch/k kname k1 k2 #:kont cont)))
-            (kont1 (new-letcont/k k1 (new-lambda/k '() (ast->cps b1 jname)
-                                                   #:kont cont)
-                                  kont2))
-            (kont3
-             ;; According to Kennedy's, we add a local continuation here
-             (new-lambda/k (list kname)
-                           (new-letcont/k
-                            jname
-                            (new-lambda/k (list arg) (new-app/k cont arg)
-                                          #:kont cont)
-                            kont1) #:kont cont)))
-       (comp-cps cnd kont3)))
-    (else (ast->cps expr cont))))
+         (parameterize ((current-kont jname))
+           (new-letcont/k jname jcont
+                          (alpha-renaming (ast->cps value) (list var) (list nv))
+                          #:kont cont))))
+      (($ branch ($ ast _ (cnd b1 b2)))
+       (let ((jname (new-id "#jcont-")))
+         (parameterize ((current-kont jname))
+           (let* ((arg (new-id))
+                  (kname (new-id "#kont-"))
+                  (k1 (new-id "#letcont/k-"))
+                  (k2 (new-id "#letcont/k-"))
+                  (kont2 (new-letcont/k k2 (new-lambda/k '() (ast->cps b2)
+                                                         #:kont cont)
+                                        (new-branch/k kname k1 k2 #:kont cont)))
+                  (kont1 (new-letcont/k k1 (new-lambda/k '() (ast->cps b1)
+                                                         #:kont cont)
+                                        kont2))
+                  (kont3
+                   ;; According to Kennedy's, we add a local continuation here
+                   (new-lambda/k (list kname)
+                                 (new-letcont/k
+                                  jname
+                                  (new-lambda/k (list arg) (new-app/k cont arg)
+                                                #:kont cont)
+                                  kont1) #:kont cont)))
+             (parameterize ((current-kont kont3))
+               (comp-cps cnd))))))
+      (else (ast->cps expr)))))
 
-(define* (ast->cps expr #:optional (cont prim:return))
-  (match expr
-    ;; FIXME: distinct value and function for the convenient of fun-inline.
-    (($ closure ($ ast _ body) params _ _)
-     (let* ((fname (new-id "#func-"))
-            (fk (new-id "#kont-"))
-            (nv (map new-id params))
-            (fun (new-lambda/k `(,fk ,@nv)
-                               (alpha-renaming (ast->cps body fk) params nv)
-                               #:name fk #:kont cont)))
-       (new-letfun/k fname fun (new-app/k cont fname) #:kont cont)))
-    (($ def ($ ast _ body) var)
-     ;; NOTE: The local function definition should be converted to let-binding
-     ;;       by AST builder. So the definition that appears here are top-level.
-     ;; NOTE: And the local function definition will be lifted to top-level later.
-     (top-level-set! var (ast->cps body cont))
-     *laco/unspecified*)
-    (($ binding ($ ast _ body) ($ ref _ var) value)
-     (let* ((jname (new-id "#jcont-"))
-            (ov (new-id var #f))
-            (nv (new-id var))
-            (fk (new-id "#letcont/k-"))
-            (jcont (new-lambda/k
-                    (list nv)
-                    (alpha-renaming (ast->cps body cont) (list var) (list nv))
-                    #:kont cont)))
-       (new-letcont/k jname jcont
-                      (alpha-renaming (ast->cps value jname) (list ov) (list nv))
+(define* (ast->cps expr)
+  (let ((cont (current-kont)))
+    (when (id? cont)
+      (pk "id" (cps->expr cont))
+      (pk "expr" (ast->src expr)))
+    (match expr
+      ;; FIXME: distinct value and function for the convenient of fun-inline.
+      (($ closure ($ ast _ body) params _ _)
+       (let* ((fname (new-id "#func-"))
+              (fk (new-id "#kont-"))
+              (nv (map new-id params))
+              (fun (new-lambda/k `(,fk ,@nv)
+                                 (parameterize ((current-kont fk))
+                                   (alpha-renaming (ast->cps body) params nv))
+                                 #:name fk #:kont fk)))
+         (new-letfun/k fname fun (new-app/k cont fname) #:kont cont)))
+      (($ def ($ ast _ body) var)
+       ;; NOTE: The local function definition should be converted to let-binding
+       ;;       by AST builder. So the definition that appears here are top-level.
+       ;; NOTE: And the local function definition will be lifted to top-level later.
+       (let ((e (ast->cps body)))
+         (when (not (null? (insec (free-vars e) (list (new-id var #f)))))
+           ;; We tag recursive here to avoid incorrect inlining, please notice that
+           ;; recursive doesn't mean recursivly defined, if the `var' was referred
+           ;; within the body, then it's still recursive and can't be inlined.
+           (register-as-recursive! var))
+         (top-level-set! var e))
+       *laco/unspecified*)
+      (($ binding ($ ast _ body) ($ ref _ var) value)
+       (let* ((jname (new-id "#jcont-"))
+              (ov (new-id var #f))
+              (nv (new-id var))
+              (fk (new-id "#letcont/k-"))
+              (jcont (new-lambda/k
+                      (list nv)
+                      (alpha-renaming (ast->cps body) (list var) (list nv))
                       #:kont cont)))
-    (($ branch ($ ast _ (cnd b1 b2)))
-     (let* ((arg (new-id))
-            (jname (new-id "#jcont-"))
-            (kname (new-id "#kont-"))
-            (k1 (new-id "#letcont/k-"))
-            (k2 (new-id "#letcont/k-"))
-            (kont2 (new-letcont/k k2 (new-lambda/k '() (ast->cps b2 jname))
-                                  (new-branch/k kname k1 k2) #:kont cont))
-            (kont1 (new-letcont/k k1 (new-lambda/k '() (ast->cps b1 jname)
-                                                   #:kont cont)
-                                  kont2 #:kont cont))
-            (kont3 (new-lambda/k (list kname) kont1 #:kont cont)))
-       (comp-cps cnd kont3)))
-    (($ collection ($ ast _ vals) type size)
-     (let ((cname (new-id "#c-"))
-           (ex (map (lambda (_) (new-id "#e-")) vals)))
-       (fold (lambda (e x p) (ast->cps e (new-lambda/k x p #:kont cont)))
-             (new-collection/k cname type size ex (new-app/k cont cname #:kont cont)
-                               #:kont cont)
-             vals ex)))
-    (($ seq ($ ast _ exprs))
-     (let* ((el (fold-right
-                 (lambda (x p)
-                   (let ((ret (ast->cps x)))
-                     (if (is-unspecified-node? ret) p (cons ret p))))
-                 '() exprs))
-            (ev (map (lambda (_) (new-id "#k-")) el)))
-       (fold (lambda (e v p) (new-letcont/k v e p #:kont cont))
-             (new-app/k cont (new-seq/k ev #:kont cont) #:kont cont)
-             el ev)))
-    (($ call _ ($ ref _ f) e)
-     (let* ((fn (new-id "#f-"))
-            (el (map (lambda (_) (new-id "#x-")) e))
-            (is-prim? (is-op-a-primitive? f))
-            (k (fold (lambda (ee ex p)
-                       (comp-cps ee (new-lambda/k (list ex) p #:kont cont)))
-                     (cond
-                      (is-prim?
-                       (new-app/k cont (new-app/k fn el #:kont cont)
-                                  #:kont cont))
-                      (else
-                       (new-app/k fn (append (list cont) el) #:kont cont)))
-                     e el)))
-       (comp-cps (or is-prim? (new-id f #f))
-                 (new-lambda/k (list fn) k #:kont cont))))
-    (($ ref _ sym)
-     (cond
-      ((is-op-a-primitive? sym)
-       => (lambda (p)
-            (new-app/k cont p #:kont cont)))
-      ((symbol? sym) (new-app/k cont (new-id sym #f) #:kont cont))
-      (else (throw 'laco-error 'ast->cps "BUG: ref should be symbol! `~a'" sym))))
-    ((? id? id) (new-app/k cont id #:kont cont))
-    ((? primitive? p) (new-app/k cont p #:kont cont))
-    ((? constant? c)
-     (let ((x (new-id "#x-"))
-           (cst (new-constant/k c)))
-       (new-letval/k x cst (new-app/k cont x #:kont cont) #:kont cont)))
-    ;; TODO: Add more:
-    ;; set!
-    ;; collection-set! collection-ref
-    (else (throw 'laco-error 'ast->cps "Wrong expr: " expr))))
+         (parameterize ((current-kont jname))
+           (new-letcont/k jname jcont
+                          (alpha-renaming (ast->cps value) (list ov) (list nv))
+                          #:kont cont))))
+      (($ branch ($ ast _ (cnd b1 b2)))
+       (let ((jname (new-id "#jcont-")))
+         (parameterize ((current-kont jname))
+           (let* ((arg (new-id))
+                  (kname (new-id "#kont-"))
+                  (k1 (new-id "#letcont/k-"))
+                  (k2 (new-id "#letcont/k-"))
+                  (kont2 (new-letcont/k k2 (new-lambda/k '() (ast->cps b2))
+                                        (new-branch/k kname k1 k2) #:kont cont))
+                  (kont1 (new-letcont/k k1 (new-lambda/k '() (ast->cps b1)
+                                                         #:kont cont)
+                                        kont2 #:kont cont))
+                  (kont3 (new-lambda/k (list kname) kont1 #:kont cont)))
+             (parameterize ((current-kont kont3))
+               (comp-cps cnd))))))
+      (($ collection ($ ast _ vals) type size)
+       (let ((cname (new-id "#c-"))
+             (ex (map (lambda (_) (new-id "#e-")) vals)))
+         (fold (lambda (e x p)
+                 (parameterize ((current-kont (new-lambda/k x p #:kont cont)))
+                   (ast->cps e)))
+               (new-collection/k cname type size ex
+                                 (new-app/k cont cname #:kont cont)
+                                 #:kont cont)
+               vals ex)))
+      (($ seq ($ ast _ exprs))
+       (let* ((el (fold-right
+                   (lambda (x p)
+                     (let ((ret (ast->cps x)))
+                       (if (is-unspecified-node? ret) p (cons ret p))))
+                   '() exprs))
+              (ev (map (lambda (_) (new-id "#k-")) el)))
+         (fold (lambda (e v p) (new-letcont/k v e p #:kont cont))
+               (new-app/k cont (new-seq/k ev #:kont cont) #:kont cont)
+               el ev)))
+      (($ call _ ($ ref _ f) e)
+       (pk "call cont" cont)
+       (let* ((fn (new-id "#f-"))
+              (el (map (lambda (_) (new-id "#x-")) e))
+              (is-prim? (is-op-a-primitive? f))
+              (k (fold (lambda (ee ex p)
+                         (parameterize ((current-kont (new-lambda/k (list ex) p
+                                                                    #:kont cont)))
+                           (comp-cps ee)))
+                       (cond
+                        (is-prim?
+                         (new-app/k cont (new-app/k fn el #:kont cont) #:kont cont))
+                        (else
+                         (new-app/k fn (append (list cont) el) #:kont cont)))
+                       e el)))
+         (parameterize ((current-kont(new-lambda/k (list fn) k #:kont fn)))
+           (comp-cps (or is-prim? (new-id f #f))))))
+      (($ ref _ sym)
+       (cond
+        ((is-op-a-primitive? sym)
+         => (lambda (p)
+              (new-app/k cont p #:kont cont)))
+        ((symbol? sym) (new-app/k cont (new-id sym #f) #:kont cont))
+        (else (throw 'laco-error 'ast->cps "BUG: ref should be symbol! `~a'" sym))))
+      ((? id? id) (new-app/k cont id #:kont cont))
+      ((? primitive? p) (new-app/k cont p #:kont cont))
+      ((? constant? c)
+       (let ((x (new-id "#x-"))
+             (cst (new-constant/k c)))
+         (new-letval/k x cst (new-app/k cont x #:kont cont) #:kont cont)))
+      ;; TODO: Add more:
+      ;; set!
+      ;; collection-set! collection-ref
+      (else (throw 'laco-error 'ast->cps "Wrong expr: " expr)))))
 
 (define* (cps->expr cpse #:optional (hide-begin? #t))
   (match cpse
@@ -507,9 +547,39 @@
     (($ gvar ($ id _ name _))
      `(global ,name))
     (($ fvar ($ id _ name _) label offset)
-     `(free ,name ,label ,offset))
+     `(free ,name in ,label ,offset))
     ((? id? id) (id-name id))
     (else (throw 'laco-error 'cps->expr "Wrong cps: " cpse))))
+
+(define (cps-show cexpr)
+  `(,(list (cps->expr (cps-kont cexpr)) (cps-name cexpr) (cps-attr cexpr))
+    ,(cps->expr cexpr)))
+
+(define (cps->name cexpr)
+  (match cexpr
+    ((? cps? c) (cps-name c))
+    ((? id? id) (id-name id))
+    ((? primitive? p) (primitive-name p))
+    (else (throw 'laco-error cps->name "BUG: Invalid cps `~a'!" cexpr))))
+
+(define (cps->name-string cexpr)
+  (match cexpr
+    ((? cps? c) (id->string (cps-name cexpr)))
+    ((? id? id) (symbol->string (id-name id)))
+    (($ primitive _ name _ _ _) (symbol->string name))
+    (else (throw 'laco-error cps->name-string "BUG: Invalid cps `~a'!" cexpr))))
+
+(define (kont-eq? k1 k2)
+  (string=? (cps->name-string k1) (cps->name-string k2)))
+
+(define (tag-proper-tail-recursion! expr)
+  (cps-property-set! expr 'ptc #t))
+
+(define (is-proper-tail-recursion? cexpr)
+  (assoc-ref (cps-attr cexpr) 'ptc))
+
+(define (is-tail-call? cexpr)
+  (assoc-ref (cps-attr cexpr) 'tail-call))
 
 (define (top-level->src)
   (top-level->body-list (lambda (v e) `(define ,v ,(cps->expr e)))))

@@ -29,6 +29,7 @@
 
             insr-proc insr-proc?
             make-insr-proc
+            insr-proc-proc
             insr-proc-label insr-proc-label-set!
             insr-proc-env
             insr-proc-arity
@@ -50,16 +51,19 @@
             make-insr-pcall
             insr-pcall-op
 
-            insr-call insr-call?
-            make-insr-call
-            insr-call-label insr-call-label-set!
-
             insr-prelude insr-prelude?
             make-insr-prelude
+            insr-prelude-proc
             insr-prelude-arity
 
             insr-fjump insr-fjump?
             make-insr-fjump
+            insr-fjump-label insr-fjump-label-set!
+
+            insr-jump insr-jump?
+            make-insr-jump
+            insr-jump-proc insr-jump-proc-set!
+            insr-jump-label insr-jump-label-set!
 
             insr-closure insr-closure?
             make-insr-closure
@@ -68,6 +72,7 @@
             insr-label insr-label?
             make-insr-label
             insr-label-label insr-label-label-set!
+            insr-label-proc insr-label-proc-set!
             insr-label-body insr-label-body-set!
 
             insr-local insr-local?
@@ -124,6 +129,7 @@
 
 (define-typed-record insr-proc (parent insr)
   (fields
+   (proc string? not)
    (label string?) ; entry should be a label
    (env env?)
    (arity integer?)
@@ -131,6 +137,7 @@
 
 (define-typed-record insr-label (parent insr)
   (fields
+   (proc string? not)
    (label string?)
    (body valid-insr-list?)))
 
@@ -168,6 +175,12 @@
   (fields
    (label string?)))
 
+;; jump without condition
+(define-typed-record insr-jump (parent insr)
+  (fields
+   (proc string? not)
+   (label string?)))
+
 ;; This is for primitive calling
 (define-typed-record insr-pcall (parent insr)
   (fields
@@ -176,12 +189,8 @@
 ;; prelude will prepare the arity
 (define-typed-record insr-prelude (parent insr)
   (fields
+   (proc string?)
    (arity integer?)))
-
-;; procedure call
-(define-typed-record insr-call (parent insr)
-  (fields
-   (label string?)))
 
 ;; closure
 (define-typed-record insr-closure (parent insr)
@@ -206,12 +215,12 @@
 (define* (cps->lir expr #:optional (mode 'push))
   (match expr
     (($ lambda/k ($ cps _ kont name attr) args body)
-     (let ((env (closure-ref name))
+     (let ((env (closure-ref (id-name name)))
            (label (id->string name)))
        (when (not env)
          (throw 'laco-error cps->lir
                 "lambda/k: the closure label `~a' doesn't have an env!" label))
-       (make-insr-proc '() label env (length args)
+       (make-insr-proc '() (current-def) label env (length args)
                        (list (cps->lir body) *proc-return*))))
     #;
     (($ closure/k ($ cps _ kont name attr) env body) ;
@@ -223,10 +232,11 @@
            (label (id->string name)))
        (make-insr-label
         '()
+        #f
         label
         (list
-         (make-insr-push ce)
-         (make-insr-fjump (cps-name bf))
+         (make-insr-push '() ce)
+         (make-insr-fjump '() (cps-name bf))
          bt
          bf))))
     #;
@@ -234,7 +244,7 @@
     (($ collection/k ($ cps _ kont name attr) var type size value body) ; ;
     )
     (($ seq/k ($ cps _ kont name attr) exprs)
-     (make-insr-label '() (id->string name) (map cps->lir exprs)))
+     (make-insr-label '() #f (id->string name) (map cps->lir exprs)))
     (($ letfun/k ($ bind-special-form/k ($ cps _ kont name attr) fname fun body))
      ;; NOTE:
      ;; 1. For common function, after lambda-lifting, the function must be lifted to
@@ -243,12 +253,12 @@
      ;;    of the specific instruction of the VM.
      (let* ((label (id->string name))
             (cont (cps->lir body))
-            (insr (make-insr-label label (cps->lir fun))))
+            (insr (make-insr-label '() (id->string fname) label (cps->lir fun))))
        (cond
         ((insr? cont)
-         (label-register! label (make-insr-label '() label (list insr cont))))
+         (label-register! label (make-insr-label '() #f label (list insr cont))))
         ((list? cont)
-         (label-register! label (make-insr-label '() label `(,insr ,@cont))))
+         (label-register! label (make-insr-label '() #f label `(,insr ,@cont))))
         (else (throw 'laco-error cps->lir "Invalid cont `~a' in letfun/k!" cont)))
        ;; TODO:
        ;; Don't forget this is based on lambda-lifting that we haven't done.
@@ -268,24 +278,30 @@
        ;; TODO: substitute all the var reference to the ref-number
        (cond
         ((insr? cont)
-         (label-register! label (make-insr-label '() label (list obj cont))))
+         (label-register! label (make-insr-label '() #f label (list obj cont))))
         ((list? cont)
-         (label-register! label (make-insr-label '() label `(,obj ,@cont))))
+         (label-register! label (make-insr-label '() #f label `(,obj ,@cont))))
         (else (throw 'laco-error cps->lir "Invalid cont `~a' in letval/k!" cont)))))
     (($ app/k ($ cps _ kont name attr) func args)
      ;; NOTE: After normalize, the func never be anonymous function, it must be
      ;;       an id.
      (let ((f (cps->lir func 'call))
            (e (map cps->lir args))
-           (env (closure-ref name))
+           (env (closure-ref (id-name name)))
            (label (id->string name))
-           (prelude (make-insr-prelude '() (length args))))
+           (prelude (lambda (m) (make-insr-prelude '() (id->string func) m))))
        (when (not env)
          (throw 'laco-error cps->lir
                 "app/k: the closure label `~a' doesn't have an env!" label))
        (if (insr-pcall? f)
-           (make-insr-label '() label `(,@e ,f))
-           (make-insr-label '() label `(,prelude ,@e ,f)))))
+           (make-insr-label '() #f label `(,@e ,f))
+           (cond
+            ((is-proper-tail-recursion? expr)
+             (make-insr-label '() #f label `(,(prelude 1) ,@e ,f)))
+            ((is-tail-call? expr)
+             (make-insr-label '() #f label `(,(prelude 0) ,@e ,f)))
+            (else
+             (make-insr-label '() #f label `(,(prelude 2) ,@e ,f)))))))
     (($ constant/k _ value)
      (create-constant-object value))
     (($ lvar _ offset)
@@ -293,16 +309,29 @@
     (($ fvar _ label offset)
      (make-insr-free '() (id->string label) mode offset))
     (($ gvar ($ id _ name _))
-     (match (top-level-ref name)
-       (($ insr-proc _ label _ arity)
-        (case mode
-          ((push) (make-proc-object '() arity label))
-          ((call) (make-insr-call '() label))
-          (else
-           (throw 'laco-error cps->lir "gvar: proc has invalid mode `~a'!" mode))))
-       ((? object? obj) obj)
-       (#f (throw 'laco-error cps->lir "Missing global var `~a'!" name))
-       (else (throw 'laco-error cps->lir "Invalid global var `~a'!" name))))
+     (let ((id-str (symbol->string name)))
+       (match (top-level-ref name)
+         (($ insr-proc _ proc label _ arity)
+          (case mode
+            ((push) (make-proc-object '() id-str arity label))
+            ((call) (make-insr-jump '() proc label))
+            (else
+             (throw 'laco-error cps->lir "gvar: proc has invalid mode `~a'!"
+                    mode))))
+         (($ lambda/k ($ cps _ _ label attr) args _)
+          (when (not (is-recursive? name))
+            (throw 'laco-error cps->lir
+                   "BUG: Invalid global or wrong recursive! `~a', `~a'"
+                   name (cps->expr (top-level-ref name))))
+          (case mode
+            ((push) (make-proc-object '() id-str (length args) (id->string label)))
+            ((call) (make-insr-jump '() id-str (id->string label)))
+            (else
+             (throw 'laco-error cps->lir "gvar: proc has invalid mode `~a'!"
+                    mode))))
+         ((? object? obj) obj)
+         (#f (throw 'laco-error cps->lir "Missing global var `~a'!" name))
+         (else (throw 'laco-error cps->lir "Invalid global var `~a'!" name)))))
     ((? primitive? p)
      (case mode
        ((push) (make-prim-object '() p))
@@ -313,22 +342,24 @@
   (parameterize ((current-kont 'global))
     (top-level-for-each
      (lambda (v e)
-       (top-level-set! v (cps->lir e)))))
-  (make-insr-proc '() "#main" (current-env) 0 (list (cps->lir expr))))
+       (parameterize ((current-def (symbol->string v)))
+         (top-level-set! v (cps->lir e))))))
+  (make-insr-proc '() "____principio" "#principio"
+                  (current-env) 0 (list (cps->lir expr))))
 
 (define (lir->expr lexpr)
   (match lexpr
-    (($ insr-proc _ label _ arity lexprs)
-     `(proc ,label ,arity ,(map lir->expr lexprs)))
-    (($ insr-label _ label exprs)
-     `((label ,label)
+    (($ insr-proc _ proc label _ arity lexprs)
+     `(proc ,proc ,label ,arity ,(map lir->expr lexprs)))
+    (($ insr-label _ proc label exprs)
+     `((label proc ,label)
        ,@(map lir->expr exprs)))
     (($ insr-pcall _ p)
      `(prim-call ,(primitive-name p) ,(primitive->number p)))
-    (($ insr-prelude _ arity)
-     `(prelude ,arity))
-    (($ insr-call _ label)
-     `(call ,label))
+    (($ insr-prelude _ proc arity)
+     `(prelude proc ,arity))
+    (($ insr-jump _ proc label)
+     `(jump ,proc ,label))
     (($ insr-local _ mode offset)
      `(local ,mode ,offset))
     (($ insr-free _ label mode offset)
@@ -339,4 +370,5 @@
     (else (throw 'laco-error lir->expr "Invalid lir `~a'!" lexpr))))
 
 (define (lir->expr/g lexpr)
-  `(,@(top-level->body-list (lambda (_ v) (lir->expr v))) ,(lir->expr lexpr)))
+  `(,@(top-level->body-list (lambda (_ v) (lir->expr v)))
+    ,(lir->expr lexpr)))

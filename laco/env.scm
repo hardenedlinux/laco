@@ -40,7 +40,10 @@
             env->args
 
             closure-set!
-            closure-ref))
+            closure-ref
+
+            register-as-recursive!
+            is-recursive?))
 
 ;; NOTE:
 ;; 1. Only toplevel is used for storing actual value.
@@ -57,9 +60,9 @@
 (define (new-toplevel)
   (make-toplevel #f #f #f (make-hash-table)))
 
-(define* (new-env #:optional (params '()))
+(define* (new-env #:optional (params '()) (frees '()))
   (let ((bindings (list->queue params))
-        (frees (new-queue)))
+        (frees (list->queue frees)))
     (make-env #f bindings frees)))
 
 (define *top-level* (new-toplevel))
@@ -117,7 +120,15 @@
 
 (define *closure-lookup-table* (make-hash-table))
 (define (closure-set! label bindings)
-  (hash-set! *closure-lookup-table* label bindings))
+  (hash-set! *closure-lookup-table* (pk "set label" label) bindings))
 (define (closure-ref label)
   ;; FIXME: Shouldn't create new env
-  (hash-ref *closure-lookup-table* label (new-env '())))
+  (hash-ref *closure-lookup-table* (pk "ref label" label) (new-env '())))
+
+;; NOTE: We record all recursive functions in this table, rather than tag it in attr
+;;       of each CPS node, since the CPS node may be eliminated
+(define *recursive-table* (make-hash-table))
+(define (register-as-recursive! sym)
+  (hash-set! *recursive-table* sym #t))
+(define (is-recursive? sym)
+  (hash-ref *recursive-table* sym))

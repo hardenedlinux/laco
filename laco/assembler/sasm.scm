@@ -30,7 +30,7 @@
 
 (define (main-entry)
   (let ((bv (make-bytevector 4 0))
-        (main (label-ref 'main)))
+        (main (label-ref '____principio)))
     (when (not main)
       (throw 'laco-error main-entry "BUG: main entry is missing!"))
     (bytevector-u32-set! bv 0 main 'big)
@@ -94,7 +94,8 @@
 (define-public (prelude arity)
   (double-encode #b0000 arity))
 
-(define-public (call-proc label)
+;; call-proc == prelude + jump
+(define-public (jump label)
   (let ((offset (label-ref label)))
     (double-encode #b0001 offset)))
 

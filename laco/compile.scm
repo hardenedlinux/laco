@@ -21,6 +21,7 @@
   #:use-module (laco parser)
   #:use-module (laco pass)
   #:use-module (laco cps)
+  #:use-module (laco ast)
   #:use-module (laco lir)
   #:use-module (laco types)
   #:use-module (laco codegen)
@@ -108,17 +109,18 @@ Options:
      eta-cont
      eta-function
      delta-reduction
+     tail-call-optimizing
      closure-conversion
      lambda-lifting
      eliminate-redundant))
   (init-optimizations)
   (parameterize ((current-kont 'global))
-    ;; Prevent unecessary lifting and inline for global functions
     (top-level-for-each
      (lambda (f e)
-       (top-level-set! f (do-optimize e)))))
+       (parameterize ((current-def f))
+         ;; Prevent unecessary lifting and inline for global functions
+         (top-level-set! f (do-optimize e))))))
   (do-optimize cexpr))
-
 
 (define (lir-optimize lexpr)
   (define (do-optimize lexpr)
@@ -128,10 +130,11 @@ Options:
      reduce-ret))
   (init-lir-optimizations)
   (parameterize ((current-kont 'global))
-    ;; Prevent unecessary lifting and inline for global functions
     (top-level-for-each
      (lambda (f e)
-       (top-level-set! f (do-optimize e)))))
+       (parameterize ((current-def f))
+         ;; Prevent unecessary lifting and inline for global functions
+         (top-level-set! f (do-optimize e))))))
   (do-optimize lexpr))
 
 (define output-file (make-parameter #f))

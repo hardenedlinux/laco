@@ -24,8 +24,7 @@
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-11)
   #:export (parser
-            parse-module
-            ast->src))
+            parse-module))
 
 ;; NOTE: we don't allow primitives-redefine, so this list is for checking.
 (define *wrong-op-lst*
@@ -233,26 +232,3 @@
 
 (define (parse-module mod)
   (parser (mod-exprs mod)))
-
-(define* (ast->src node #:optional (hide-begin? #t))
-  (match node
-    (($ constant _ val type) (unless (eq? 'unspecified type) val))
-    (($ def ($ ast _ subx) v) `(define ,(ast->src v) ,(ast->src subx)))
-    (($ ref _ v) (ast->src v))
-    (($ assign ($ ast _ subx) v) `(set! ,(ast->src v) ,(ast->src subx)))
-    (($ branch ($ ast _ subx))
-     (match subx
-       ((c b1 b2) `(if ,(ast->src c) ,(ast->src b1 #f) ,(ast->src b2 #f)))
-       (else (throw 'laco-error "I don't know what's wrong dude!!!" subx))))
-    (($ call _ op args) `(,(ast->src op) ,@(map ast->src args)))
-    (($ closure ($ ast _ subx) params _) `(lambda ,(map ast->src params) ,(ast->src subx)))
-    (($ seq ($ ast _ subx))
-     (cond
-      ((zero? (length subx))
-       (throw 'laco-error ast->src "Well, null seq dude huh??"))
-      ((= (length subx) 1) (ast->src (car subx)))
-      (hide-begin? (map ast->src subx))
-      (else `(begin ,@(map ast->src subx)))))
-    (($ binding ($ ast _ body) var value)
-     `(let ((,(ast->src var) ,(ast->src value))) ,(ast->src body)))
-    (else node)))

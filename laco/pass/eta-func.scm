@@ -30,12 +30,10 @@
 (define (ef expr)
   (match expr
     (($ letfun/k ($ bind-special-form/k _ f fbody
-                    ($ app/k _ ($ primitive _ 'return _ _ _) (arg))))
+                    ($ app/k _ g (arg))))
      ;; case-1: Eliminate all anonymouse functions
      (ef (cfs arg (list f) (list fbody))))
-    (($ lambda/k _ (name1)
-        ($ app/k _ ($ primitive _ 'return _ _ _) (($ app/k _ f (name2)))
-           ))
+    (($ lambda/k _ (name1) ($ app/k _ g (($ app/k _ f (name2)))))
      ;; case-2: (lambda (x) (return (proc x))) -> proc
      (=> failed!)
      (if (eq? name1 name2)

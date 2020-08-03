@@ -24,8 +24,7 @@
   #:use-module (laco pass)
   #:use-module (ice-9 match)
   #:use-module ((srfi srfi-1) #:select (fold))
-  #:use-module ((rnrs) #:select (define-record-type))
-  #:export (closure-ref))
+  #:use-module ((rnrs) #:select (define-record-type)))
 
 ;; NOTE:
 ;; 1. We only perform CC after DCE, so there's no unused binding.
@@ -44,9 +43,9 @@
 (define* (cc expr #:optional (mode 'normal))
   (match expr
     (($ lambda/k ($ cps _ kont name attr) args body)
-     (let ((env (new-env args)))
+     (let ((env (new-env args (free-vars expr))))
        (extend-env! (current-env) env)
-       (closure-set! name env)
+       (closure-set! (id-name name) env)
        (parameterize ((current-env env)
                       (current-kont expr))
          (make-lambda/k (list kont name attr) args (cc body))))
@@ -58,7 +57,7 @@
     ;; (($ closure/k ($ cps _ kont name attr) env body)
     ;;  ;; TODO: The escaping function will be converted to closure/k.
     ;;  ;;       This will need escaping analysis or liveness analysis.
-    ;;  (closure-set! name (current-env))
+    ;;  (closure-set! (id-name name) (current-env))
     ;;  (parameterize ((current-env env))
     ;;    (make-closure/k (list kont name attr) (current-env) (cc body))))
     (($ branch/k ($ cps _ kont name attr) cnd b1 b2)
@@ -87,10 +86,12 @@
      ;; 3. For side-effect cases, we perform assignment-elimination (TODO).
      ;; 4. Although we can set bindings to global, it's safe because of
      ;;    alpha-renaming, however, it can't be released when the scope came to end.
-     (let ((env (if (toplevel? (current-env)) (new-env) (current-env))))
+     (let ((env (if (toplevel? (current-env))
+                    (new-env '() (free-vars expr))
+                    (current-env))))
        (extend-env! (current-env) env)
        (env-local-push! env jname)
-       (closure-set! name env)
+       (closure-set! (id-name name) env)
        (parameterize ((current-env env))
          (cc (cfs body
                   (list jname)
@@ -108,7 +109,7 @@
     ((? id? id)
      (let ((env (current-env))
            ;; FIXME: deal with it when current-kont is 'global
-           (label (current-kont))
+           (label (cps->name-string (current-kont)))
            (name (id-name id)))
        (cond
         ((top-level-ref name) (new-gvar id))
@@ -119,9 +120,10 @@
                 (new-lvar id offset)))
           ((and (not (eq? label 'global)) (frees-index env id))
            => (lambda (index)
-                (new-fvar id (id-name label) index)))
-          (else (throw 'laco-error cc "Undefined local variable `~a'!" name))))
-        (else (throw 'laco-error cc "Undefined global variable `~a'!" name)))))
+                (new-fvar id label index)))
+          (else (throw 'laco-error cc "Undefined local variable `~a'!" label))))
+        (else (throw 'laco-error cc "Undefined global variable `~a' in `~a'!"
+                     name label)))))
     (else expr)))
 
 (define-pass closure-conversion expr (cc expr))

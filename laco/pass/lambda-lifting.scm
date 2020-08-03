@@ -23,12 +23,12 @@
 
 ;; NOTE: This pass must be after normalize and closure-conversion
 ;;
-;; After closure-conversion, there're no free variables, so we can lift the
-;; some lambdas to be a top-level defined function:
-;; 1. simple lambda: no deeper function definition inside
+;; After closure-conversion, some lambdas have no free variables, so we can lift
+;; them to be a top-level defined function:
+;; 1. simple lambda: no deeper function definition inside.
 ;; 2. lambdas that is no escaping closures, in this case we can lift the inner
 ;;    lambdas recursively.
-;; This pass is useful to simplify the free variable analysis in codegen.
+;; This pass maybe useful to simplify the free variable analysis.
 (define (ll expr)
   (match expr
     (($ letfun/k ($ bind-special-form/k _ fname func body))
@@ -50,7 +50,7 @@
      (branch/k-fbranch-set! expr (ll b2))
      expr)
     (($ app/k _ f e)
-     ;; After normalize, there's no anonymouse function as f, so we skip f here
+     (app/k-func-set! expr (ll f))
      (app/k-args-set! expr (ll e))
      expr)
     (($ lambda/k _ args body)

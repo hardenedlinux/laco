@@ -33,6 +33,7 @@
      (fc (normalize/preserving
           (new-app/k (new-lambda/k (list v) (fc body)) (fc e)))))
     (($ app/k _ f args)
+     (app/k-func-set! expr (fc f))
      (app/k-args-set! expr (map fc args))
      expr)
     ((? bind-special-form/k?)

@@ -36,6 +36,7 @@
      (seq/k-exprs-set! expr (map ec exprs))
      expr)
     (($ app/k _ func args)
+     (app/k-func-set! expr (ec func))
      (app/k-args-set! expr (map ec args))
      expr)
     (($ lambda/k _ _ body)

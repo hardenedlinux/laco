@@ -16,28 +16,34 @@
 
 (define-module (laco pass elre)
   #:use-module (laco types)
+  #:use-module (laco env)
   #:use-module (laco cps)
   #:use-module (laco pass)
   #:use-module (laco pass normalize)
+  #:use-module (laco pass closure-conversion)
   #:use-module (laco primitives)
   #:use-module (srfi srfi-1)
   #:use-module (ice-9 match))
 
 ;; Eliminate all the redundant code:
 ;; NOTE:
-;; 1. We're not going to eliminate tail-call (return ...) in thie pass.
+;; 1. We're not going to eliminate tail-call (return ...) in this pass.
 ;;    The left `return' should imply tail-call after elre, since `return` in non
 ;;    tail-calls are all eliminated in case-2.
 ;; 2. FIXME: Make sure all the left `return' are tail-calls, we need them for
 ;;    low-level TCO stack tweaking in LIR.
 
 (define (eliminate-non-tail-return exprs)
-  (fold (lambda (x p)
-          (match x
-            (($ app/k _ ($ primitive _ 'return _ _ _) (arg))
-             (cons arg p))
-            (else (cons x p))))
-        '() exprs))
+  (let ((kont (current-kont)))
+    (fold (lambda (x p)
+            (match x
+              (($ app/k _ f (arg))
+               (=> failed!)
+               (if (kont-eq? f kont)
+                   (cons arg p)
+                   (failed!)))
+              (else (cons x p))))
+          '() exprs)))
 
 (define (elre expr)
   (match expr
@@ -53,21 +59,40 @@
       ((= (length exprs) 1)
        (let ((e (car exprs)))
          (match e
-           (($ app/k _ ($ primitive _ 'return _ _ _) (arg))
-            ;; case-2: (begin (return single-expr)) -> single-expr
-            (elre arg))
+           (($ app/k _ f (arg))
+            (=> failed!)
+            ;; case-2: (begin (kont single-expr)) -> single-expr
+            (if (kont-eq? (current-kont) f)
+                (elre arg)
+                (failed!)))
            (else
             ;; case-3: (begin single-expr) -> single-expr
             (elre (car exprs))))))
       (else
-       (let ((ne (map elre (eliminate-non-tail-return (reverse! exprs)))))
-         (seq/k-exprs-set! expr ne)
-         expr))))
-    (($ app/k _ ($ lambda/k _ args1 body) args2)
+       (parameterize ((current-kont (cps-kont expr)))
+         (let ((ne (map elre (eliminate-non-tail-return (reverse! exprs)))))
+           (seq/k-exprs-set! expr ne)
+           expr)))))
+    (($ app/k ($ cps _ kont name _) ($ lambda/k _ args1 body) args2)
      ;; case-4: ((lambda params body) args) -> body[params/args]
      (when (not (= (length args1) (length args2)))
        (throw 'laco-error elre "Arguments list isn't equal in lambda apply"))
+     ;; NOTE:
+     ;; 1. We eliminate lambda/k, so free-vars have to tweak.
+     ;; 2.
      (elre (cfs body args1 (map elre args2))))
+    ;; (($ app/k ($ cps _ kont _ _) f args)
+    ;;  ;; case-5: (ret expr-contains-ret) -> (ret expr-without-ret)
+    ;;  ;; Make sure every function has only one ret instruction
+    ;;  ;; NOTE: There's only one argument for ret
+    ;;  (=> failed!)
+    ;;  (cond
+    ;;   ((kont-eq? kont f)
+    ;;    (if (reduce-ret?)
+    ;;        (app/k-args-set! expr (map elre (cdr args)))
+    ;;        (parameterize ((reduce-ret? #t))
+    ;;          ))))
+    ;;  )
     ((? bind-special-form/k?)
      (bind-special-form/k-value-set! expr (elre (bind-special-form/k-value expr)))
      (bind-special-form/k-body-set! expr (elre (bind-special-form/k-body expr)))
@@ -77,13 +102,30 @@
      (app/k-args-set! expr (map elre args))
      expr)
     (($ lambda/k _ _ body)
-     (lambda/k-body-set! expr (elre body))
+     (parameterize ((current-kont (cps-kont expr)))
+       (lambda/k-body-set! expr (elre body)))
      expr)
     (($ branch/k _ cnd b1 b2)
      (branch/k-cnd-set! expr (elre cnd))
      (branch/k-tbranch-set! expr (elre b1))
      (branch/k-fbranch-set! expr (elre b2))
      expr)
+    (($ fvar ($ id _ name orig) label _)
+     (let* ((kname-id (current-kont))
+            (kname (cps->name kname-id))
+            (kname-str (symbol->string kname)))
+       (cond
+        ((string=? label kname-str)
+         expr)
+        ((closure-ref kname)
+         => (lambda (env)
+              (let ((index (bindings-index env kname-id)))
+                (if index
+                    (make-lvar (list name orig) index)
+                    (throw 'laco-error elre
+                           "BUG: local var `~a' is missing in `~a'!" name kname)))))
+        (else
+         (throw 'laco-error elre "BUG: env is missing in `~a'!" kname)))))
     (else expr)))
 
 (define-pass eliminate-redundant expr (elre expr))

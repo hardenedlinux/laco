@@ -26,7 +26,7 @@
     (($ letfun/k ($ bind-special-form/k _ _
                     ($ lambda/k _ largs
                        ($ letcont/k ($ bind-special-form/k _ f
-                                       ($ app/k _ prim:return args)
+                                       ($ app/k _ _ args)
                                        ($ app/k _ g (($ seq/k _ (e))))))) _))
      (=> failed!)
      (cond

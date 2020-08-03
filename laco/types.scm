@@ -47,6 +47,7 @@
             id-list?
             node-eq?
             id->string
+            symbol->id
 
             lvar lvar?
             make-lvar
@@ -172,6 +173,9 @@
 (define (node-eq? x y)
   (or (id-eq? x y)
       (equal? x y)))
+
+(define (symbol->id sym)
+  (new-id (symbol->string sym) #f))
 
 ;; local variable
 (define-typed-record lvar (parent id)

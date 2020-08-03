@@ -27,6 +27,8 @@
 
 (define *sasm-queue* (new-queue))
 (define (get-all-sasm) (queue-slots *sasm-queue*))
+(define (drop-hash label)
+  (substring/shared label 1))
 
 (define (sasm-output port)
   (define level 1)
@@ -37,8 +39,6 @@
       ('stay (gen-spaces))
       ('in (set! level (1+ level)))
       ('out (set! level (1- level)))))
-  (define (drop-hash label)
-    (substring/shared label 1))
   (format port "(lef~%")
   (indent-spaces 'in)
   (for-each
@@ -78,10 +78,8 @@
         (indent-spaces 'out))
        ((('push-string-object s) . descp)
         (format port "~a(push-string-object ~s) ; ~a~%" (indent-spaces) s descp))
-       ((('jmp label) . _)
-        (format port "~a(jmp ~a)~%" (indent-spaces) (drop-hash label)))
-       ((('call-proc label) . _)
-        (format port "~a(call-proc ~a)~%" (indent-spaces) (drop-hash label)))
+       ((('jump label) . descp)
+        (format port "~a(jump ~a) ; ~a~%" (indent-spaces) (drop-hash label) descp))
        ((insr . descp)
         (format port "~a~a ; ~a~%" (indent-spaces) insr descp))
        (() #t)
@@ -107,7 +105,7 @@
 
 (define-public (emit-constant type i)
   (if (integer-check i type)
-      (sasm-emit `((push-4bit-const ,i) . (format #f "Constant 0x~X" ,i)))
+      (sasm-emit `((push-4bit-const ,i) . ,(format #f "Constant 0x~X" i)))
       (throw 'laco-error emit-constant "Invalid integer value!" i)))
 
 (define-public (emit-integer-object i)
@@ -116,9 +114,9 @@
 (define-public (emit-string-object s)
   (sasm-emit `((push-string-object ,s) . "")))
 
-(define-public (emit-proc-object entry)
+(define-public (emit-proc-object proc entry)
   (sasm-emit `((push-proc-object ,entry)
-               . (foramt #f "Push Proc `~a'" entry))))
+               . ,(format #f "Push Proc ~a in `~a'" proc entry))))
 
 (define-public (emit-prim-object p)
   (sasm-emit `((push-prim-object ,(primitive->number p))
@@ -147,11 +145,8 @@
    ((is-char-node? x) (emit-char (constant-val x)))
    (else (throw 'laco-error emit-const-imm "Invalid immediate `~a`!" x))))
 
-(define-public (emit-prelude arity)
-  (sasm-emit `((prelude ,arity) . "")))
-
-(define-public (emit-call-proc label)
-  (sasm-emit `((call-proc ,label) . "")))
+(define-public (emit-prelude proc arity)
+  (sasm-emit `((prelude ,arity) . ,(format #f "Prelude for ~a" proc))))
 
 (define-public (emit-proc-return)
   (sasm-emit `((ret) . "")))
@@ -164,6 +159,11 @@
 
 (define-public (emit-fjump label)
   (sasm-emit `((fjump ,label) . "")))
+
+(define-public (emit-jump proc label)
+  (let ((where (if proc (string-append "#" proc) label)))
+    (sasm-emit
+     `((jump ,where) . ,(format #f "Jump to ~a" (drop-hash where))))))
 
 (define-public (emit-local mode offset)
   (case mode

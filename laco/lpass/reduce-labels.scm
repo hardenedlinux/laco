@@ -25,16 +25,16 @@
 (define (rename-label! lexpr old-label new-label)
   (define (hit? l) (equal? l old-label))
   (match lexpr
-    (($ insr-proc _ _ _ arity body)
+    (($ insr-proc _ _ _ _ arity body)
      (insr-proc-body-set! lexpr (rename-label! body old-label new-label))
      lexpr)
-    (($ insr-label _ _ exprs)
+    (($ insr-label _ _ _ exprs)
      (insr-label-body-set!
       lexpr
       (map (lambda (e) (rename-label! e old-label new-label)) exprs))
      lexpr)
-    (($ insr-call _ (? hit?))
-     (insr-call-label-set! lexpr new-label)
+    (($ insr-jump _ _ (? hit?))
+     (insr-jump-label-set! lexpr new-label)
      lexpr)
     (($ insr-free _ (? hit?) _ _)
      (insr-free-label-set! lexpr new-label)
@@ -43,22 +43,22 @@
 
 (define (rl lexpr)
   (match lexpr
-    (($ insr-label _ label (($ insr-label _ label2 lexprs2) rest ...))
+    (($ insr-label _ _ label (($ insr-label _ _ label2 lexprs2) rest ...))
      (insr-label-body-set!
       lexpr
       (map rl `(,@(map (lambda (e) (rename-label! e label2 label)) lexprs2)
                 ,@rest)))
      (rl lexpr))
-    (($ insr-proc _ label _ _ (($ insr-label _ label2 lexprs2) rest ...))
+    (($ insr-proc _ _ label _ _ (($ insr-label _ _ label2 lexprs2) rest ...))
      (insr-proc-body-set!
       lexpr
       (map rl `(,@(map (lambda (e) (rename-label! e label2 label)) lexprs2)
                 ,@rest)))
      (rl lexpr))
-    (($ insr-label _ label lexprs)
+    (($ insr-label _ _ label lexprs)
      (insr-label-body-set! lexpr (map rl lexprs))
      lexpr)
-    (($ insr-proc _ label _ _ body)
+    (($ insr-proc _ _ label _ _ body)
      (insr-proc-body-set! lexpr (rl body))
      lexpr)
     (else lexpr)))
