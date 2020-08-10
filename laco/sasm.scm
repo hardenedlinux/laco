@@ -27,8 +27,6 @@
 
 (define *sasm-queue* (new-queue))
 (define (get-all-sasm) (queue-slots *sasm-queue*))
-(define (drop-hash label)
-  (substring/shared label 1))
 
 (define (sasm-output port)
   (define level 1)
@@ -44,14 +42,21 @@
   (for-each
    (lambda (pattern)
      (match pattern
-       (('label-begin label)
+       (('label-begin proc label)
         (indent-spaces 'in)
-        (format port "~a(label ~a) ; Label ~a begin~%" (indent-spaces)
-                (drop-hash label) (drop-hash label))
+        (format port "~a(label ~a) ; ~a~%" (indent-spaces)
+                (drop-hash label)
+                (if proc
+                    (format #f "Proc `~a' begin" (drop-hash proc))
+                    (format #f "Label `~a' begin" (drop-hash label))))
         (indent-spaces 'in))
-       (('label-end label)
+       (('label-end proc label)
         (indent-spaces 'out)
-        (format port "~a;; Label ~a end~%" (indent-spaces) (drop-hash label))
+        (format port "~a;; ~a~%"
+                (indent-spaces)
+                (if proc
+                    (format #f "Proc `~a' end" (drop-hash proc))
+                    (format #f "Label `~a' end" (drop-hash label))))
         (indent-spaces 'out))
        ('prog-begin
         (format port "~a(program~%" (indent-spaces))
@@ -73,13 +78,22 @@
        ('clean-end
         (format port "~a) ; Clean end~%~%" (indent-spaces))
         (indent-spaces 'out))
-       (('closure-prelude argc)
+       ((('closure-prelude argc) . descp)
         (format port "~a) ; Closure ~a~%" (indent-spaces) argc)
         (indent-spaces 'out))
        ((('push-string-object s) . descp)
         (format port "~a(push-string-object ~s) ; ~a~%" (indent-spaces) s descp))
-       ((('jump label) . descp)
-        (format port "~a(jump ~a) ; ~a~%" (indent-spaces) (drop-hash label) descp))
+       ((('free label offset) . descp)
+        (format port "~a(free ~a ~a) ; ~a~%" (indent-spaces) (drop-hash label)
+                offset descp))
+       ((('call-free label offset) . descp)
+        (format port "~a(call-free ~a ~a) ; ~a~%" (indent-spaces) (drop-hash label)
+                offset descp))
+       ((('call-proc label) . descp)
+        (format port "~a(call-proc ~a) ; ~a~%"
+                (indent-spaces) (drop-hash label) descp))
+       ((('fjump label) . descp)
+        (format port "~a(fjump ~a) ; ~a~%" (indent-spaces) (drop-hash label) descp))
        ((insr . descp)
         (format port "~a~a ; ~a~%" (indent-spaces) insr descp))
        (() #t)
@@ -116,7 +130,7 @@
 
 (define-public (emit-proc-object proc entry)
   (sasm-emit `((push-proc-object ,entry)
-               . ,(format #f "Push Proc ~a in `~a'" proc entry))))
+               . ,(format #f "Push Proc ~a in `~a'" (drop-hash proc) entry))))
 
 (define-public (emit-prim-object p)
   (sasm-emit `((push-prim-object ,(primitive->number p))
@@ -145,8 +159,9 @@
    ((is-char-node? x) (emit-char (constant-val x)))
    (else (throw 'laco-error emit-const-imm "Invalid immediate `~a`!" x))))
 
-(define-public (emit-prelude proc arity)
-  (sasm-emit `((prelude ,arity) . ,(format #f "Prelude for ~a" proc))))
+(define-public (emit-prelude proc mode)
+  (sasm-emit `((prelude ,(mode->name mode))
+               . ,(format #f "Prelude for ~a" (drop-hash proc)))))
 
 (define-public (emit-proc-return)
   (sasm-emit `((ret) . "")))
@@ -158,12 +173,13 @@
                . ,(format #f "Call primitive `~a'" (primitive-name p)))))
 
 (define-public (emit-fjump label)
-  (sasm-emit `((fjump ,label) . "")))
+  (sasm-emit `((fjump ,label)
+               . ,(format #f "Jump to ~a when TOS is false" (drop-hash label)))))
 
-(define-public (emit-jump proc label)
-  (let ((where (if proc (string-append "#" proc) label)))
+(define-public (emit-proc-call proc label)
+  (let ((where (if proc proc label)))
     (sasm-emit
-     `((jump ,where) . ,(format #f "Jump to ~a" (drop-hash where))))))
+     `((call-proc ,label) . ,(format #f "Proc call ~a" (drop-hash where))))))
 
 (define-public (emit-local mode offset)
   (case mode
@@ -195,11 +211,11 @@
 (define-public (sasm-clean-end)
   (sasm-emit 'clean-end))
 
-(define-public (sasm-label-begin label)
-  (sasm-emit `(label-begin ,label)))
+(define-public (sasm-label-begin proc label)
+  (sasm-emit `(label-begin ,proc ,label)))
 
-(define-public (sasm-label-end label)
-  (sasm-emit `(label-end ,label)))
+(define-public (sasm-label-end proc label)
+  (sasm-emit `(label-end ,proc ,label)))
 
 (define-public (sasm-closure-prelude argc)
   (sasm-emit '((pop-16bit-const ,argc) . ,(format #f "Pop ~a args" argc))))

@@ -149,7 +149,10 @@
        ;; definition is top level definition.
        (let lp((next body) (p #t) (ret '()))
          (cond
-          ((null? next) (make-seq (reverse ret)))
+          ((null? next)
+           (if (= 1 (length ret))
+               (car ret)
+               (make-seq (reverse ret))))
           (else
            (match (car next)
              ;; make sure inner definitions are available in a row

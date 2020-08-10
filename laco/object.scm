@@ -49,7 +49,11 @@
 
             prim-object
             prim-object?
-            make-prim-object))
+            make-prim-object
+
+            boolean-object
+            boolean-object?
+            make-boolean-object))
 
 ;; NOTE:
 ;; 1. If the value can be unboxed, then we store them in unboxed style
@@ -75,13 +79,10 @@
    (value object-list?)
    (size positive?)))
 
+;; We store char as small integer
 (define-typed-record char-object (parent object)
   (fields
-   (value is-char-node?)))
-
-(define-typed-record char-object (parent object)
-  (fields
-   (value is-boolean-node?)))
+   (value integer?)))
 
 (define-typed-record string-object (parent object)
   (fields
@@ -97,6 +98,10 @@
   (fields
    (prim primitive?)))
 
+(define-typed-record boolean-object (parent object)
+  (fields
+   (value boolean?)))
+
 ;; constant -> object
 (define (create-constant-object c)
   (let ((val (constant-val c)))
@@ -106,6 +111,7 @@
       ('vector (make-vector-object '() val))
       ('char (make-integer-object '() val))
       ('string (make-string-object '() val))
+      ('boolean (make-boolean-object '() val))
       (else (throw 'laco-error create-constant-object "Invalid type `~a'!"
                    (constant-type c))))))
 

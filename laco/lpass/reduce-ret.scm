@@ -35,7 +35,7 @@
 
 (define (rr lexpr)
   (match lexpr
-    (($ insr-proc _ _ "#principio" _ _ lexprs)
+    (($ insr-proc _ _ "#____principio" _ _ lexprs)
      (insr-proc-body-set!
       lexpr
       (let ((len (1- (length lexprs))))

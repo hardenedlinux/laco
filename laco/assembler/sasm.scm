@@ -19,14 +19,16 @@
                                  bytevector-u8-set!
                                  bytevector-u32-set!))
   #:use-module (laco assembler encode)
-  #:export (main-entry))
+  #:use-module (laco utils)
+  #:export (main-entry
+            call-proc
+            fjump))
 
 (define *label-table* (make-hash-table))
 (define (label-register! name)
   (hash-set! *label-table* name (label-counter 0)))
 (define-syntax-rule (label-ref name)
-  (or (hash-ref *label-table* name)
-      (throw 'laco-error 'label-ref "Missing label `~a'!" name)))
+  (hash-ref *label-table* name))
 
 (define (main-entry)
   (let ((bv (make-bytevector 4 0))
@@ -58,13 +60,13 @@
    (else (throw 'laco-error call-local "Invalid offset `~a'!" i))))
 
 ;; --------- special double encoding ----------
-(define-public (free label mode i)
+(define-public (free label i)
   (let ((frame (make-bytevector 1 0))
         (f (label-ref label)))
     (bytevector-u8-set! frame 0 f)
     (label-counter 1)
     (cond
-     ((and (> i 0) (< 16))
+     ((and (>= i 0) (< 16))
       (list
        (single-encode #b0010 i)
        frame))
@@ -74,13 +76,13 @@
        frame))
      (else (throw 'laco-error free "Invalid offset `~a'!" i)))))
 
-(define-public (call-free label mode i)
+(define-public (call-free label i)
   (let ((frame (make-bytevector 1 0))
         (f (label-ref label)))
     (bytevector-u8-set! frame 0 f)
     (label-counter 1)
     (cond
-     ((and (> i 0) (< 16))
+     ((and (>= i 0) (< 16))
       (list
        (single-encode #b0110 i)
        frame))
@@ -91,13 +93,24 @@
      (else (throw 'laco-error call-free "Invalid offset `~a'!" i)))))
 
 ;; --------- double encoding -----------
-(define-public (prelude arity)
-  (double-encode #b0000 arity))
+(define-public (prelude mode-name)
+  (double-encode #b0000 (name->mode mode-name)))
 
-;; call-proc == prelude + jump
-(define-public (jump label)
+(define* (call-proc label #:optional (count? #t))
   (let ((offset (label-ref label)))
-    (double-encode #b0001 offset)))
+    (cond
+     (offset (double-encode #b0001 offset count?))
+     (else
+      (label-counter 2)
+      `#((call-proc ,label #f))))))
+
+(define* (fjump label #:optional (count? #t))
+  (let ((offset (label-ref label)))
+    (cond
+     (offset (double-encode #b0010 offset count?))
+     (else
+      (label-counter 2)
+      `#((fjump ,label #f))))))
 
 ;; --------- triple encoding -----------
 (define-public (vec-ref offset i)

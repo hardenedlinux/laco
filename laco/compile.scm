@@ -103,12 +103,12 @@ Options:
      fold-constant
      (constant-propagation 2)
      useless-cont
-     fold-branch
      function-inline
      dead-variable-elimination
      eta-cont
      eta-function
      delta-reduction
+     fold-branch
      tail-call-optimizing
      closure-conversion
      lambda-lifting

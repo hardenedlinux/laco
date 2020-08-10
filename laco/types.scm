@@ -82,10 +82,10 @@
 
 (define *laco/unspecified* (make-constant 'unspecified 'unspecified))
 (define *laco/chars* (list->vector
-                      (map (lambda (i) (make-constant 'char (integer->char i)))
+                      (map (lambda (i) (make-constant (integer->char i) 'char))
                            (iota 128))))
-(define *laco/true* (make-constant 'boolean #t))
-(define *laco/false* (make-constant 'boolean #f))
+(define *laco/true* (make-constant #t 'boolean))
+(define *laco/false* (make-constant #f 'boolean))
 
 (define *global-constant-type*
   `((unspecified . ,(lambda (_) *laco/unspecified*))

@@ -17,6 +17,7 @@
   #:use-module (laco utils)
   #:use-module (laco ast)
   #:use-module (laco types)
+  #:use-module (laco primitives)
   #:use-module ((rnrs) #:select (define-record-type))
   #:export (env
             env?
@@ -91,9 +92,11 @@
   (slot-index (ref env) (lambda (x) (id-eq? x id))))
 
 (define (bindings-index env k)
+  ;;(pk "bindings" (map (lambda (x) ((if (id? x) id-name primitive-name) x)) (car (env-frees env))) (id-name k))
   (id-index env env-bindings k))
 
 (define (frees-index env k)
+  (pk "frees" (map (lambda (x) ((if (id? x) id-name primitive-name) x)) (car (env-frees env))) (id-name k))
   (id-index env env-frees k))
 
 (define (binding-exists? env id)
@@ -120,10 +123,10 @@
 
 (define *closure-lookup-table* (make-hash-table))
 (define (closure-set! label bindings)
-  (hash-set! *closure-lookup-table* (pk "set label" label) bindings))
+  (hash-set! *closure-lookup-table* label bindings))
 (define (closure-ref label)
   ;; FIXME: Shouldn't create new env
-  (hash-ref *closure-lookup-table* (pk "ref label" label) (new-env '())))
+  (hash-ref *closure-lookup-table* label (new-env '())))
 
 ;; NOTE: We record all recursive functions in this table, rather than tag it in attr
 ;;       of each CPS node, since the CPS node may be eliminated

@@ -57,7 +57,13 @@
             new-counter
             file-basename
             gen-outfile
-            flatten))
+            flatten
+            drop-hash
+            *tail-call*
+            *tail-rec*
+            *normal-call*
+            mode->name
+            name->mode))
 
 (define (newsym sym) (gensym (symbol->string sym)))
 
@@ -204,3 +210,26 @@
     (if (> (length lst) 1)
         (fold-right (lambda (x p) (append (flatten x) p)) '() lst)
         (extract lst))))
+
+(define (drop-hash label)
+  (if (char=? #\# (string-ref label 0))
+      (substring/shared label 1)
+      label))
+
+(define *tail-call* 0)
+(define *tail-rec* 1)
+(define *normal-call* 2)
+
+(define (mode->name mode)
+  (match mode
+    (0 'tail-call)
+    (1 'tail-rec)
+    (2 'normal)
+    (else (throw 'laco-error mode->name "Invalid mode `~a'!" mode))))
+
+(define (name->mode name)
+  (match name
+    ('tail-call 0)
+    ('tail-rec 1)
+    ('normal 2)
+    (else (throw 'laco-error name->mode "Invalid mode-name `~a'!" name))))

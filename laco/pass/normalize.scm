@@ -90,6 +90,11 @@
      (bind-special-form/k-body-set!
       expr (cfs (bind-special-form/k-body expr) args el))
      expr)
+    (($ branch/k _ cnd b1 b2)
+     (branch/k-cnd-set! expr (cfs cnd args el))
+     (branch/k-tbranch-set! expr (cfs b1 args el))
+     (branch/k-fbranch-set! expr (cfs b2 args el))
+     expr)
     (($ primitive?)
      (substitute expr))
     (($ id _ name _)

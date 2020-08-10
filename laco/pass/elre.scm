@@ -73,8 +73,16 @@
          (let ((ne (map elre (eliminate-non-tail-return (reverse! exprs)))))
            (seq/k-exprs-set! expr ne)
            expr)))))
+    #;
+    (($ app/k ($ cps _ kont _ _) k ((? branch/k? b)))
+    ;; case-4: (k branch/k) -> branch/k
+    (=> failed!)
+    (cond
+    ((kont-eq? kont k)
+    (elre b))
+    (else (failed!))))
     (($ app/k ($ cps _ kont name _) ($ lambda/k _ args1 body) args2)
-     ;; case-4: ((lambda params body) args) -> body[params/args]
+     ;; case-5: ((lambda params body) args) -> body[params/args]
      (when (not (= (length args1) (length args2)))
        (throw 'laco-error elre "Arguments list isn't equal in lambda apply"))
      ;; NOTE:
@@ -110,22 +118,6 @@
      (branch/k-tbranch-set! expr (elre b1))
      (branch/k-fbranch-set! expr (elre b2))
      expr)
-    (($ fvar ($ id _ name orig) label _)
-     (let* ((kname-id (current-kont))
-            (kname (cps->name kname-id))
-            (kname-str (symbol->string kname)))
-       (cond
-        ((string=? label kname-str)
-         expr)
-        ((closure-ref kname)
-         => (lambda (env)
-              (let ((index (bindings-index env kname-id)))
-                (if index
-                    (make-lvar (list name orig) index)
-                    (throw 'laco-error elre
-                           "BUG: local var `~a' is missing in `~a'!" name kname)))))
-        (else
-         (throw 'laco-error elre "BUG: env is missing in `~a'!" kname)))))
     (else expr)))
 
 (define-pass eliminate-redundant expr (elre expr))

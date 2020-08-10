@@ -22,7 +22,6 @@
   #:use-module (srfi srfi-1)
   #:use-module (ice-9 match))
 
-;; FIXME: We don't have to compute free-vars redundantly
 (define (is-referenced? expr v)
   (let ((free (free-vars expr)))
     (match v
@@ -52,7 +51,8 @@
        expr)
       (else (dve (bind-special-form/k-body sf)))))
     (($ seq/k ($ cps _ kont name attr) exprs)
-     (seq/k-exprs-set! expr (map dve exprs)))
+     (seq/k-exprs-set! expr (map dve exprs))
+     expr)
     (($ app/k _ ($ lambda/k _ v body) e)
      ;; TODO: Here we just keep the variable which is referenced in the body,
      ;;       however, it is possible to further optimize the body so that the
@@ -78,7 +78,8 @@
     (($ branch/k _ cnd b1 b2)
      (branch/k-cnd-set! expr (dve cnd))
      (branch/k-tbranch-set! expr (dve b1))
-     (branch/k-fbranch-set! expr (dve b2)))
+     (branch/k-fbranch-set! expr (dve b2))
+     expr)
     (($ seq/k _ exprs)
      (seq/k-exprs-set! expr (map dve exprs))
      expr)

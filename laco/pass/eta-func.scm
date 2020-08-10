@@ -60,7 +60,8 @@
     (($ branch/k _ cnd b1 b2)
      (branch/k-cnd-set! expr (ef cnd))
      (branch/k-tbranch-set! expr (ef b1))
-     (branch/k-fbranch-set! expr (ef b2)))
+     (branch/k-fbranch-set! expr (ef b2))
+     expr)
     (else expr)))
 
 (define-pass eta-function expr (ef expr))

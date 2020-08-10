@@ -20,6 +20,7 @@
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
   #:use-module ((rnrs) #:select (make-bytevector
+                                 bytevector?
                                  bytevector-u32-set!
                                  bytevector-length
                                  put-bytevector
@@ -71,6 +72,15 @@
   (for-each (lambda (b) (put-bytevector port b)) c))
 
 (define (assembler out sasm)
+  (define (fix-location pl)
+    (flatten
+     (map
+      (lambda (x)
+        (match x
+          ((? bytevector?) x)
+          (#(e) (program->bytecode e))
+          (else (throw 'laco-error fix-location "Invalid pattern `~a'!" x))))
+      pl)))
   (apply
    gen-lef
    out
@@ -80,5 +90,5 @@
       (let* ((p (program->bytecode p-expr))
              (m (memory->bytecode m-expr))
              (c (clean->bytecode c-expr)))
-        (list m p c)))
+        (list m (fix-location p) c)))
      (else (throw 'laco-error assembler "Invalid assembler code!" sasm)))))

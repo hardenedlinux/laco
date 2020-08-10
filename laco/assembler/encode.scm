@@ -50,7 +50,7 @@
     (label-counter 1)
     bv))
 
-(define (double-encode type data)
+(define* (double-encode type data #:optional (count? #t))
   (when (or (< type 0) (> type #b1111))
     (throw 'laco-error double-encode
            "Invalid type, should be #b10100000 ~ #b10101111!"
@@ -60,7 +60,7 @@
   (let ((bv (make-bytevector 2 0)))
     (bytevector-u8-set! bv 0 (logior #b10100000 type))
     (bytevector-u8-set! bv 1 data)
-    (label-counter 2)
+    (when count? (label-counter 2))
     bv))
 
 (define (triple-encode type data1 data2)
@@ -161,7 +161,7 @@
     (list bv sbv #u8(0))))
 
 (define (boolean-encode value)
-  (when (or (< value 1) (> value 15))
+  (when (or (< value 0) (> value 15))
     (throw 'laco-error boolean-encode "Invalid boolean value `~a'!" value))
   (let ((bv (make-bytevector 1 0)))
     (bytevector-u8-set! bv 0 (logior (ash #b1110 4) value))

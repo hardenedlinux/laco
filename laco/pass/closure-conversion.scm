@@ -47,7 +47,7 @@
        (extend-env! (current-env) env)
        (closure-set! (id-name name) env)
        (parameterize ((current-env env)
-                      (current-kont expr))
+                      (current-kont kont))
          (make-lambda/k (list kont name attr) args (cc body))))
      ;; TODO:
      ;; 1. recording the current bindings by the label to lookup table
@@ -89,9 +89,10 @@
      (let ((env (if (toplevel? (current-env))
                     (new-env '() (free-vars expr))
                     (current-env))))
-       (extend-env! (current-env) env)
+       (when (toplevel? (current-env))
+         (extend-env! (current-env) env)
+         (closure-set! (id-name name) env))
        (env-local-push! env jname)
-       (closure-set! (id-name name) env)
        (parameterize ((current-env env))
          (cc (cfs body
                   (list jname)

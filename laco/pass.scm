@@ -54,11 +54,11 @@
                            (pass last)))
                      (else (fail!))))
                    (else (throw 'laco-error 'run-pass "Invalid pass: `~a'!" 'item)))))
-            ;; (pk "item"(object->string item))
-            ;; (pretty-print
-            ;;  (match e
-            ;;    ((? cps?) (cps->expr e))
-            ;;    ((? insr?) (lir->expr e))
-            ;;    (else (error "BUG: invalid type" e))))
+            (pk "item"(object->string item))
+            (pretty-print
+             (match e
+               ((? cps?) (cps->expr e))
+               ((? insr?) (lir->expr e))
+               (else (error "BUG: invalid type" e))))
             e))
         expr (list 'lst ...)))

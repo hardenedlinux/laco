@@ -33,8 +33,11 @@
       lexpr
       (map (lambda (e) (rename-label! e old-label new-label)) exprs))
      lexpr)
-    (($ insr-jump _ _ (? hit?))
-     (insr-jump-label-set! lexpr new-label)
+    (($ insr-proc-call _ _ (? hit?))
+     (insr-proc-call-label-set! lexpr new-label)
+     lexpr)
+    (($ insr-fjump _ (? hit?))
+     (insr-fjump-label-set! lexpr new-label)
      lexpr)
     (($ insr-free _ (? hit?) _ _)
      (insr-free-label-set! lexpr new-label)

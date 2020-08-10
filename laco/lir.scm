@@ -54,16 +54,16 @@
             insr-prelude insr-prelude?
             make-insr-prelude
             insr-prelude-proc
-            insr-prelude-arity
+            insr-prelude-mode
 
             insr-fjump insr-fjump?
             make-insr-fjump
             insr-fjump-label insr-fjump-label-set!
 
-            insr-jump insr-jump?
-            make-insr-jump
-            insr-jump-proc insr-jump-proc-set!
-            insr-jump-label insr-jump-label-set!
+            insr-proc-call insr-proc-call?
+            make-insr-proc-call
+            insr-proc-call-proc insr-proc-call-proc-set!
+            insr-proc-call-label insr-proc-call-label-set!
 
             insr-closure insr-closure?
             make-insr-closure
@@ -89,6 +89,7 @@
             insr-global-name
 
             *proc-return*
+
             label-ref
             cps->lir
             cps->lir/g
@@ -175,8 +176,8 @@
   (fields
    (label string?)))
 
-;; jump without condition
-(define-typed-record insr-jump (parent insr)
+;; call proc
+(define-typed-record insr-proc-call (parent insr)
   (fields
    (proc string? not)
    (label string?)))
@@ -186,11 +187,13 @@
   (fields
    (op primitive?)))
 
-;; prelude will prepare the arity
+;; TODO:
+;; 1. low 2bits should be mode
+;; 2. high 6bits should be arity
 (define-typed-record insr-prelude (parent insr)
   (fields
    (proc string?)
-   (arity integer?)))
+   (mode integer?)))
 
 ;; closure
 (define-typed-record insr-closure (parent insr)
@@ -212,7 +215,7 @@
 ;; We reuse prim:return for proc-return instruction, so the arity is 0.
 (define *proc-return* (make-insr-pcall '() prim:return))
 
-(define* (cps->lir expr #:optional (mode 'push))
+(define* (cps->lir expr #:key (cur-def #f) (mode 'push))
   (match expr
     (($ lambda/k ($ cps _ kont name attr) args body)
      (let ((env (closure-ref (id-name name)))
@@ -220,7 +223,7 @@
        (when (not env)
          (throw 'laco-error cps->lir
                 "lambda/k: the closure label `~a' doesn't have an env!" label))
-       (make-insr-proc '() (current-def) label env (length args)
+       (make-insr-proc '() cur-def label env (length args)
                        (list (cps->lir body) *proc-return*))))
     #;
     (($ closure/k ($ cps _ kont name attr) env body) ;
@@ -235,8 +238,8 @@
         #f
         label
         (list
-         (make-insr-push '() ce)
-         (make-insr-fjump '() (cps-name bf))
+         ce
+         (make-insr-fjump '() (cps->name-string b2))
          bt
          bf))))
     #;
@@ -285,7 +288,7 @@
     (($ app/k ($ cps _ kont name attr) func args)
      ;; NOTE: After normalize, the func never be anonymous function, it must be
      ;;       an id.
-     (let ((f (cps->lir func 'call))
+     (let ((f (cps->lir func #:mode 'call))
            (e (map cps->lir args))
            (env (closure-ref (id-name name)))
            (label (id->string name))
@@ -297,24 +300,24 @@
            (make-insr-label '() #f label `(,@e ,f))
            (cond
             ((is-proper-tail-recursion? expr)
-             (make-insr-label '() #f label `(,(prelude 1) ,@e ,f)))
+             (make-insr-label '() #f label `(,(prelude *tail-rec*) ,@e ,f)))
             ((is-tail-call? expr)
-             (make-insr-label '() #f label `(,(prelude 0) ,@e ,f)))
+             (make-insr-label '() #f label `(,(prelude *tail-call*) ,@e ,f)))
             (else
-             (make-insr-label '() #f label `(,(prelude 2) ,@e ,f)))))))
+             (make-insr-label '() #f label `(,(prelude *normal-call*) ,@e ,f)))))))
     (($ constant/k _ value)
      (create-constant-object value))
     (($ lvar _ offset)
      (make-insr-local '() mode offset))
     (($ fvar _ label offset)
-     (make-insr-free '() (id->string label) mode offset))
+     (make-insr-free '() label mode offset))
     (($ gvar ($ id _ name _))
      (let ((id-str (symbol->string name)))
        (match (top-level-ref name)
          (($ insr-proc _ proc label _ arity)
           (case mode
             ((push) (make-proc-object '() id-str arity label))
-            ((call) (make-insr-jump '() proc label))
+            ((call) (make-insr-proc-call '() proc label))
             (else
              (throw 'laco-error cps->lir "gvar: proc has invalid mode `~a'!"
                     mode))))
@@ -325,7 +328,7 @@
                    name (cps->expr (top-level-ref name))))
           (case mode
             ((push) (make-proc-object '() id-str (length args) (id->string label)))
-            ((call) (make-insr-jump '() id-str (id->string label)))
+            ((call) (make-insr-proc-call '() id-str (id->string label)))
             (else
              (throw 'laco-error cps->lir "gvar: proc has invalid mode `~a'!"
                     mode))))
@@ -342,9 +345,8 @@
   (parameterize ((current-kont 'global))
     (top-level-for-each
      (lambda (v e)
-       (parameterize ((current-def (symbol->string v)))
-         (top-level-set! v (cps->lir e))))))
-  (make-insr-proc '() "____principio" "#principio"
+       (top-level-set! v (cps->lir e #:cur-def (symbol->string v))))))
+  (make-insr-proc '() "____principio" "#____principio"
                   (current-env) 0 (list (cps->lir expr))))
 
 (define (lir->expr lexpr)
@@ -358,14 +360,17 @@
      `(prim-call ,(primitive-name p) ,(primitive->number p)))
     (($ insr-prelude _ proc arity)
      `(prelude proc ,arity))
-    (($ insr-jump _ proc label)
-     `(jump ,proc ,label))
+    (($ insr-proc-call _ proc label)
+     `(call-proc ,proc ,label))
+    (($ insr-fjump _ label)
+     `(fjump ,label))
     (($ insr-local _ mode offset)
      `(local ,mode ,offset))
     (($ insr-free _ label mode offset)
      `(free-var ,label ,mode ,offset))
     (($ integer-object _ value) `(integer ,value))
     (($ string-object _ value) `(string ,value))
+    (($ boolean-object _ value) `(boolean ,(if value 'true 'false)))
     (($ prim-object _ p) `(primitive ,(primitive-name p)))
     (else (throw 'laco-error lir->expr "Invalid lir `~a'!" lexpr))))
 
