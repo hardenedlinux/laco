@@ -87,7 +87,13 @@
 ;; Of course, we can record the primitive number when defining the primitive with
 ;; a macro. However, an explicit lookup table is useful for debug.
 (define *prim-table*
-  '(return halt + - * / display))
+  '(return
+    halt
+    + - * /
+    display
+    modulo remainder
+    = < > <= >=
+    not and or))
 
 (define (print-primitives)
   (display "--------PRIMITIVES--------\n")
@@ -129,3 +135,33 @@
 
 (define-primitive (display x)
   (throw 'laco-error 'prim:display "BUG: shouldn't be called in compile time!"))
+
+(define-primitive (modulo args ...)
+  (gen-constant (modulo args ...)))
+
+(define-primitive (remainder args ...)
+  (gen-constant (remainder args ...)))
+
+(define-primitive (= args ...)
+  (gen-constant (= args ...)))
+
+(define-primitive (< args ...)
+  (gen-constant (< args ...)))
+
+(define-primitive (> args ...)
+  (gen-constant (> args ...)))
+
+(define-primitive (<= args ...)
+  (gen-constant (<= args ...)))
+
+(define-primitive (>= args ...)
+  (gen-constant (< args ...)))
+
+(define-primitive (not arg)
+  (gen-constant (not arg)))
+
+(define-primitive (and args ...)
+  (gen-constant (and args ...)))
+
+(define-primitive (or args ...)
+  (gen-constant (or args ...)))

@@ -40,10 +40,19 @@
 ;;    We may do specific optimizings for tail call in the future.
 ;; 6. Different from the passes, we use CPS constructor here for taking advantage of
 ;;    type checking in record type.
+
+(define (fix-fv fl)
+  (fold (lambda (x p)
+          (pk "x" (id-name x))
+          (if (pk "top"(top-level-ref (id-name x)))
+              p
+              (cons x p)))
+        '() fl))
+
 (define* (cc expr #:optional (mode 'normal))
   (match expr
     (($ lambda/k ($ cps _ kont name attr) args body)
-     (let ((env (new-env args (free-vars expr))))
+     (let ((env (new-env args (fix-fv (free-vars expr)))))
        (extend-env! (current-env) env)
        (closure-set! (id-name name) env)
        (parameterize ((current-env env)

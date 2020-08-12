@@ -253,14 +253,14 @@
     ((? id? id) (list id))
     ((? primitive? p) (if filter-prim? '() (list p)))
     #;
-    ((? assign? expr) ; all-subx-fv + assigned-var ;
-    ;; NOTE: it's reasonable to union assigned var, since there could be ;
-    ;;       self assigment, say, n=n+1. For such situation, the fv is ;
-    ;;       U{n,n} = n.                ;
-    (union (proc (ast-subx ast))       ;
+    ((? assign? expr) ; all-subx-fv + assigned-var ; ;
+    ;; NOTE: it's reasonable to union assigned var, since there could be ; ;
+    ;;       self assigment, say, n=n+1. For such situation, the fv is ; ;
+    ;;       U{n,n} = n.                ; ;
+    (union (proc (ast-subx ast))       ; ;
     (proc (assign-var ast))))
     #;
-    (($ define/k _ f body)            ; ;
+    (($ define/k _ f body)            ; ; ;
     (op (rec body) (list f)))
     (($ lambda/k _ args body)
      (op (rec body) args))
