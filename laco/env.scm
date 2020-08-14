@@ -21,7 +21,7 @@
   #:use-module ((rnrs) #:select (define-record-type))
   #:export (env
             env?
-            env-bindings env-prev
+            env-bindings env-prev env-frees
 
             toplevel?
             top-level-ref

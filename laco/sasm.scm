@@ -159,9 +159,9 @@
    ((is-char-node? x) (emit-char (constant-val x)))
    (else (throw 'laco-error emit-const-imm "Invalid immediate `~a`!" x))))
 
-(define-public (emit-prelude proc mode)
-  (sasm-emit `((prelude ,(mode->name mode))
-               . ,(format #f "Prelude for ~a" (drop-hash proc)))))
+(define-public (emit-prelude proc mode arity)
+  (sasm-emit `((prelude ,(mode->name mode) ,arity)
+               . ,(format #f "Prelude for `~a'" (drop-hash proc)))))
 
 (define-public (emit-proc-return)
   (sasm-emit `((ret) . "")))

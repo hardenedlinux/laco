@@ -193,7 +193,8 @@
 (define-typed-record insr-prelude (parent insr)
   (fields
    (proc string?)
-   (mode integer?)))
+   (mode integer?)
+   (arity integer?)))
 
 ;; closure
 (define-typed-record insr-closure (parent insr)
@@ -288,11 +289,14 @@
     (($ app/k ($ cps _ kont name attr) func args)
      ;; NOTE: After normalize, the func never be anonymous function, it must be
      ;;       an id.
-     (let ((f (cps->lir func #:mode 'call))
-           (e (map cps->lir args))
-           (env (closure-ref (id-name name)))
-           (label (id->string name))
-           (prelude (lambda (m) (make-insr-prelude '() (id->string func) m))))
+     (let* ((f (cps->lir func #:mode 'call))
+            (e (map cps->lir args))
+            (env (closure-ref (id-name name)))
+            (label (id->string name))
+            (arity (length args))
+            (prelude (lambda (mode)
+                       (make-insr-prelude '() (id->string func)
+                                          mode arity))))
        (when (not env)
          (throw 'laco-error cps->lir
                 "app/k: the closure label `~a' doesn't have an env!" label))
@@ -314,7 +318,7 @@
     (($ gvar ($ id _ name _))
      (let ((id-str (symbol->string name)))
        (match (top-level-ref name)
-         (($ insr-proc _ proc label _ arity)
+         (($ insr-proc _ proc label _ arity _)
           (case mode
             ((push) (make-proc-object '() id-str arity label))
             ((call) (make-insr-proc-call '() proc label))

@@ -269,7 +269,7 @@
     (($ seq/k _ exprs)
      (apply acc (map rec exprs)))
     (($ app/k _ f args)
-     (apply acc (map rec `(,f ,@args))))
+     (apply acc (map rec (reverse `(,f ,@args)))))
     ((? bind-special-form/k?)
      (let ((var (bind-special-form/k-var expr))
            (value (bind-special-form/k-value expr))
@@ -288,6 +288,7 @@
    (else
     (let ((fv (vars-fold free-vars union diff expr #:filter-prim? #t))
           (attr (cps-attr expr)))
+      (pk "fvars" (map id-name fv))
       (set! attr (cons (cons 'free-vars fv) attr))
       fv))))
 

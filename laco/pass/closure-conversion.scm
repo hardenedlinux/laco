@@ -23,7 +23,7 @@
   #:use-module (laco pass normalize)
   #:use-module (laco pass)
   #:use-module (ice-9 match)
-  #:use-module ((srfi srfi-1) #:select (fold))
+  #:use-module ((srfi srfi-1) #:select (fold-right))
   #:use-module ((rnrs) #:select (define-record-type)))
 
 ;; NOTE:
@@ -41,18 +41,20 @@
 ;; 6. Different from the passes, we use CPS constructor here for taking advantage of
 ;;    type checking in record type.
 
+
+;; NOTE: Filter global var
 (define (fix-fv fl)
-  (fold (lambda (x p)
-          (pk "x" (id-name x))
-          (if (pk "top"(top-level-ref (id-name x)))
-              p
-              (cons x p)))
-        '() fl))
+  (fold-right (lambda (x p)
+                (if (top-level-ref (id-name x))
+                    p
+                    (cons x p)))
+              '() fl))
 
 (define* (cc expr #:optional (mode 'normal))
   (match expr
     (($ lambda/k ($ cps _ kont name attr) args body)
      (let ((env (new-env args (fix-fv (free-vars expr)))))
+       (pk "fix-fv" (map id-name (queue-slots (env-frees env))))
        (extend-env! (current-env) env)
        (closure-set! (id-name name) env)
        (parameterize ((current-env env)

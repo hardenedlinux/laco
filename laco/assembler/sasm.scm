@@ -93,8 +93,9 @@
      (else (throw 'laco-error call-free "Invalid offset `~a'!" i)))))
 
 ;; --------- double encoding -----------
-(define-public (prelude mode-name)
-  (double-encode #b0000 (name->mode mode-name)))
+(define-public (prelude mode-name arity)
+  (let ((b (logior (ash arity 2) (name->mode mode-name))))
+    (double-encode #b0000 b)))
 
 (define* (call-proc label #:optional (count? #t))
   (let ((offset (label-ref label)))

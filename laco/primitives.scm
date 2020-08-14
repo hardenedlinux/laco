@@ -155,7 +155,7 @@
   (gen-constant (<= args ...)))
 
 (define-primitive (>= args ...)
-  (gen-constant (< args ...)))
+  (gen-constant (>= args ...)))
 
 (define-primitive (not arg)
   (gen-constant (not arg)))

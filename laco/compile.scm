@@ -128,8 +128,7 @@ Options:
      lexpr
      reduce-labels
      reduce-ret
-     ;;free-vars-lifting
-     ))
+     free-vars-lifting))
   (init-lir-optimizations)
   (parameterize ((current-kont 'global))
     (top-level-for-each
