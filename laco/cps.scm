@@ -288,7 +288,6 @@
    (else
     (let ((fv (vars-fold free-vars union diff expr #:filter-prim? #t))
           (attr (cps-attr expr)))
-      (pk "fvars" (map id-name fv))
       (set! attr (cons (cons 'free-vars fv) attr))
       fv))))
 
@@ -520,7 +519,7 @@
       ((? id? id) (new-app/k cont id #:kont cont))
       ((? primitive? p) (new-app/k cont p #:kont cont))
       ((? constant? c)
-       (let ((x (new-id "#x-"))
+       (let ((x (new-id "#const-"))
              (cst (new-constant/k c)))
          (new-letval/k x cst (new-app/k cont x #:kont cont) #:kont cont)))
       ;; TODO: Add more:

@@ -99,6 +99,7 @@ Options:
     (run-pass
      cexpr
      normalize
+     useless-constant
      dead-function-elimination
      fold-constant
      (constant-propagation 2)

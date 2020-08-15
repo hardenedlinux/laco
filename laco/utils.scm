@@ -63,7 +63,9 @@
             *tail-rec*
             *normal-call*
             mode->name
-            name->mode))
+            name->mode
+            const-useless-position
+            tail-position))
 
 (define (newsym sym) (gensym (symbol->string sym)))
 
@@ -233,3 +235,9 @@
     ('tail-rec 1)
     ('normal 2)
     (else (throw 'laco-error name->mode "Invalid mode-name `~a'!" name))))
+
+(define (const-useless-position exprs)
+  (list-head exprs (1- (length exprs))))
+
+(define (tail-position exprs)
+  (list-tail exprs (1- (length exprs))))

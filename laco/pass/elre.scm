@@ -21,7 +21,6 @@
   #:use-module (laco pass)
   #:use-module (laco pass normalize)
   #:use-module (laco pass closure-conversion)
-  #:use-module (laco primitives)
   #:use-module (srfi srfi-1)
   #:use-module (ice-9 match))
 

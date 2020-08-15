@@ -96,7 +96,7 @@
   (id-index env env-bindings k))
 
 (define (frees-index env k)
-  (pk "frees" (map (lambda (x) ((if (id? x) id-name primitive-name) x)) (car (env-frees env))) (id-name k))
+  (map (lambda (x) ((if (id? x) id-name primitive-name) x)) (car (env-frees env))) (id-name k)
   (id-index env env-frees k))
 
 (define (binding-exists? env id)
