@@ -30,6 +30,9 @@
 (define-syntax-rule (label-ref name)
   (hash-ref *label-table* name))
 
+(define (vm-stack-pop)
+  (primitive-encode/basic 1))
+
 (define (main-entry)
   (let ((bv (make-bytevector 4 0))
         (main (label-ref '____principio)))
@@ -51,13 +54,19 @@
     (single-encode 1 i))
    (else (throw 'laco-error local "Invalid offset `~a'!" i))))
 
-(define-public (call-local i)
+(define-public (call-local i keep?)
+  (define (gen)
+    (cond
+     ((and (>= i 0) (< i 16))
+      (single-encode #b0100 i))
+     ((> i 15)
+      (single-encode #b0101 i))
+     (else (throw 'laco-error call-local "Invalid offset `~a'!" i))))
   (cond
-   ((and (>= i 0) (< i 16))
-    (single-encode #b0100 i))
-   ((> i 15)
-    (single-encode #b0101 i))
-   (else (throw 'laco-error call-local "Invalid offset `~a'!" i))))
+   (keep? (gen))
+   (else
+    (list (gen)
+          (vm-stack-pop)))))
 
 ;; --------- special double encoding ----------
 (define-public (free label i)
@@ -76,34 +85,46 @@
        frame))
      (else (throw 'laco-error free "Invalid offset `~a'!" i)))))
 
-(define-public (call-free label i)
-  (let ((frame (make-bytevector 1 0))
-        (f (label-ref label)))
-    (bytevector-u8-set! frame 0 f)
-    (label-counter 1)
-    (cond
-     ((and (>= i 0) (< 16))
-      (list
-       (single-encode #b0110 i)
-       frame))
-     ((> i 15)
-      (list
-       (single-encode #b0111 i)
-       frame))
-     (else (throw 'laco-error call-free "Invalid offset `~a'!" i)))))
+(define-public (call-free label i keep?)
+  (define (gen)
+    (let ((frame (make-bytevector 1 0))
+          (f (label-ref label)))
+      (bytevector-u8-set! frame 0 f)
+      (label-counter 1)
+      (cond
+       ((and (>= i 0) (< 16))
+        (list
+         (single-encode #b0110 i)
+         frame))
+       ((> i 15)
+        (list
+         (single-encode #b0111 i)
+         frame))
+       (else (throw 'laco-error call-free "Invalid offset `~a'!" i)))))
+  (cond
+   (keep? (gen))
+   (else
+    (list (gen)
+          (vm-stack-pop)))))
 
 ;; --------- double encoding -----------
 (define-public (prelude mode-name arity)
   (let ((b (logior (ash arity 2) (name->mode mode-name))))
     (double-encode #b0000 b)))
 
-(define* (call-proc label #:optional (count? #t))
-  (let ((offset (label-ref label)))
-    (cond
-     (offset (double-encode #b0001 offset count?))
-     (else
-      (label-counter 2)
-      `#((call-proc ,label #f))))))
+(define* (call-proc label keep? #:optional (count? #t))
+  (define (gen)
+    (let ((offset (label-ref label)))
+      (cond
+       (offset (double-encode #b0001 offset count?))
+       (else
+        (label-counter 2)
+        `#((call-proc ,label ,keep? #f))))))
+  (cond
+   (keep? (gen))
+   (else
+    (list (gen)
+          (vm-stack-pop)))))
 
 (define* (fjump label #:optional (count? #t))
   (let ((offset (label-ref label)))
@@ -123,8 +144,13 @@
 
 ;; --------- special encode -----------
 ;; TODO: detect if it's primitive/extend
-(define-public (prim-call pn)
-  (primitive-encode/basic pn))
+(define-public (prim-call pn keep?)
+  (cond
+   (keep?
+    (primitive-encode/basic pn))
+   (else
+    (list (primitive-encode/basic pn)
+          (vm-stack-pop)))))
 
 (define-public (primitive/extend pn)
   (primitive-encode/extend pn))

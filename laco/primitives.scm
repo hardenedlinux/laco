@@ -88,7 +88,7 @@
 ;; a macro. However, an explicit lookup table is useful for debug.
 (define *prim-table*
   '(return
-    halt
+    pop
     + - * /
     display
     modulo remainder
@@ -115,8 +115,8 @@
   (not (memq (primitive-name p) *inapplicable-primitive* )))
 
 ;; halt can associate with primitive `halt', its activity is TOS.
-(define-primitive (halt x)
-  (throw 'laco-error 'prim:halt "BUG: shouldn't be called in compile time!"))
+(define-primitive (pop args ...)
+  (throw 'laco-error 'prim:pop "BUG: shouldn't be called in compile time!"))
 
 (define-primitive (+ args ...)
   (gen-constant (+ args ...)))
