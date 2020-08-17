@@ -54,7 +54,6 @@
   (match expr
     (($ lambda/k ($ cps _ kont name attr) args body)
      (let ((env (new-env args (fix-fv (free-vars expr)))))
-       (pk "fix-fv" (map id-name (queue-slots (env-frees env))))
        (extend-env! (current-env) env)
        (closure-set! (id-name name) env)
        (parameterize ((current-env env)

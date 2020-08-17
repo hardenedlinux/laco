@@ -86,12 +86,12 @@
        ((('free label offset) . descp)
         (format port "~a(free ~a ~a) ; ~a~%" (indent-spaces) (drop-hash label)
                 offset descp))
-       ((('call-free label offset) . descp)
-        (format port "~a(call-free ~a ~a) ; ~a~%" (indent-spaces) (drop-hash label)
-                offset descp))
+       ((('call-free label offset keep?) . descp)
+        (format port "~a(call-free ~a ~a ~a) ; ~a~%"
+                (indent-spaces) (drop-hash label) offset keep? descp))
        ((('call-proc label keep?) . descp)
         (format port "~a(call-proc ~a ~a) ; ~a~%"
-                (indent-spaces) (drop-hash label) keep?  descp))
+                (indent-spaces) (drop-hash label) keep? descp))
        ((('fjump label) . descp)
         (format port "~a(fjump ~a) ; ~a~%" (indent-spaces) (drop-hash label) descp))
        ((insr . descp)
@@ -212,9 +212,11 @@
   (sasm-emit 'clean-end))
 
 (define-public (sasm-label-begin proc label)
+  (label-in! label)
   (sasm-emit `(label-begin ,proc ,label)))
 
 (define-public (sasm-label-end proc label)
+  (label-out!)
   (sasm-emit `(label-end ,proc ,label)))
 
 (define-public (sasm-closure-prelude argc)

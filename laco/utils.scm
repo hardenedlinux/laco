@@ -65,7 +65,10 @@
             mode->name
             name->mode
             const-useless-position
-            tail-position))
+            tail-position
+            label-in!
+            label-out!
+            label-back-index))
 
 (define (newsym sym) (gensym (symbol->string sym)))
 
@@ -241,3 +244,14 @@
 
 (define (tail-position exprs)
   (list-tail exprs (1- (length exprs))))
+
+(define *label-queue* (new-queue))
+(define (label-in! label)
+  (queue-in! *label-queue* label))
+(define (label-out!)
+  (queue-out! *label-queue*))
+(define (label-back-index label)
+  (let ((ll (queue-slots *label-queue*)))
+    (if (null? ll)
+        0
+        (list-index ll label))))

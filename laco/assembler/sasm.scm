@@ -71,7 +71,7 @@
 ;; --------- special double encoding ----------
 (define-public (free label i)
   (let ((frame (make-bytevector 1 0))
-        (f (label-ref label)))
+        (f (label-back-index label)))
     (bytevector-u8-set! frame 0 f)
     (label-counter 1)
     (cond
@@ -88,7 +88,7 @@
 (define-public (call-free label i keep?)
   (define (gen)
     (let ((frame (make-bytevector 1 0))
-          (f (label-ref label)))
+          (f (label-back-index label)))
       (bytevector-u8-set! frame 0 f)
       (label-counter 1)
       (cond
