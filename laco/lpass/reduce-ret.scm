@@ -58,6 +58,9 @@
     (($ insr-proc _ _ label _ _ body)
      (insr-proc-body-set! lexpr (rr body))
      lexpr)
+    (($ insr-closure _ _ _ _ body _)
+     (insr-closure-body-set! lexpr (rr body))
+     lexpr)
     (else lexpr)))
 
 (define-pass reduce-ret lexpr (rr lexpr))

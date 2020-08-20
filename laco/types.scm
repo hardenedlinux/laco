@@ -181,6 +181,7 @@
 (define-typed-record lvar (parent id)
   (fields
    (offset positive? zero?)))
+;; id -> integer -> lvar
 (define (new-lvar id offset)
   (make-lvar (list (id-name id) (id-orig id)) offset))
 
@@ -189,9 +190,11 @@
   (fields
    (label string?)
    (offset positive? zero?)))
+;; id -> string -> integer -> fvar
 (define (new-fvar id label offset)
   (make-fvar (list (id-name id) (id-orig id)) label offset))
 
 (define-typed-record gvar (parent id))
+;; id -> gvar
 (define (new-gvar id)
   (make-gvar (id-name id) (id-orig id)))

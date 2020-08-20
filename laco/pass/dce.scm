@@ -35,10 +35,10 @@
       (else (throw 'laco-error is-referenced? "BUG: Invalid pattern `~a'!" v)))))
 
 ;; keep same order of new if the element appears in the old
-(define (keep-ordering old new)
-  (let ((nl (map id-name new)))
+(define (keep-referenced old referenced)
+  (let ((rl (map id-name referenced)))
     (fold-right (lambda (x p)
-                  (if (memq (id-name x) nl) (cons x p) p))
+                  (if (memq (id-name x) rl) (cons x p) p))
                 '() old)))
 
 (define (dve expr)
@@ -67,14 +67,11 @@
        ;; There could be side-effects, so the args should never be dropped.
        (seq/k-exprs-set! expr `(,@e ,@(seq/k-exprs body)))
        (dve expr))))
-    (($ lambda/k _ v body)
-     (cond
-      ((is-referenced? body v)
-       => (lambda (nv)
-            ;; There could be side-effects, so we only drop the parameters
-            (lambda/k-args-set! expr (keep-ordering v nv)))))
-     (lambda/k-body-set! expr (dve body))
-     expr)
+    (($ lambda/k _ args body)
+     (let ((refereced-args (keep-referenced args (all-ref-vars body))))
+       (lambda/k-args-set! expr refereced-args)
+       (lambda/k-body-set! expr (dve body))
+       expr))
     (($ branch/k _ cnd b1 b2)
      (branch/k-cnd-set! expr (dve cnd))
      (branch/k-tbranch-set! expr (dve b1))

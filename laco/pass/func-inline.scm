@@ -59,6 +59,8 @@
              (list jname fname)
              (list (func-inline jcont) (func-inline fbody)))))
       (else (fail!))))
+    ;; (($ letfun/k ($ bind-special-form/k _ fname fbody body))
+    ;;  )
     (($ app/k _ ($ lambda/k _ v body) e)
      (cond
       ((and (id? e) (top-level-ref e))

@@ -92,7 +92,7 @@
   (fields
    (name string? not)
    (arity integer?)
-   (entry symbol?)))
+   (entry string?)))
 
 (define-typed-record prim-object (parent object)
   (fields

@@ -25,6 +25,7 @@
   #:use-module (laco assembler)
   #:use-module (ice-9 match)
   #:use-module (ice-9 format)
+  #:use-module (srfi srfi-1)
   #:export (lir->sasm-string
             lir->sasm
             codegen))
@@ -37,9 +38,33 @@
        (lp (cdr next) (cons (bindings-index env id) ret)))
       (else (lp cdr next) ret))))
 
+(define (gen-closure-frame frees)
+  ;; 1. If the value is integer, then it means the free-var was converted to local
+  ;;    in fv-lifting, so we just ignore it.
+  ;; 2. If it's lifted in fv-lifting, then it means it's closure-on-stack, so we
+  ;;    don't actually capture it.
+  (filter-map
+   (lambda (x)
+     (match x
+       ((? integer? x) #f)
+       ((($ insr-free _ label _ offset keep?) . (? insr-local?))
+        (make-insr-free '() label 'push offset #t))
+       (else (throw 'laco-error gen-closure-frame "Invalid item `~a'!" x))))
+   (hash-map->list (lambda (_ x) x) frees)))
+
 ;; lir -> unspecified
 (define (emit-sasm lir)
   (match lir
+    (($ insr-closure _ label arity frees body mode)
+     (define frame (gen-closure-frame frees))
+     (define end-label (new-label "closure-end-"))
+     (map emit-sasm frame)
+     (emit-closure mode arity (length frame) label)
+     (emit-jump end-label)
+     (sasm-label-begin #f label)
+     (emit-sasm body)
+     (sasm-closure-end end-label)
+     (sasm-label-end #f label))
     (($ insr-proc _ proc label _ _ lexprs)
      (sasm-label-begin proc label)
      (map emit-sasm lexprs)
@@ -55,8 +80,8 @@
      (emit-string-object s))
     (($ boolean-object _ b)
      (emit-boolean b))
-    (($ proc-object _ proc entry)
-     (emit-proc-object proc entry))
+    (($ proc-object _ proc arity entry)
+     (emit-proc-object proc arity entry))
     (($ prim-object _ p)
      (emit-prim-object p))
     (($ insr-label _ proc label insrs)

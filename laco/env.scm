@@ -21,7 +21,9 @@
   #:use-module ((rnrs) #:select (define-record-type))
   #:export (env
             env?
-            env-bindings env-prev env-frees
+            env-bindings env-bindings-set!
+            env-prev env-prev-set!
+            env-frees env-frees-set!
 
             toplevel?
             top-level-ref
@@ -44,7 +46,9 @@
             closure-ref
 
             register-as-recursive!
-            is-recursive?))
+            is-recursive?
+
+            no-free-var?))
 
 ;; NOTE:
 ;; 1. Only toplevel is used for storing actual value.
@@ -83,8 +87,8 @@
 (define (top-level-for-each proc)
   (hash-for-each proc (toplevel-definition *top-level*)))
 
-(define (extend-env! to new)
-  (env-prev-set! to new))
+(define (extend-env! prev new)
+  (env-prev-set! new prev))
 
 (define (id-index env ref id)
   (when (not (env? env))
@@ -119,7 +123,8 @@
              (id-name id) bindings)))))
 
 (define (env->args env)
-  (hash-map->list (lambda (k _) k) (env-bindings env)))
+  #;(hash-map->list (lambda (k _) k) (env-bindings env))
+  (queue-slots (env-bindings env)))
 
 (define *closure-lookup-table* (make-hash-table))
 (define (closure-set! label bindings)
@@ -135,3 +140,6 @@
   (hash-set! *recursive-table* sym #t))
 (define (is-recursive? sym)
   (hash-ref *recursive-table* sym))
+
+(define (no-free-var? env)
+  (queue-empty? (env-frees env)))

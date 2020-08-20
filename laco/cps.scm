@@ -104,6 +104,7 @@
             tag-proper-tail-recursion!
             is-proper-tail-recursion?
             is-tail-call?
+            is-escaped?
 
             top-level->src
             cps->expr/g))
@@ -158,11 +159,11 @@
 
 (define-typed-record closure/k (parent cps)
   (fields
-   (env id-list?)
+   (env env?)
    (body valid-expr?)))
-(define* (new-closure/k args body #:key (kont prim:return) (name (new-id "#kont-"))
+(define* (new-closure/k env body #:key (kont prim:return) (name (new-id "#kont-"))
                         (attr '()))
-  (make-lambda/k (list kont name attr) env body))
+  (make-closure/k (list kont name attr) env body))
 
 (define-typed-record constant/k (parent cps)
   (fields
@@ -415,7 +416,7 @@
                (ast->cps cnd))))))
       (else (ast->cps expr)))))
 
-(define* (ast->cps expr)
+(define (ast->cps expr)
   (let ((cont (current-kont)))
     (match expr
       ;; FIXME: distinct value and function for the convenient of fun-inline.
@@ -493,10 +494,11 @@
          (fold (lambda (e v p) (new-letcont/k v e p #:kont cont))
                (new-app/k cont (new-seq/k ev #:kont cont) #:kont cont)
                el ev)))
-      (($ call _ ($ ref _ f) e)
+      (($ call _ f e)
        (let* ((fn (new-id "#f-"))
               (el (map (lambda (_) (new-id "#x-")) e))
-              (is-prim? (is-op-a-primitive? f))
+              (is-prim? (and (ref? f) (is-op-a-primitive? (ref-var f))))
+              (func (if (ref? f) (new-id (ref-var f) #f) f))
               (k (fold (lambda (ee ex p)
                          (parameterize ((current-kont (new-lambda/k (list ex) p
                                                                     #:kont cont)))
@@ -508,7 +510,7 @@
                          (new-app/k fn (append (list cont) el) #:kont cont)))
                        e el)))
          (parameterize ((current-kont (new-lambda/k (list fn) k #:kont fn)))
-           (comp-cps (or is-prim? (new-id f #f))))))
+           (comp-cps (or is-prim? func)))))
       (($ ref _ sym)
        (cond
         ((is-op-a-primitive? sym)
@@ -532,7 +534,7 @@
     (($ lambda/k _ args body)
      `(lambda (,@(map cps->expr args)) ,(cps->expr body)))
     (($ closure/k _ env body)
-     `(lambda (,@(env->args env)) ,body))
+     `(lambda (,@(map id-name (env->args env))) ,(cps->expr body)))
     (($ branch/k _ cnd b1 b2)
      `(if ,(cps->expr cnd) ,(cps->expr b1) ,(cps->expr b2)))
     (($ collection/k _ var type size value body)
@@ -589,6 +591,9 @@
 
 (define (is-tail-call? cexpr)
   (assoc-ref (cps-attr cexpr) 'tail-call))
+
+(define (is-escaped? cexpr)
+  (assoc-ref (cps-attr cexpr) 'escape))
 
 (define (top-level->src)
   (top-level->body-list (lambda (v e) `(define ,v ,(cps->expr e)))))

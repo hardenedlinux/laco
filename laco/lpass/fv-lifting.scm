@@ -25,6 +25,7 @@
 ;; Lift free-vars if they're in tail-call body
 
 (define need-lift? (make-parameter #f))
+(define closure-escape? (make-parameter #f))
 
 (define (fvl lexpr)
   (match lexpr
@@ -41,7 +42,7 @@
          (insr-proc-body-set! lexpr (map fvl (insr-proc-body lexpr))))
      lexpr)
     (($ insr-free _ label mode offset keep?)
-     (if (need-lift?)
+     (if (and (not (closure-escape?)) (need-lift?))
          (make-insr-local '() mode offset keep?)
          lexpr))
     (($ insr-proc _ _ _ _ _ lexprs)
@@ -55,6 +56,9 @@
      lexpr)
     (($ insr-proc _ _ _ _ _ body)
      (insr-proc-body-set! lexpr (fvl body))
+     lexpr)
+    (($ insr-closure _ _ _ _ body mode)
+     ;; NOTE: Don't lift closure captured free-vars
      lexpr)
     (else lexpr)))
 

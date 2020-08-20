@@ -43,6 +43,19 @@
                (else (failed!))))
              (else (tco tail)))))))
   (match expr
+    (($ lambda/k _ _ (or ($ app/k _ k2 _) ($ seq/k _ (($ app/k _ k2 _)))))
+     (let* ((e (match (lambda/k-body expr)
+                 ((? app/k? a) a)
+                 (($ seq/k _ ((? app/k? a))) a)
+                 (else (throw 'laco-error 'tco
+                              "Invalid body pattern `~a'!"
+                              (cps->expr (lambda/k-body expr))))))
+            (tail? (kont-eq? (cps-kont expr) k2)))
+       ;; CASE: (lambda (k args ...) (k ...)) -> tail-call
+       (when tail?
+         (cps-property-set! e 'tail-call #t))
+       (lambda/k-body-set! expr (tco e tail?))
+       expr))
     (($ seq/k _ exprs)
      (seq/k-exprs-set! expr (tag-tail-call! exprs))
      expr)
@@ -60,13 +73,18 @@
            (else (failed!))))
          (else (failed!)))))
     (($ app/k ($ cps _ kont _ _) f args)
-     (when (and tail-body?
-                ;;(pk "tail-call" (is-tail-call? expr))
-                (or (kont-eq? (car args) kont)
-                    (kont-eq? kont f)))
+     (cond
+      ((and tail-body? (kont-eq? (car args) kont))
+       ;; CASE:
+       ;; 1. tail-body
+       ;; 2. k is current-kont
+       ;; 3. (f k args ...) -> tail-call or tail-rec
        (if (eq? (current-def) (cps->name f))
            (tag-proper-tail-recursion! expr)
            (cps-property-set! expr 'tail-call #t)))
+      ((and tail-body? (kont-eq? kont f))
+       ;; CASE (k args ...) -> tail-call
+       (cps-property-set! expr 'tail-call #t)))
      (app/k-func-set! expr (tco f))
      (app/k-args-set! expr (map tco args))
      expr)
@@ -78,11 +96,6 @@
     ((? bind-special-form/k?)
      (bind-special-form/k-value-set! expr (tco (bind-special-form/k-value expr) tail-body?))
      (bind-special-form/k-body-set! expr (tco (bind-special-form/k-body expr) #t))
-     expr)
-    (($ lambda/k _ _ (? app/k? a))
-     (when (kont-eq? (cps-kont a) (cps-kont expr))
-       (cps-property-set! a 'tail-call #t))
-     (lambda/k-body-set! expr (tco a #t))
      expr)
     (($ lambda/k _ _ body)
      (lambda/k-body-set! expr (tco body tail-body?))

@@ -15,6 +15,7 @@
 ;;  along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (laco pass lambda-lifting)
+  #:use-module (laco utils)
   #:use-module (laco env)
   #:use-module (laco types)
   #:use-module (laco cps)
@@ -29,17 +30,30 @@
 ;; 2. lambdas that is no escaping closures, in this case we can lift the inner
 ;;    lambdas recursively.
 ;; This pass maybe useful to simplify the free variable analysis.
+
+
+;; Remove useless free-vars
+;; After closure-conversion, there's no letcont/k, so we can remove all
+;; the useless "letcont/k-" id. Otherwise it would interfere the sorting of
+;; free-vars.
+(define (re-orgnize-frees! frees env)
+  (env-frees-set! env (list->queue frees)))
+
 (define (ll expr)
   (match expr
     (($ letfun/k ($ bind-special-form/k _ fname func body))
-     (=> fail!)
      (cond
       ((eq? (current-kont) 'global)
-       (fail!))
+       (bind-special-form/k-value-set! expr (ll func))
+       (bind-special-form/k-body-set! expr (ll body))
+       expr)
       (else
-       (top-level-set! (id-name fname) func)
-       (ll func)
+       (top-level-set! (id-name fname) (ll func))
        (ll body))))
+    (($ closure/k  _ env body)
+     (re-orgnize-frees! (free-vars body #t) env)
+     (closure/k-body-set! expr (ll body))
+     expr)
     ((? bind-special-form/k?)
      (bind-special-form/k-value-set! expr (ll (bind-special-form/k-value expr)))
      (bind-special-form/k-body-set! expr (ll (bind-special-form/k-body expr)))
@@ -49,9 +63,9 @@
      (branch/k-tbranch-set! expr (ll b1))
      (branch/k-fbranch-set! expr (ll b2))
      expr)
-    (($ app/k _ f e)
+    (($ app/k _ f args)
      (app/k-func-set! expr (ll f))
-     (app/k-args-set! expr (ll e))
+     (app/k-args-set! expr (map ll args))
      expr)
     (($ lambda/k _ args body)
      (lambda/k-body-set! expr (ll body))

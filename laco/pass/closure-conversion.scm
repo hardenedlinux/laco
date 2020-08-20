@@ -41,6 +41,30 @@
 ;; 6. Different from the passes, we use CPS constructor here for taking advantage of
 ;;    type checking in record type.
 
+;; Closure design
+;; Closures will try to capture all free-vars into env.
+;;
+;; Closure on stack
+;; Instr -> create-closure-object
+;; Free-vars are not actually captured, they’re referenced from stack.
+;; The closure doesn’t escape.
+;;
+;; Closure on heap
+;; Instr -> capture-closure-object
+;; Free-vars are captured and stored into the heap.
+;; The closure has escaped:
+;; 1. Pass as argument to non-primitive (except for ret)
+;; 2. Return from the scope where it was created
+;;
+;; Optimizing
+;; 1. We can name the anonymous function, and lift it as a global in lambda-lifting.
+;;    So that we don’t have to capture closure on heap. If we want to do this, all
+;;    free-vars must be confirmed statically, say, all free-vars are not parameters
+;;    of any upper closure. For closure returned from closure, it’s impossible to be
+;;    confirmed statically.
+;; 2. For function that is not passed as an argument, we've known all the call sites
+;;    of it, this is called `known function'. We can pass all free-vars as arguments
+;;    to it, so it's not a closure anymore.
 
 ;; NOTE: Filter global var
 (define (fix-fv fl)
@@ -53,17 +77,20 @@
 (define* (cc expr #:optional (mode 'normal))
   (match expr
     (($ lambda/k ($ cps _ kont name attr) args body)
-     (let ((env (new-env args (fix-fv (free-vars expr)))))
+     (let ((env (new-env args (fix-fv (free-vars expr #t)))))
        (extend-env! (current-env) env)
        (closure-set! (id-name name) env)
        (parameterize ((current-env env)
                       (current-kont kont))
-         (make-lambda/k (list kont name attr) args (cc body))))
-     ;; TODO:
-     ;; 1. recording the current bindings by the label to lookup table
-     ;; 2. replacing all the appeared free variable to `fvar' by label and order num
-     ;; 3. counting frame size for each closure env in lir
-     )
+         (case mode
+           ((normal)
+            (make-lambda/k (list kont name attr) args (cc body)))
+           ((closure)
+            ;; NOTE:
+            ;; 1. Counting frame size for each closure env in lir
+            ;; 2. For 'closure mode, fvars must be converted to lvar
+            (make-closure/k (list kont name attr) env (cc body 'closure)))
+           (else (throw 'laco-error cc "Invalid cc mode `~a'~%" mode))))))
     ;; (($ closure/k ($ cps _ kont name attr) env body)
     ;;  ;; TODO: The escaping function will be converted to closure/k.
     ;;  ;;       This will need escaping analysis or liveness analysis.
@@ -102,21 +129,28 @@
        (when (toplevel? (current-env))
          (extend-env! (current-env) env)
          (closure-set! (id-name name) env))
-       (env-local-push! env jname)
        (parameterize ((current-env env))
          (cc (cfs body
                   (list jname)
                   (list (cc jcont)))))))
+    (($ letfun/k ($ bind-special-form/k ($ cps _ kont name attr) fname fbody body))
+     (env-local-push! (current-env) fname)
+     (make-letfun/k (list kont name attr)
+                    fname
+                    (cc fbody)
+                    (cc body)))
     (($ letval/k ($ bind-special-form/k ($ cps _ kont name attr) var value body))
      (env-local-push! (current-env) var)
      (make-letval/k (list kont name attr)
                     var
                     (cc value)
                     (cc body)))
+    (($ app/k _ ($ lambda/k _ args body) exprs)
+     (cc (cfs body args exprs)))
     (($ app/k ($ cps _ kont name attr) f args)
      (make-app/k (list kont name attr)
                  (cc f)
-                 (map cc args)))
+                 (map (lambda (e) (cc e 'closure)) args)))
     ((? id? id)
      (let ((env (current-env))
            ;; FIXME: deal with it when current-kont is 'global

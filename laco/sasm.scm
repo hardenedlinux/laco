@@ -78,9 +78,12 @@
        ('clean-end
         (format port "~a) ; Clean end~%~%" (indent-spaces))
         (indent-spaces 'out))
-       ((('closure-prelude argc) . descp)
-        (format port "~a) ; Closure ~a~%" (indent-spaces) argc)
-        (indent-spaces 'out))
+       ((('closure-end label) . descp)
+        (format port "~a(closure-end ~a)" (indent-spaces) label))
+       ((('closure mode arity frame-size entry-label) . descp)
+        (format port "~a(closure ~a ~a ~a ~a) ; ~a~%"
+                (indent-spaces) mode arity frame-size (drop-hash entry-label)
+                descp))
        ((('push-string-object s) . descp)
         (format port "~a(push-string-object ~s) ; ~a~%" (indent-spaces) s descp))
        ((('free label offset) . descp)
@@ -94,6 +97,8 @@
                 (indent-spaces) (drop-hash label) keep? descp))
        ((('fjump label) . descp)
         (format port "~a(fjump ~a) ; ~a~%" (indent-spaces) (drop-hash label) descp))
+       ((('jump label) . descp)
+        (format port "~a(jump ~a) ; ~a~%" (indent-spaces) (drop-hash label) descp))
        ((insr . descp)
         (format port "~a~a ; ~a~%" (indent-spaces) insr descp))
        (() #t)
@@ -128,9 +133,11 @@
 (define-public (emit-string-object s)
   (sasm-emit `((push-string-object ,s) . "")))
 
-(define-public (emit-proc-object proc entry)
-  (sasm-emit `((push-proc-object ,entry)
-               . ,(format #f "Push Proc ~a in `~a'" (drop-hash proc) entry))))
+;; NOTE: we may use arity in the future
+(define-public (emit-proc-object proc arity entry)
+  (sasm-emit `((push-proc-object ,(drop-hash entry))
+               . ,(format #f "Push Proc `~a' in `~a'"
+                          (drop-hash proc) (drop-hash entry)))))
 
 (define-public (emit-prim-object p)
   (sasm-emit `((push-prim-object ,(primitive->number p))
@@ -159,6 +166,10 @@
    ((is-char-node? x) (emit-char (constant-val x)))
    (else (throw 'laco-error emit-const-imm "Invalid immediate `~a`!" x))))
 
+(define-public (emit-closure mode arity frame-size entry-label)
+  (sasm-emit `((closure ,mode ,arity ,frame-size ,entry-label)
+               . "")))
+
 (define-public (emit-prelude proc mode arity)
   (sasm-emit `((prelude ,(mode->name mode) ,arity)
                . ,(format #f "Prelude for `~a'" (drop-hash proc)))))
@@ -175,6 +186,9 @@
 (define-public (emit-fjump label)
   (sasm-emit `((fjump ,label)
                . ,(format #f "Jump to ~a when TOS is false" (drop-hash label)))))
+
+(define-public (emit-jump label)
+  (sasm-emit `((jump ,label) . "")))
 
 (define-public (emit-proc-call proc label keep?)
   (let ((where (if proc proc label)))
@@ -219,5 +233,9 @@
   (label-out!)
   (sasm-emit `(label-end ,proc ,label)))
 
-(define-public (sasm-closure-prelude argc)
-  (sasm-emit '((pop-16bit-const ,argc) . ,(format #f "Pop ~a args" argc))))
+(define-public (sasm-closure-end end-label)
+  (sasm-emit `((closure-end ,end-label) . "")))
+
+(define-public (sasm-closure-capture frame-size end-label)
+  (sasm-emit '((closure) . ,(format #f "Capture with ~a free-vars till ~a"
+                                    frame-size (drop-hash end-label)))))

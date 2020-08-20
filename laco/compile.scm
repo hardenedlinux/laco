@@ -110,7 +110,9 @@ Options:
      eta-function
      delta-reduction
      fold-branch
+     useless-constant
      tail-call-optimizing
+     escape-analysis
      closure-conversion
      lambda-lifting
      eliminate-redundant))
@@ -129,7 +131,8 @@ Options:
      lexpr
      reduce-labels
      reduce-ret
-     free-vars-lifting))
+     free-vars-lifting
+     closure-capture-free-vars))
   (init-lir-optimizations)
   (parameterize ((current-kont 'global))
     (top-level-for-each

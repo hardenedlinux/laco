@@ -20,6 +20,7 @@
   #:use-module (ice-9 q)
   #:use-module ((rnrs) #:select (define-record-type))
   #:export (newsym
+            new-label
             extract-ids
             extract-keys
             new-stack
@@ -71,6 +72,7 @@
             label-back-index))
 
 (define (newsym sym) (gensym (symbol->string sym)))
+(define (new-label str) (symbol->string (gensym str)))
 
 (define (extract-ids pattern)
   (define (sym-list? x)
@@ -250,6 +252,8 @@
   (queue-in! *label-queue* label))
 (define (label-out!)
   (queue-out! *label-queue*))
+;; NOTE: after fv-lifting, there's no free-var in tail-call or tail-rec context,
+;;       so we can use label to indicate the stack frame.
 (define (label-back-index label)
   (let ((ll (queue-slots *label-queue*)))
     (if (null? ll)

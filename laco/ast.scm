@@ -37,8 +37,8 @@
             call make-call call?
             call-op call-args
 
-            closure make-closure lam?
-            lam-params lam-has-opt?
+            closure make-closure closure?
+            closure-params closure-has-opt?
 
             seq make-seq seq?
 

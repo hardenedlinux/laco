@@ -63,7 +63,7 @@
     (when count? (label-counter 2))
     bv))
 
-(define (triple-encode type data1 data2)
+(define* (triple-encode type data1 data2 #:optional (count? #t))
   (when (or (< type 0) (> type #b1111))
     (throw 'laco-error double-encode
            "Invalid type, should be #b10110000 ~ #b10111111!"
@@ -76,22 +76,29 @@
     (bytevector-u8-set! bv 0 (logior #b10110000 type))
     (bytevector-u8-set! bv 1 data1)
     (bytevector-u8-set! bv 2 data2)
-    (label-counter 3)
+    (when count? (label-counter 3))
     bv))
 
-(define (quadruple-encode type data)
+(define* (quadruple-encode type data1 data2 data3 #:optional (count? #t))
   (when (or (< type 0) (> type #b1000))
     (throw 'laco-error double-encode
            "Invalid type, should be #b10110000 ~ #b10111111!"
            (number->string (logior #b1011 type) 2)))
-  (when (or (< data 0) (> data #xffffff))
-    (throw 'laco-error double-encode "Invalid data, should be 0 ~ 16777215" data))
+  (when (or (< data1 0) (> data1 #xffffff))
+    (throw 'laco-error quadruple-encode
+           "Invalid data, should be 0 ~ 16777215" data1))
+  (when (or (< data2 0) (> data2 #xffffff))
+    (throw 'laco-error quadruple-encode
+           "Invalid data, should be 0 ~ 16777215" data2))
+  (when (or (< data3 0) (> data3 #xffffff))
+    (throw 'laco-error quadruple-encode
+           "Invalid data, should be 0 ~ 16777215" data3))
   (let ((bv (make-bytevector 4 0)))
-    (bytevector-u8-set! bv 0 (logior #b10100000 type))
-    (bytevector-u8-set! bv 1 (ash (logand #xff0000 data) -16))
-    (bytevector-u8-set! bv 2 (ash (logand #xff00 data) -8))
-    (bytevector-u8-set! bv 3 (logand #xff data))
-    (label-counter 4)
+    (bytevector-u8-set! bv 0 (logior #b10000000 type))
+    (bytevector-u8-set! bv 1 data1)
+    (bytevector-u8-set! bv 2 data2)
+    (bytevector-u8-set! bv 3 data3)
+    (when count? (label-counter 4))
     bv))
 
 (define (primitive-encode/basic pn)
@@ -134,16 +141,16 @@
     (label-counter 6)
     bv))
 
-(define (proc-encode offset)
+(define* (proc-encode offset #:optional (count? #t))
   (when (or (< offset (- (1- (expt 2 16)))) (> offset (1- (expt 2 16))))
     (throw 'laco-error proc-encode
            "Invalid proc object `0x~a', should be 16bit!"
            (number->string offset 16)))
   (let ((bv (make-bytevector 6 0)))
-    (bytevector-u8-set! bv 0 #b11100000)
+    (bytevector-u8-set! bv 0 #b11100010)
     (bytevector-u8-set! bv 1 9)
-    (bytevector-u16-set! bv 2 offset 'big)
-    (label-counter 6)
+    (bytevector-u32-set! bv 2 offset 'big)
+    (when count? (label-counter 6))
     bv))
 
 ;; NOTE: String is mapped to C string exactly.

@@ -87,13 +87,24 @@
 ;; Of course, we can record the primitive number when defining the primitive with
 ;; a macro. However, an explicit lookup table is useful for debug.
 (define *prim-table*
-  '(return
-    pop
-    + - * /
-    display
-    modulo remainder
-    = < > <= >=
-    not and or))
+  '(return ; 0
+    pop ; 1
+    + ; 2
+    - ; 3
+    * ; 4
+    / ; 5
+    display ; 6
+    modulo ; 7
+    remainder ; 8
+    = ; 9
+    < ; 10
+    > ; 11
+    <= ; 12
+    >= ; 13
+    not ; 14
+    and ; 15
+    or ; 16
+    ))
 
 (define (print-primitives)
   (display "--------PRIMITIVES--------\n")

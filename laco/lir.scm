@@ -23,6 +23,7 @@
   #:use-module (laco primitives)
   #:use-module (ice-9 match)
   #:use-module (ice-9 pretty-print)
+  #:use-module (srfi srfi-1)
   #:use-module ((rnrs) #:select (define-record-type))
   #:export (make-insr
             insr?
@@ -67,7 +68,8 @@
 
             insr-closure insr-closure?
             make-insr-closure
-            insr-closure-env insr-closure-code
+            insr-closure-env
+            insr-closure-body insr-closure-body-set!
 
             insr-label insr-label?
             make-insr-label
@@ -79,6 +81,7 @@
             make-insr-local
             insr-local-label
             insr-local-offset
+            insr-local-mode insr-local-mode-set!
 
             insr-free insr-free?
             make-insr-free
@@ -87,6 +90,14 @@
             insr-global insr-global?
             make-insr-global
             insr-global-name
+
+            insr-closure insr-closure?
+            make-insr-closure
+            insr-closure-label
+            insr-closure-arity
+            insr-closure-frees
+            insr-closure-body insr-closure-body-set!
+            insr-closure-mode
 
             *proc-return*
 
@@ -200,11 +211,13 @@
    (mode integer?)
    (arity integer?)))
 
-;; closure
 (define-typed-record insr-closure (parent insr)
   (fields
-   (env env?)
-   (code insr?)))
+   (label string?)
+   (arity integer?)
+   (frees hash-table?)
+   (body insr?)
+   (mode symbol?)))
 
 (define (get-global-offset name)
   ;; TODO: compute the offset of the specified global var name
@@ -220,6 +233,14 @@
 ;; We reuse prim:return for proc-return instruction, so the arity is 0.
 (define *proc-return* (make-insr-pcall '() prim:return #t))
 
+(define (frees->lookup-table start frees)
+  (let ((ht (make-hash-table))
+        (len (queue-length frees)))
+    (for-each (lambda (x i)
+                (hash-set! ht (id->string x) i))
+              (queue-slots frees) (iota len start))
+    ht))
+
 (define* (cps->lir expr #:key (cur-def #f) (mode 'push) (prelude? #f))
   (match expr
     (($ lambda/k ($ cps _ kont name attr) args body)
@@ -230,9 +251,16 @@
                 "lambda/k: the closure label `~a' doesn't have an env!" label))
        (make-insr-proc '() cur-def label env (length args)
                        (list (cps->lir body) *proc-return*))))
-    #;
-    (($ closure/k ($ cps _ kont name attr) env body) ;
-    )
+    (($ closure/k ($ cps _ kont name attr) env body)
+     (let* ((mode (if (is-escaped? expr) 'heap 'stack))
+            (locals (env-bindings env))
+            (frees (frees->lookup-table (queue-length locals) (env-frees env)))
+            (arity (queue-length (env-bindings env))))
+       (make-insr-closure '()
+                          (id->string name)
+                          arity
+                          frees
+                          (cps->lir body) mode)))
     (($ branch/k ($ cps _ kont name attr) cnd b1 b2)
      (let ((ce (cps->lir cnd #:prelude? #t))
            (bt (cps->lir b1))
@@ -299,7 +327,7 @@
             (label (id->string name))
             (arity (length args))
             (prelude (lambda (mode)
-                       (make-insr-prelude '() (id->string func)
+                       (make-insr-prelude '() (cps->name-string func)
                                           mode arity))))
        (when (not env)
          (throw 'laco-error cps->lir
@@ -359,6 +387,8 @@
 
 (define (lir->expr lexpr)
   (match lexpr
+    (($ insr-closure _ label _ _ body mode)
+     `(,(symbol-append 'closure-on- mode) ,label ,(lir->expr body)))
     (($ insr-proc _ proc label _ arity lexprs)
      `(proc ,proc ,label ,arity ,(map lir->expr lexprs)))
     (($ insr-label _ proc label exprs)
@@ -387,6 +417,7 @@
     (($ string-object _ value) `(string ,value))
     (($ boolean-object _ value) `(boolean ,(if value 'true 'false)))
     (($ prim-object _ p) `(primitive ,(primitive-name p)))
+    (($ proc-object _ name arity entry) `(proc ,name ,arity ,entry))
     (else (throw 'laco-error lir->expr "Invalid lir `~a'!" lexpr))))
 
 (define (lir->expr/g lexpr)
