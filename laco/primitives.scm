@@ -87,23 +87,31 @@
 ;; Of course, we can record the primitive number when defining the primitive with
 ;; a macro. However, an explicit lookup table is useful for debug.
 (define *prim-table*
-  '(return ; 0
+  '(
+    ;; basic primitives
+    return ; 0
     pop ; 1
     + ; 2
     - ; 3
     * ; 4
     / ; 5
     display ; 6
-    modulo ; 7
-    remainder ; 8
+    remainder ; 7
+    not ; 8
     = ; 9
     < ; 10
     > ; 11
     <= ; 12
     >= ; 13
-    not ; 14
-    and ; 15
-    or ; 16
+    and ; 14
+    or ; 15
+
+    ;; extended primitives
+    modulo ; 16 + 0
+    foreach ; 16 + 1
+    map ; 16 + 2
+    list-ref ; 16 + 3
+    list-set! ; 16 + 4
     ))
 
 (define (print-primitives)
@@ -147,8 +155,8 @@
 (define-primitive (display x)
   (throw 'laco-error 'prim:display "BUG: shouldn't be called in compile time!"))
 
-(define-primitive (modulo args ...)
-  (gen-constant (modulo args ...)))
+(define-primitive (not arg)
+  (gen-constant (not arg)))
 
 (define-primitive (remainder args ...)
   (gen-constant (remainder args ...)))
@@ -168,11 +176,23 @@
 (define-primitive (>= args ...)
   (gen-constant (>= args ...)))
 
-(define-primitive (not arg)
-  (gen-constant (not arg)))
-
 (define-primitive (and args ...)
   (gen-constant (and args ...)))
 
 (define-primitive (or args ...)
   (gen-constant (or args ...)))
+
+(define-primitive (modulo args ...)
+  (gen-constant (modulo args ...)))
+
+(define-primitive (foreach proc lst lst* ...)
+  (gen-constant (foreach proc lst lst* ...)))
+
+(define-primitive (map proc lst lst* ...)
+  (gen-constant (map proc lst lst* ...)))
+
+(define-primitive (list-ref lst idx)
+  (gen-constant (list-ref lst idx)))
+
+(define-primitive (list-set! lst idx val)
+  (gen-constant (list-set! lst idx val)))
