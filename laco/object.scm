@@ -108,11 +108,18 @@
     (match (constant-type c)
       ('integer (make-integer-object '() val))
       ('list (make-list-object '() val))
-      ('vector (make-vector-object '() val))
       ('char (make-integer-object '() val))
       ('string (make-string-object '() val))
       ('boolean (make-boolean-object '() val))
       (else (throw 'laco-error create-constant-object "Invalid type `~a'!"
                    (constant-type c))))))
 
+;; collection -> object
+(define (create-collection-object c)
+  (let ((val (collection-val c)))
+    (match (collection-type c)
+      ('list (make-list-object '() val))
+      ('vector (make-vector-object '() val))
+      (else (throw 'laco-error create-collection-object "Invalid type `~a'!"
+                   (collection-type c))))))
 ;; TODO: finish others
