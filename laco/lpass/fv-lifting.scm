@@ -16,6 +16,7 @@
 
 (define-module (laco lpass fv-lifting)
   #:use-module (laco types)
+  #:use-module (laco object)
   #:use-module (laco utils)
   #:use-module (laco lir)
   #:use-module (laco pass)
@@ -59,6 +60,9 @@
      lexpr)
     (($ insr-closure _ _ _ _ body mode)
      ;; NOTE: Don't lift closure captured free-vars
+     lexpr)
+    (($ list-object _ _ value)
+     (list-object-value-set! lexpr (map fvl value))
      lexpr)
     (else lexpr)))
 

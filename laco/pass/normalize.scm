@@ -95,6 +95,9 @@
      (branch/k-tbranch-set! expr (cfs b1 args el))
      (branch/k-fbranch-set! expr (cfs b2 args el))
      expr)
+    (($ collection/k _ _ _ _ value)
+     (collection/k-value-set! expr (map (lambda (e) (cfs e args el)) value))
+     expr)
     (($ primitive?)
      (substitute expr))
     (($ id _ name _)
@@ -132,6 +135,9 @@
                                 (list (bind-special-form/k-var bsf))
                                 (bind-special-form/k-body bsf))
                  (beta-reduction (bind-special-form/k-value bsf)))))
+    (($ collection/k _ _ _ _ value)
+     (collection/k-value-set! expr (map beta-reduction value))
+     expr)
     (else expr)))
 
 (define (beta-reduction/preserving expr)
@@ -166,6 +172,9 @@
      (bind-special-form/k-body-set!
       expr (beta-reduction/preserving (bind-special-form/k-body expr)))
      expr)
+    (($ collection/k _ _ _ _ value)
+     (collection/k-value-set! expr (map beta-reduction/preserving value))
+     expr)
     (else expr)))
 
 (define (eta-reduction expr)
@@ -191,6 +200,9 @@
       expr (eta-reduction (bind-special-form/k-value expr)))
      (bind-special-form/k-body-set!
       expr (eta-reduction (bind-special-form/k-body expr)))
+     expr)
+    (($ collection/k _ _ _ _ value)
+     (collection/k-value-set! expr (eta-reduction value))
      expr)
     (else expr)))
 

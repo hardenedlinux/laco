@@ -103,18 +103,24 @@
                     (cc b1)
                     (cc b2)))
     (($ collection/k ($ cps _ kont name attr) var type size value)
-     (env-local-push! (current-env) var)
-     (make-collection/k (list kont name attr)
-                        var type size
-                        (cc value)))
+     (let ((env (if (toplevel? (current-env))
+                    (new-env '() (free-vars expr))
+                    (current-env))))
+       (env-local-push! env var)
+       (make-collection/k (list kont name attr)
+                          var type size
+                          (cc value))))
     (($ seq/k ($ cps _ kont name attr) exprs)
      (make-seq/k (list kont name attr) (map cc exprs)))
     (($ letfun/k ($ bind-special-form/k ($ cps _ kont name attr) fname func body))
-     (env-local-push! (current-env) fname)
-     (make-letfun/k (list kont name attr)
-                    fname
-                    (cc func)
-                    (cc body)))
+     (let ((env (if (toplevel? (current-env))
+                    (new-env '() (free-vars expr))
+                    (current-env))))
+       (env-local-push! env fname)
+       (make-letfun/k (list kont name attr)
+                      fname
+                      (cc func)
+                      (cc body))))
     (($ letcont/k ($ bind-special-form/k ($ cps _ kont name attr) jname jcont body))
      ;; 1. In closure-conversion, we eliminate all letcont/k, the bindings should be
      ;;    merged into the current-env.

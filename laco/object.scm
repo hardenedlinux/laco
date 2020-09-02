@@ -20,8 +20,7 @@
   #:use-module (laco primitives)
   #:use-module (ice-9 match)
   #:use-module ((rnrs) #:select (define-record-type))
-  #:export (create-constant-object
-            object?
+  #:export (object?
 
             integer-object
             integer-object?
@@ -29,6 +28,8 @@
 
             list-object
             list-object?
+            list-object-size
+            list-object-value list-object-value-set!
             make-list-object
 
             vector-object
@@ -53,7 +54,10 @@
 
             boolean-object
             boolean-object?
-            make-boolean-object))
+            make-boolean-object
+
+            create-constant-object
+            create-collection-object))
 
 ;; NOTE:
 ;; 1. If the value can be unboxed, then we store them in unboxed style
@@ -70,14 +74,14 @@
 
 (define-typed-record list-object (parent object)
   (fields
-   (value object-list?)
-   (size positive?)))
+   (size positive?)
+   (value object-list?)))
 
 (define-typed-record vector-object (parent object)
   (fields
    ;; we use list to hold the vector, it'll become real vector in codegen
-   (value object-list?)
-   (size positive?)))
+   (size positive?)
+   (value object-list?)))
 
 ;; We store char as small integer
 (define-typed-record char-object (parent object)
@@ -115,11 +119,9 @@
                    (constant-type c))))))
 
 ;; collection -> object
-(define (create-collection-object c)
-  (let ((val (collection-val c)))
-    (match (collection-type c)
-      ('list (make-list-object '() val))
-      ('vector (make-vector-object '() val))
-      (else (throw 'laco-error create-collection-object "Invalid type `~a'!"
-                   (collection-type c))))))
+(define (create-collection-object type size val)
+  (match type
+    ('list (make-list-object '() size val))
+    ('vector (make-vector-object '() size val))
+    (else (throw 'laco-error create-collection-object "Invalid type `~a'!" type))))
 ;; TODO: finish others

@@ -92,6 +92,8 @@
 (define* (ast->src node #:optional (hide-begin? #t))
   (match node
     (($ constant _ val type) (unless (eq? 'unspecified type) val))
+    (($ collection ($ ast _ subx) type size)
+     `(collection ,type ,@(map ast->src subx)))
     (($ def ($ ast _ subx) v) `(define ,(ast->src v) ,(ast->src subx)))
     (($ ref _ v) (ast->src v))
     (($ assign ($ ast _ subx) v) `(set! ,(ast->src v) ,(ast->src subx)))

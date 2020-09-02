@@ -51,6 +51,9 @@
     (($ lambda/k _ _ body)
      (lambda/k-body-set! expr (fc body))
      expr)
+    (($ collection/k _ _ _ _ value)
+     (collection/k-value-set! expr (map fc value))
+     expr)
     (else expr)))
 
 (define-pass fold-constant expr (fc expr))

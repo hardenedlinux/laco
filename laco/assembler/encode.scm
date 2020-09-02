@@ -25,6 +25,7 @@
                                  define-record-type))
   #:export (label-counter
             single-encode
+            collection-encode
             double-encode
             triple-encode
             quadruple-encode
@@ -166,6 +167,18 @@
     ;; encoding length = header + type + string + '\0'
     (label-counter (+ 2 (string-length str) 1))
     (list bv sbv #u8(0))))
+
+(define (collection-encode type size)
+  (when (or (< size 0) (>= size (expt 2 16)))
+    (throw 'laco-error collection-encode
+           "Invalid collection size `~a', should be 0~2^16!" size))
+  (let ((bv (make-bytevector 4 0)))
+    (bytevector-u8-set! bv 0 #b11100010)
+    (bytevector-u8-set! bv 1 type)
+    ;; encoding length = header + type + size_in_u16
+    (bytevector-u16-set! bv 2 size 'big)
+    (label-counter 4)
+    bv))
 
 (define (boolean-encode value)
   (when (or (< value 0) (> value 15))

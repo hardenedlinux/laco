@@ -170,6 +170,12 @@
   (sasm-emit `((closure ,mode ,arity ,frame-size ,entry-label)
                . "")))
 
+(define-public (emit-list-object size)
+  (sasm-emit `((push-list-object ,size) . "")))
+
+(define-public (emit-vector-object size)
+  (sasm-emit `((push-vector-object ,size) . "")))
+
 (define-public (emit-prelude proc mode arity)
   (sasm-emit `((prelude ,(mode->name mode) ,arity)
                . ,(format #f "Prelude for `~a'" (drop-hash proc)))))

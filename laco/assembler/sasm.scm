@@ -212,6 +212,12 @@
 (define-public (push-string-object s)
   (string-encode s))
 
+(define-public (push-list-object size)
+  (collection-encode 7 size))
+
+(define-public (push-vector-object size)
+  (collection-encode 5 size))
+
 (define* (push-proc-object entry #:optional (count #t))
   (let ((offset (label-ref entry)))
     (cond

@@ -16,6 +16,7 @@
 
 (define-module (laco lpass closure-capture-fv)
   #:use-module (laco types)
+  #:use-module (laco object)
   #:use-module (laco utils)
   #:use-module (laco lir)
   #:use-module (laco pass)
@@ -54,6 +55,9 @@
               (else (throw 'laco-error 'closure-capture-fv
                            "Invalid pattern `~a'!" pattern)))))
       (else lexpr)))
+    (($ list-object _ _ value)
+     (list-object-value-set! lexpr (map ccfv value))
+     lexpr)
     (else lexpr)))
 
 (define-pass closure-capture-free-vars lexpr (ccfv lexpr))

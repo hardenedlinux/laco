@@ -212,11 +212,11 @@
    (type symbol?)
    (size integer?)
    (value any?)))
-(define* (new-collection/k cname type size value body
+(define* (new-collection/k cname type size value
                            #:key (kont prim:return)
                            (name (new-id "#kont-"))
                            (attr '()))
-  (make-collection/k (list kont name attr) cname type size value body))
+  (make-collection/k (list kont name attr) cname type size value))
 
 (define-typed-record seq/k (parent cps)
   (fields
@@ -271,6 +271,8 @@
      (apply acc (map rec exprs)))
     (($ app/k _ f args)
      (apply acc (map rec (reverse `(,f ,@args)))))
+    (($ collection/k _ _ _ _ value)
+     (apply acc `(,@(map rec value))))
     ((? bind-special-form/k?)
      (let ((var (bind-special-form/k-var expr))
            (value (bind-special-form/k-value expr))
@@ -478,11 +480,12 @@
        (let ((cname (new-id "#c-"))
              (ex (map (lambda (_) (new-id "#e-")) vals)))
          (fold (lambda (e x p)
-                 (parameterize ((current-kont (new-lambda/k x p #:kont cont)))
+                 (parameterize ((current-kont (new-lambda/k (list x) p
+                                                            #:kont cont)))
                    (ast->cps e)))
-               (new-collection/k cname type size ex
-                                 (new-app/k cont cname #:kont cont)
-                                 #:kont cont)
+               (new-letval/k cname
+                             (new-collection/k cname type size ex #:kont cont)
+                             (new-app/k cont cname #:kont cont))
                vals ex)))
       (($ seq ($ ast _ exprs))
        (let* ((el (fold-right
@@ -537,8 +540,8 @@
      `(lambda (,@(map id-name (env->args env))) ,(cps->expr body)))
     (($ branch/k _ cnd b1 b2)
      `(if ,(cps->expr cnd) ,(cps->expr b1) ,(cps->expr b2)))
-    (($ collection/k _ var type size value body)
-     `(collection ,type ,@value))
+    (($ collection/k _ var type size value)
+     `(collection ,type ,@(map cps->expr value)))
     (($ seq/k _ exprs)
      (if hide-begin?
          (map cps->expr exprs)

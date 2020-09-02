@@ -275,10 +275,8 @@
          (make-insr-fjump '() (cps->name-string b2))
          bt
          bf))))
-    #;
-    ;; TODO                               ;
-    (($ collection/k ($ cps _ kont name attr) var type size value body) ; ;
-    )
+    (($ collection/k ($ cps _ kont name attr) var type size value)
+     (create-collection-object type size (map cps->lir value)))
     (($ seq/k ($ cps _ kont name attr) exprs)
      (make-insr-label '() #f (id->string name) (map cps->lir exprs)))
     (($ letfun/k ($ bind-special-form/k ($ cps _ kont name attr) fname fun body))
@@ -418,6 +416,7 @@
     (($ boolean-object _ value) `(boolean ,(if value 'true 'false)))
     (($ prim-object _ p) `(primitive ,(primitive-name p)))
     (($ proc-object _ name arity entry) `(proc ,name ,arity ,entry))
+    (($ list-object _ size value) `(list ,@(map lir->expr value)))
     (else (throw 'laco-error lir->expr "Invalid lir `~a'!" lexpr))))
 
 (define (lir->expr/g lexpr)
