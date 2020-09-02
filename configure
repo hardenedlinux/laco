@@ -2527,6 +2527,10 @@ $as_echo "no" >&6; }
 		PKG_CONFIG=""
 	fi
 fi
+
+  if test "x$PKG_CONFIG" = x; then
+    as_fn_error $? "pkg-config is missing, please install it" "$LINENO" 5
+  fi
   _guile_versions_to_search="3.0 2.2 2.0"
   if test -n "$GUILE_EFFECTIVE_VERSION"; then
     _guile_tmp=""
@@ -2576,7 +2580,7 @@ $as_echo "$as_me: found guile $GUILE_EFFECTIVE_VERSION" >&6;}
 
 _guile_required_version="$GUILE_EFFECTIVE_VERSION"
   if test -z "$_guile_required_version"; then
-    _guile_required_version=2.2
+    _guile_required_version=3.0
   fi
 
   _guile_candidates=guile
