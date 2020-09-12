@@ -96,7 +96,7 @@
     * ; 4
     / ; 5
     display ; 6
-    remainder ; 7
+    apply ; 7
     not ; 8
     = ; 9
     < ; 10
@@ -108,10 +108,11 @@
 
     ;; extended primitives
     modulo ; 16 + 0
-    foreach ; 16 + 1
-    map ; 16 + 2
-    list-ref ; 16 + 3
-    list-set! ; 16 + 4
+    remainder ; 16 + 1
+    foreach ; 16 + 2
+    map ; 16 + 3
+    list-ref ; 16 + 4
+    list-set! ; 16 + 5
     ))
 
 (define (print-primitives)
@@ -155,11 +156,11 @@
 (define-primitive (display x)
   (throw 'laco-error 'prim:display "BUG: shouldn't be called in compile time!"))
 
+(define-primitive (apply f args)
+  (throw 'laco-error 'prim:apply "BUG: shouldn't be called in compile time!"))
+
 (define-primitive (not arg)
   (gen-constant (not arg)))
-
-(define-primitive (remainder args ...)
-  (gen-constant (remainder args ...)))
 
 (define-primitive (= args ...)
   (gen-constant (= args ...)))
@@ -184,6 +185,9 @@
 
 (define-primitive (modulo args ...)
   (gen-constant (modulo args ...)))
+
+(define-primitive (remainder args ...)
+  (gen-constant (remainder args ...)))
 
 (define-primitive (foreach proc lst lst* ...)
   (gen-constant (foreach proc lst lst* ...)))

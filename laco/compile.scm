@@ -113,6 +113,7 @@ Options:
      useless-constant
      tail-call-optimizing
      escape-analysis
+     primitive-conversion
      closure-conversion
      lambda-lifting
      eliminate-redundant))
