@@ -207,30 +207,36 @@
 
 ;; ----------- object creation -----------
 (define-public (push-integer-object i)
-  (integer-encode i))
+  (integer-obj-encode i))
 
 (define-public (push-string-object s)
-  (string-encode s))
+  (string-obj-encode s))
 
 (define-public (push-list-object size)
-  (collection-encode 7 size))
+  (collection-obj-encode 7 size))
 
 (define-public (push-vector-object size)
-  (collection-encode 5 size))
+  (collection-obj-encode 5 size))
 
-(define* (push-proc-object entry #:optional (count #t))
-  (let ((offset (label-ref entry)))
+;; TODO:
+;; 1. add opt-index
+;; 2. detect opt-index and convert vargs to list in vm.c
+;; 3. patch local-call and free-call
+(define* (push-proc-object entry arity opt-index #:optional (count #t))
+  (let ((offset (label-ref entry))
+        ;; If there's no opt-index, then we set it to the last index of args
+        (opt (or opt-index arity)))
     (cond
-     (offset (proc-encode offset count))
+     (offset (proc-obj-encode offset arity opt count))
      (else
       (label-counter 6)
       `#((push-proc-object ,entry #f))))))
 
 (define-public (push-prim-object pn)
-  (prim-encode pn))
+  (prim-obj-encode pn))
 
 (define-public (push-boolean-false)
-  (boolean-encode 0))
+  (boolean-obj-encode 0))
 
 (define-public (push-boolean-true)
-  (boolean-encode 1))
+  (boolean-obj-encode 1))

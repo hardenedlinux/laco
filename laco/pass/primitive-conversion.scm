@@ -15,6 +15,7 @@
 ;;  along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (laco pass primitive-conversion)
+  #:use-module (laco env)
   #:use-module (laco types)
   #:use-module (laco cps)
   #:use-module (laco pass)
@@ -25,21 +26,32 @@
   (define (convert e)
     (cond
      ((and (primitive? e) (not (eq? (primitive-name e) 'return)))
-      (let ((k (new-id "karg-"))
-            (args (new-id "vargs-")))
-        (new-lambda/k (list k args)
-                      (new-app/k k
-                                 (new-app/k prim:apply (list e args))))))
+      (let* ((fname (new-id "#func-"))
+             (k (new-id "karg-"))
+             (args (new-id "vargs-"))
+             (new-expr (new-letfun/k
+                        fname
+                        (new-lambda/k
+                         (list k args)
+                         (new-app/k k (new-app/k prim:apply (list e args) #:kont k)
+                                    #:kont k)
+                         #:kont k)
+                        (new-app/k prim:return fname))))
+        (lambda-has-vargs! (id-name fname) 1)
+        new-expr))
      (else (pc e))))
   (match expr
     (($ app/k _ (? primitive? p) args)
      (app/k-args-set! expr (map pc args))
      expr)
-    (($ app/k _ f args)
+    (($ app/k _ f (k args ...))
      ;; NOTE:
-     ;; The primitive in args of function must do primitive-conversion.
-     ;; But not for the args of primitive.
-     (app/k-args-set! expr (map convert args))
+     ;; 1. The primitive in args of function must do primitive-conversion.
+     ;;    But not for the args of primitive.
+     ;; 2. In CPS, the first arg k is the continuation, if the primitive appears
+     ;;    in k-position, then we don't convert it to yet another nested CPS.
+     (app/k-func-set! expr (pc f))
+     (app/k-args-set! expr (cons (pc k) (map convert args)))
      expr)
     (($ seq/k _ exprs)
      (seq/k-exprs-set! expr (map pc exprs))
@@ -47,10 +59,6 @@
     ((? bind-special-form/k?)
      (bind-special-form/k-value-set! expr (pc (bind-special-form/k-value expr)))
      (bind-special-form/k-body-set! expr (pc (bind-special-form/k-body expr)))
-     expr)
-    (($ app/k _ func args)
-     (app/k-func-set! expr (pc func))
-     (app/k-args-set! expr (map pc args))
      expr)
     (($ lambda/k _ _ body)
      (parameterize ((current-kont (cps-kont expr)))

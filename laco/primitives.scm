@@ -103,8 +103,7 @@
     > ; 11
     <= ; 12
     >= ; 13
-    and ; 14
-    or ; 15
+    restore ; 14
 
     ;; extended primitives
     modulo ; 16 + 0
@@ -129,7 +128,7 @@
                 (primitive-name p)))))
 
 (define *inapplicable-primitive*
-  '(halt return display))
+  '(halt return display restore))
 
 (define (applicable-primitive? p)
   (not (memq (primitive-name p) *inapplicable-primitive* )))
@@ -152,6 +151,9 @@
 
 (define-primitive (return x)
   x)
+
+(define-primitive (restore x)
+  (throw 'laco-error 'prim:restore "BUG: shouldn't be called in compile time!"))
 
 (define-primitive (display x)
   (throw 'laco-error 'prim:display "BUG: shouldn't be called in compile time!"))
@@ -177,20 +179,14 @@
 (define-primitive (>= args ...)
   (gen-constant (>= args ...)))
 
-(define-primitive (and args ...)
-  (gen-constant (and args ...)))
-
-(define-primitive (or args ...)
-  (gen-constant (or args ...)))
-
 (define-primitive (modulo args ...)
   (gen-constant (modulo args ...)))
 
 (define-primitive (remainder args ...)
   (gen-constant (remainder args ...)))
 
-(define-primitive (foreach proc lst lst* ...)
-  (gen-constant (foreach proc lst lst* ...)))
+(define-primitive (for-each proc lst lst* ...)
+  (gen-constant (for-each proc lst lst* ...)))
 
 (define-primitive (map proc lst lst* ...)
   (gen-constant (map proc lst lst* ...)))

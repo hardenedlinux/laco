@@ -48,6 +48,9 @@
             register-as-recursive!
             is-recursive?
 
+            lambda-has-vargs!
+            lambda-has-vargs?
+
             no-free-var?))
 
 ;; NOTE:
@@ -140,6 +143,12 @@
   (hash-set! *recursive-table* sym #t))
 (define (is-recursive? sym)
   (hash-ref *recursive-table* sym))
+
+(define *lambda-table* (make-hash-table))
+(define (lambda-has-vargs! sym val)
+  (hash-set! *lambda-table* sym val))
+(define (lambda-has-vargs? sym)
+  (hash-ref *lambda-table* sym))
 
 (define (no-free-var? env)
   (queue-empty? (env-frees env)))

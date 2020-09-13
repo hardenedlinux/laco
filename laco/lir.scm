@@ -230,8 +230,9 @@
   (hash-ref *labels* label))
 
 ;; NOTE:
-;; We reuse prim:return for proc-return instruction, so the arity is 0.
-(define *proc-return* (make-insr-pcall '() prim:return #t))
+;; 1. We use prim:restore for proc-return instruction, and the arity is 0.
+;; 2. prim:return is used to tag tail-call, not for restoring context.
+(define *proc-return* (make-insr-pcall '() prim:restore #t))
 
 (define (frees->lookup-table start frees)
   (let ((ht (make-hash-table))

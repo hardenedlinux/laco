@@ -25,18 +25,18 @@
                                  define-record-type))
   #:export (label-counter
             single-encode
-            collection-encode
             double-encode
             triple-encode
             quadruple-encode
             primitive-encode/basic
             primitive-encode/extend
             special-encode
-            integer-encode
-            string-encode
-            prim-encode
-            boolean-encode
-            proc-encode))
+            collection-obj-encode
+            integer-obj-encode
+            string-obj-encode
+            boolean-obj-encode
+            prim-obj-encode
+            proc-obj-encode))
 
 (define label-counter (new-counter))
 
@@ -120,9 +120,9 @@
     (label-counter 2)
     bv))
 
-(define (integer-encode data)
+(define (integer-obj-encode data)
   (when (or (< data (- (1- (expt 2 31)))) (> data (1- (expt 2 31))))
-    (throw 'laco-error integer-encode
+    (throw 'laco-error integer-obj-encode
            "Invalid integer object `0x~a', should be 32bit!"
            (number->string data 16)))
   (let ((bv (make-bytevector 6 0))
@@ -133,7 +133,7 @@
     (label-counter 6)
     bv))
 
-(define (prim-encode pn)
+(define (prim-obj-encode pn)
   ;; FIXME: Check pn
   (let ((bv (make-bytevector 6 0)))
     (bytevector-u8-set! bv 0 #b11100010)
@@ -142,22 +142,30 @@
     (label-counter 6)
     bv))
 
-(define* (proc-encode offset #:optional (count? #t))
+(define* (proc-obj-encode offset arity opt #:optional (count? #t))
   (when (or (< offset (- (1- (expt 2 16)))) (> offset (1- (expt 2 16))))
-    (throw 'laco-error proc-encode
+    (throw 'laco-error proc-obj-encode
            "Invalid proc object `0x~a', should be 16bit!"
            (number->string offset 16)))
+  (when (or (>= arity (expt 2 16)) (< arity 0))
+    (throw 'laco-error proc-obj-encode
+           "Invalid proc arity `~a', should be 16bit!" arity))
+  (when (or (>= opt (expt 2 16)) (< opt 0))
+    (throw 'laco-error proc-obj-encode
+           "Invalid proc arity `~a', should be 16bit!" opt))
   (let ((bv (make-bytevector 6 0)))
     (bytevector-u8-set! bv 0 #b11100010)
     (bytevector-u8-set! bv 1 9)
-    (bytevector-u32-set! bv 2 offset 'big)
+    (bytevector-u16-set! bv 2 offset 'big)
+    (bytevector-u8-set! bv 4 arity)
+    (bytevector-u8-set! bv 5 opt)
     (when count? (label-counter 6))
     bv))
 
 ;; NOTE: String is mapped to C string exactly.
-(define (string-encode str)
+(define (string-obj-encode str)
   (when (not (string? str))
-    (throw 'laco-error string-encode
+    (throw 'laco-error string-obj-encode
            "Invalid object `~a', should be a string!" str))
   (let ((bv (make-bytevector 2 0))
         ;; NOTE: We don't support UTF-8 for performance
@@ -168,9 +176,9 @@
     (label-counter (+ 2 (string-length str) 1))
     (list bv sbv #u8(0))))
 
-(define (collection-encode type size)
+(define (collection-obj-encode type size)
   (when (or (< size 0) (>= size (expt 2 16)))
-    (throw 'laco-error collection-encode
+    (throw 'laco-error collection-obj-encode
            "Invalid collection size `~a', should be 0~2^16!" size))
   (let ((bv (make-bytevector 4 0)))
     (bytevector-u8-set! bv 0 #b11100010)
@@ -180,9 +188,9 @@
     (label-counter 4)
     bv))
 
-(define (boolean-encode value)
+(define (boolean-obj-encode value)
   (when (or (< value 0) (> value 15))
-    (throw 'laco-error boolean-encode "Invalid boolean value `~a'!" value))
+    (throw 'laco-error boolean-obj-encode "Invalid boolean value `~a'!" value))
   (let ((bv (make-bytevector 1 0)))
     (bytevector-u8-set! bv 0 (logior (ash #b1110 4) value))
     (label-counter 1)

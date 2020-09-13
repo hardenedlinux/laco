@@ -65,9 +65,6 @@
 
 (define-record-type object)
 
-(define (object-list? lst)
-  (make-object-list-pred lst object?))
-
 (define-typed-record integer-object (parent object)
   (fields
    (value integer?)))
@@ -75,13 +72,13 @@
 (define-typed-record list-object (parent object)
   (fields
    (size positive?)
-   (value object-list?)))
+   (value list?)))
 
 (define-typed-record vector-object (parent object)
   (fields
    ;; we use list to hold the vector, it'll become real vector in codegen
    (size positive?)
-   (value object-list?)))
+   (value list?)))
 
 ;; We store char as small integer
 (define-typed-record char-object (parent object)

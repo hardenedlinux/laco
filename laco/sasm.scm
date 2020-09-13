@@ -134,8 +134,8 @@
   (sasm-emit `((push-string-object ,s) . "")))
 
 ;; NOTE: we may use arity in the future
-(define-public (emit-proc-object proc arity entry)
-  (sasm-emit `((push-proc-object ,(drop-hash entry))
+(define-public (emit-proc-object proc arity opt-index entry)
+  (sasm-emit `((push-proc-object ,(drop-hash entry) ,arity ,opt-index)
                . ,(format #f "Push Proc `~a' in `~a'"
                           (drop-hash proc) (drop-hash entry)))))
 

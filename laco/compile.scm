@@ -114,6 +114,7 @@ Options:
      tail-call-optimizing
      escape-analysis
      primitive-conversion
+     args-extend
      closure-conversion
      lambda-lifting
      eliminate-redundant))

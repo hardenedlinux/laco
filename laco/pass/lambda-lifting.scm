@@ -20,6 +20,7 @@
   #:use-module (laco types)
   #:use-module (laco cps)
   #:use-module (laco pass)
+  #:use-module (laco pass normalize)
   #:use-module (ice-9 match))
 
 ;; NOTE: This pass must be after normalize and closure-conversion
@@ -39,6 +40,8 @@
 (define (re-orgnize-frees! frees env)
   (env-frees-set! env (list->queue frees)))
 
+(define lift-name (make-parameter #f))
+
 (define (ll expr)
   (match expr
     (($ letfun/k ($ bind-special-form/k _ fname func body))
@@ -49,7 +52,8 @@
        expr)
       (else
        (top-level-set! (id-name fname) (ll func))
-       (ll body))))
+       (parameterize ((lift-name (id->string fname)))
+         (ll body)))))
     (($ closure/k  _ env body)
      (re-orgnize-frees! (free-vars body #t) env)
      (closure/k-body-set! expr (ll body))
@@ -73,6 +77,10 @@
     (($ seq/k _ exprs)
      (seq/k-exprs-set! expr (map ll exprs))
      expr)
+    (($ lvar ($ id _ name _) _)
+     (if (equal? (lift-name) (symbol->string name))
+         (new-gvar (new-id (lift-name) #f))
+         expr))
     (else expr)))
 
 ;; Lambda-lifting does two things:

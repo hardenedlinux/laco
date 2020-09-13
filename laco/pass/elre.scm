@@ -27,22 +27,22 @@
 ;; Eliminate all the redundant code:
 ;; NOTE:
 ;; 1. We're not going to eliminate tail-call (return ...) in this pass.
-;;    The left `return' should imply tail-call after elre, since `return` in non
+;;    The left `return' should imply tail-call after elre, since `return` within non
 ;;    tail-calls are all eliminated in case-2.
 ;; 2. FIXME: Make sure all the left `return' are tail-calls, we need them for
 ;;    low-level TCO stack tweaking in LIR.
 
 (define (eliminate-non-tail-return exprs)
   (let ((kont (current-kont)))
-    (fold (lambda (x p)
-            (match x
-              (($ app/k _ f (arg))
-               (=> failed!)
-               (if (kont-eq? f kont)
-                   (cons arg p)
-                   (failed!)))
-              (else (cons x p))))
-          '() exprs)))
+    (fold-right (lambda (x p)
+                  (match x
+                    (($ app/k _ f (arg))
+                     (=> failed!)
+                     (if (kont-eq? f kont)
+                         (cons arg p)
+                         (failed!)))
+                    (else (cons x p))))
+                '() exprs)))
 
 (define (elre expr)
   (match expr
@@ -69,7 +69,7 @@
             (elre (car exprs))))))
       (else
        (parameterize ((current-kont (cps-kont expr)))
-         (let ((ne (map elre (eliminate-non-tail-return (reverse! exprs)))))
+         (let ((ne (map elre (eliminate-non-tail-return exprs))))
            (seq/k-exprs-set! expr ne)
            expr)))))
     #;
@@ -88,18 +88,13 @@
      ;; 1. We eliminate lambda/k, so free-vars have to tweak.
      ;; 2.
      (elre (cfs body args1 (map elre args2))))
-    ;; (($ app/k ($ cps _ kont _ _) f args)
-    ;;  ;; case-5: (ret expr-contains-ret) -> (ret expr-without-ret)
-    ;;  ;; Make sure every function has only one ret instruction
-    ;;  ;; NOTE: There's only one argument for ret
-    ;;  (=> failed!)
-    ;;  (cond
-    ;;   ((kont-eq? kont f)
-    ;;    (if (reduce-ret?)
-    ;;        (app/k-args-set! expr (map elre (cdr args)))
-    ;;        (parameterize ((reduce-ret? #t))
-    ;;          ))))
-    ;;  )
+    (($ app/k ($ cps _ kont _ _) f args)
+     ;; case-5: (f (ret e) ...) -> (f e)
+     ;; Redundant ret in args context, this may be introduced by lambda-lifting
+     (=> failed!)
+     (app/k-func-set! expr (car (eliminate-non-tail-return (list f))))
+     (app/k-args-set! expr (eliminate-non-tail-return args))
+     (failed!))
     ((? bind-special-form/k?)
      (bind-special-form/k-value-set! expr (elre (bind-special-form/k-value expr)))
      (bind-special-form/k-body-set! expr (elre (bind-special-form/k-body expr)))

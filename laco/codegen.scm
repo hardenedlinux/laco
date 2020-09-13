@@ -72,7 +72,8 @@
     (($ insr-prelude _ proc mode arity)
      (emit-prelude proc mode arity))
     (($ insr-pcall _ p keep?)
-     (emit-prim-call p keep?))
+     (when (not (zero? (primitive->number p)))
+       (emit-prim-call p keep?)))
     (($ integer-object _ i)
      ;; TODO: how to associate the variable?
      (emit-integer-object i))
@@ -87,7 +88,7 @@
      (for-each emit-sasm (reverse lst))
      (emit-vector-object size))
     (($ proc-object _ proc arity entry)
-     (emit-proc-object proc arity entry))
+     (emit-proc-object proc arity (lambda-has-vargs? (string->symbol proc)) entry))
     (($ prim-object _ p)
      (emit-prim-object p))
     (($ insr-label _ proc label insrs)

@@ -34,6 +34,7 @@
             cps-name cps-name-set!
             cps-attr cps-attr-set!
             cps-property-set!
+            cps-property-ref
 
             lambda/k lambda/k?
             lambda/k-args lambda/k-args-set!
@@ -148,6 +149,10 @@
 (define (cps-property-set! cexp k v)
   (let ((attr (cps-attr cexp)))
     (cps-attr-set! cexp (assoc-set! attr k v))))
+
+(define (cps-property-ref cexp k)
+  (let ((attr (cps-attr cexp)))
+    (assoc-ref attr k)))
 
 (define-typed-record lambda/k (parent cps)
   (fields

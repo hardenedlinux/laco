@@ -77,7 +77,8 @@
 (define* (cc expr #:optional (mode 'normal))
   (match expr
     (($ lambda/k ($ cps _ kont name attr) args body)
-     (let ((env (new-env args (fix-fv (free-vars expr #t)))))
+     (let* ((frees (fix-fv (free-vars expr #t)))
+            (env (new-env args frees)))
        (extend-env! (current-env) env)
        (closure-set! (id-name name) env)
        (parameterize ((current-env env)
@@ -89,7 +90,11 @@
             ;; NOTE:
             ;; 1. Counting frame size for each closure env in lir
             ;; 2. For 'closure mode, fvars must be converted to lvar
-            (make-closure/k (list kont name attr) env (cc body 'closure)))
+            ;; 3. If there's no any free-vars, then it's just a lambda, so that
+            ;;    we can lift it in lambda-lifting.
+            (if (null? frees)
+                (make-lambda/k (list kont name attr) args (cc body))
+                (make-closure/k (list kont name attr) env (cc body 'closure))))
            (else (throw 'laco-error cc "Invalid cc mode `~a'~%" mode))))))
     ;; (($ closure/k ($ cps _ kont name attr) env body)
     ;;  ;; TODO: The escaping function will be converted to closure/k.
@@ -109,7 +114,7 @@
        (env-local-push! env var)
        (make-collection/k (list kont name attr)
                           var type size
-                          (cc value))))
+                          (map cc value))))
     (($ seq/k ($ cps _ kont name attr) exprs)
      (make-seq/k (list kont name attr) (map cc exprs)))
     (($ letfun/k ($ bind-special-form/k ($ cps _ kont name attr) fname func body))
@@ -117,10 +122,11 @@
                     (new-env '() (free-vars expr))
                     (current-env))))
        (env-local-push! env fname)
-       (make-letfun/k (list kont name attr)
-                      fname
-                      (cc func)
-                      (cc body))))
+       (parameterize ((current-env env))
+         (make-letfun/k (list kont name attr)
+                        fname
+                        (cc func)
+                        (cc body)))))
     (($ letcont/k ($ bind-special-form/k ($ cps _ kont name attr) jname jcont body))
      ;; 1. In closure-conversion, we eliminate all letcont/k, the bindings should be
      ;;    merged into the current-env.
@@ -139,12 +145,6 @@
          (cc (cfs body
                   (list jname)
                   (list (cc jcont)))))))
-    (($ letfun/k ($ bind-special-form/k ($ cps _ kont name attr) fname fbody body))
-     (env-local-push! (current-env) fname)
-     (make-letfun/k (list kont name attr)
-                    fname
-                    (cc fbody)
-                    (cc body)))
     (($ letval/k ($ bind-special-form/k ($ cps _ kont name attr) var value body))
      (env-local-push! (current-env) var)
      (make-letval/k (list kont name attr)
