@@ -67,6 +67,8 @@
             name->mode
             const-useless-position
             tail-position
+            normal-call-register!
+            is-normal-call?
             label-in!
             label-out!
             label-back-index))
@@ -247,15 +249,27 @@
 (define (tail-position exprs)
   (list-tail exprs (1- (length exprs))))
 
+(define *normal-call-table* (make-hash-table))
+(define (normal-call-register! label)
+  (hash-set! *normal-call-table* label #t))
+;; symbol -> bool
+(define (is-normal-call? label)
+  ;;(pk "call-table" (hash-map->list cons *normal-call-table*))
+  (hash-ref *normal-call-table* (format #f "#~a" label)))
+
 (define *label-queue* (new-queue))
 (define (label-in! label)
+  ;;(pk "label-in!" label)
   (queue-in! *label-queue* label))
 (define (label-out!)
+  ;;(pk "label-out!")
   (queue-out! *label-queue*))
 ;; NOTE: after fv-lifting, there's no free-var in tail-call or tail-rec context,
 ;;       so we can use label to indicate the stack frame.
 (define (label-back-index label)
   (let ((ll (queue-slots *label-queue*)))
-    (if (null? ll)
-        0
-        (list-index ll label))))
+    ;;(pk "ll" ll)
+    (cond
+     ((member label ll)
+      => length)
+     (else 0))))

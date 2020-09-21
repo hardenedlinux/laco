@@ -40,6 +40,9 @@
               vl)
     ht))
 
+(define (is-inlineable? attr)
+  (or (assoc-ref attr 'branch)))
+
 ;; NOTE: It is also called beta-contract, which means inlining the function that
 ;;       appears only once.
 ;; unfortunately, we don't have env in this direct CPS implementation, so it's
@@ -49,6 +52,20 @@
 (define* (func-inline expr #:optional (refs (make-ref-table expr)))
   (define (inlineable-local-func? f) (= 2 (hash-ref refs f 0)))
   (match expr
+    (($ letfun/k (_ fname ($ lambda/k ($ cps _ _ _ attr) () body) _))
+     ;; * For the cases before letfun/k reduction.
+     ;; * Don't worry about the free-vars inside body, they'll be well handled in
+     ;;   closure-conversion.
+     (=> failed!)
+     (if (is-inlineable? attr)
+         body
+         (failed!)))
+    (($ lambda/k ($ cps _ _ _ attr) _ body)
+     ;; For the case that generates redundant lambdas.
+     (=> failed!)
+     (if (is-inlineable? attr)
+         body
+         (failed!)))
     (($ letcont/k ($ bind-special-form/k _ jname jcont
                      ($ letfun/k ($ bind-special-form/k _ fname fbody body))))
      (=> fail!)

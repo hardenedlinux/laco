@@ -23,12 +23,12 @@
   #:use-module (ice-9 match))
 
 (define (rename-label! lexpr old-label new-label)
-  (define (hit? l) (equal? l old-label))
+  (define (hit? l) (string=? l old-label))
   (match lexpr
     (($ insr-proc _ _ _ _ arity body)
      (insr-proc-body-set! lexpr (rename-label! body old-label new-label))
      lexpr)
-    (($ insr-label _ _ _ exprs)
+    (($ insr-label _ label _ exprs)
      (insr-label-body-set!
       lexpr
       (map (lambda (e) (rename-label! e old-label new-label)) exprs))
@@ -41,6 +41,11 @@
      lexpr)
     (($ insr-free _ (? hit?) _ _ _ _)
      (insr-free-label-set! lexpr new-label)
+     lexpr)
+    (($ insr-closure _ label _ _ body _)
+     (insr-closure-body-set!
+      lexpr
+      (map (lambda (e) (rename-label! e old-label new-label)) body))
      lexpr)
     (else lexpr)))
 
@@ -64,8 +69,11 @@
     (($ insr-proc _ _ label _ _ body)
      (insr-proc-body-set! lexpr (rl body))
      lexpr)
-    (($ insr-closure _ _ _ _ body _)
-     (insr-closure-body-set! lexpr (rl body))
+    (($ insr-closure _ label _ _ (($ insr-label _ _ label2 lexprs2) rest ...) _)
+     (insr-closure-body-set!
+      lexpr
+      (map rl `(,@(map (lambda (e) (rename-label! e label2 label)) lexprs2)
+                ,@rest)))
      lexpr)
     (else lexpr)))
 

@@ -52,8 +52,7 @@
         (indent-spaces 'in))
        (('label-end proc label)
         (indent-spaces 'out)
-        (format port "~a;; ~a~%"
-                (indent-spaces)
+        (format port "~a(label-end ~a); ~a~%" (indent-spaces) (drop-hash label)
                 (if proc
                     (format #f "Proc `~a' end" (drop-hash proc))
                     (format #f "Label `~a' end" (drop-hash label))))
@@ -79,7 +78,7 @@
         (format port "~a) ; Clean end~%~%" (indent-spaces))
         (indent-spaces 'out))
        ((('closure-end label) . descp)
-        (format port "~a(closure-end ~a)" (indent-spaces) label))
+        (format port "~a(closure-end ~a)~%" (indent-spaces) label))
        ((('closure mode arity frame-size entry-label) . descp)
         (format port "~a(closure ~a ~a ~a ~a) ; ~a~%"
                 (indent-spaces) mode arity frame-size (drop-hash entry-label)
@@ -176,8 +175,8 @@
 (define-public (emit-vector-object size)
   (sasm-emit `((push-vector-object ,size) . "")))
 
-(define-public (emit-prelude proc mode arity)
-  (sasm-emit `((prelude ,(mode->name mode) ,arity)
+(define-public (emit-prelude proc label mode arity)
+  (sasm-emit `((prelude ,(drop-hash label) ,(mode->name mode) ,arity)
                . ,(format #f "Prelude for `~a'" (drop-hash proc)))))
 
 (define-public (emit-proc-return)
@@ -199,12 +198,13 @@
 (define-public (emit-proc-call proc label keep?)
   (let ((where (if proc proc label)))
     (sasm-emit
-     `((call-proc ,label ,keep?) . ,(format #f "Proc call ~a" (drop-hash where))))))
+     `((call-proc ,label ,keep?) . ,(format #f "Proc call `~a'"
+                                            (drop-hash where))))))
 
-(define-public (emit-local mode offset keep?)
+(define-public (emit-local name mode offset keep?)
   (case mode
     ((push) (sasm-emit `((local ,offset) . "")))
-    ((call) (sasm-emit `((call-local ,offset ,keep?) . "")))
+    ((call) (sasm-emit `((call-local ,(drop-hash name) ,offset ,keep?) . "")))
     (else (throw 'laco-error emit-local "Invalid mode `~a'!" mode))))
 
 (define-public (emit-free label mode offset keep?)
@@ -232,15 +232,16 @@
   (sasm-emit 'clean-end))
 
 (define-public (sasm-label-begin proc label)
-  (label-in! label)
   (sasm-emit `(label-begin ,proc ,label)))
 
 (define-public (sasm-label-end proc label)
-  (label-out!)
   (sasm-emit `(label-end ,proc ,label)))
 
 (define-public (sasm-closure-end end-label)
   (sasm-emit `((closure-end ,end-label) . "")))
+
+(define-public (sasm-branch-end end-label)
+  (sasm-emit `((branch-end ,end-label) . "")))
 
 (define-public (sasm-closure-capture frame-size end-label)
   (sasm-emit '((closure) . ,(format #f "Capture with ~a free-vars till ~a"

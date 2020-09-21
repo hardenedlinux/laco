@@ -61,15 +61,12 @@
             make-insr-fjump
             insr-fjump-label insr-fjump-label-set!
 
+            insr-jump insr-jump?
+
             insr-proc-call insr-proc-call?
             make-insr-proc-call
             insr-proc-call-proc insr-proc-call-proc-set!
             insr-proc-call-label insr-proc-call-label-set!
-
-            insr-closure insr-closure?
-            make-insr-closure
-            insr-closure-env
-            insr-closure-body insr-closure-body-set!
 
             insr-label insr-label?
             make-insr-label
@@ -77,15 +74,19 @@
             insr-label-proc insr-label-proc-set!
             insr-label-body insr-label-body-set!
 
+            insr-branch-end insr-branch-end?
+
             insr-local insr-local?
             make-insr-local
             insr-local-label
-            insr-local-offset
+            insr-local-name
+            insr-local-offset insr-local-offset-set!
             insr-local-mode insr-local-mode-set!
 
             insr-free insr-free?
             make-insr-free
-            insr-free-label-set!
+            insr-free-label insr-free-label-set!
+            insr-free-name insr-free-name-set!
 
             insr-global insr-global?
             make-insr-global
@@ -93,7 +94,7 @@
 
             insr-closure insr-closure?
             make-insr-closure
-            insr-closure-label
+            insr-closure-label insr-closure-label-set!
             insr-closure-arity
             insr-closure-frees
             insr-closure-body insr-closure-body-set!
@@ -153,6 +154,10 @@
    (label string?)
    (body valid-insr-list?)))
 
+(define-typed-record insr-branch-end (parent insr)
+  (fields
+   (label string?)))
+
 (define-record-type insr-lit (parent insr) (fields val)) ; literal
 (define-record-type insr-set (parent insr) (fields var)) ; var assignment
 
@@ -166,6 +171,7 @@
 (define-typed-record insr-local (parent insr)
   (fields
    (mode symbol?)
+   (name symbol?)
    (offset integer?)
    (keep? boolean?)))
 
@@ -174,6 +180,7 @@
   (fields
    ;; We convert the label to string since we will generate label pattern in codegen
    (label string?)
+   (name symbol?)
    (mode symbol?)
    (offset integer?)
    (keep? boolean?)))
@@ -184,8 +191,13 @@
    (mode symbol?)
    (offset integer?)))
 
-;; jump if TOS is false
+;; Jump if TOS is false
 (define-typed-record insr-fjump (parent insr)
+  (fields
+   (label string?)))
+
+;; Jump without condition
+(define-typed-record insr-jump (parent insr)
   (fields
    (label string?)))
 
@@ -208,6 +220,7 @@
 (define-typed-record insr-prelude (parent insr)
   (fields
    (proc string?)
+   (label string?)
    (mode integer?)
    (arity integer?)))
 
@@ -216,7 +229,7 @@
    (label string?)
    (arity integer?)
    (frees hash-table?)
-   (body insr?)
+   (body valid-insr-list?)
    (mode symbol?)))
 
 (define (get-global-offset name)
@@ -234,13 +247,28 @@
 ;; 2. prim:return is used to tag tail-call, not for restoring context.
 (define *proc-return* (make-insr-pcall '() prim:restore #t))
 
-(define (frees->lookup-table start frees)
+;; insr -> string
+(define (proc->label proc)
+  (match proc
+    (($ insr-proc-call _ _ label _) label)
+    (($ insr-free _ label _ _ _ _) label)
+    (($ insr-local _ label _ _ _) (symbol->string label))
+    (($ lambda/k ($ cps _ _ label _) _ _) label)
+    (else
+     (throw 'laco-error proc->label "BUG: the proc `~a' has no label!" proc))))
+
+;; list -> hash-table
+(define (frees->lookup-table frees)
   (let ((ht (make-hash-table))
-        (len (queue-length frees)))
+        (len (length frees)))
     (for-each (lambda (x i)
-                (hash-set! ht (id->string x) i))
-              (queue-slots frees) (iota len start))
+                (hash-set! ht (id-name x) i))
+              frees (iota len))
     ht))
+
+;; queue -> queue
+(define (filter-locals locals frees)
+  (lset-difference id-eq? (queue-slots frees) (queue-slots locals)))
 
 (define* (cps->lir expr #:key (cur-def #f) (mode 'push) (prelude? #f))
   (match expr
@@ -255,18 +283,22 @@
     (($ closure/k ($ cps _ kont name attr) env body)
      (let* ((mode (if (is-escaped? expr) 'heap 'stack))
             (locals (env-bindings env))
-            (frees (frees->lookup-table (queue-length locals) (env-frees env)))
+            (frees (frees->lookup-table (filter-locals locals (env-frees env))))
             (arity (queue-length (env-bindings env))))
        (make-insr-closure '()
                           (id->string name)
                           arity
                           frees
-                          (cps->lir body) mode)))
+                          (list (cps->lir body) *proc-return*)
+                          mode)))
     (($ branch/k ($ cps _ kont name attr) cnd b1 b2)
-     (let ((ce (cps->lir cnd #:prelude? #t))
-           (bt (cps->lir b1))
-           (bf (cps->lir b2))
-           (label (id->string name)))
+     (let* ((ce (cps->lir cnd #:prelude? #t))
+            (bt (cps->lir b1))
+            (bf (cps->lir b2))
+            (label (id->string name))
+            (end-label (new-label "fjump-end-"))
+            (jump-to-branch-end (make-insr-jump '() end-label))
+            (branch-end (make-insr-branch-end '() end-label)))
        (make-insr-label
         '()
         #f
@@ -275,7 +307,9 @@
          ce
          (make-insr-fjump '() (cps->name-string b2))
          bt
-         bf))))
+         jump-to-branch-end
+         bf
+         branch-end))))
     (($ collection/k ($ cps _ kont name attr) var type size value)
      (create-collection-object type size (map cps->lir value)))
     (($ seq/k ($ cps _ kont name attr) exprs)
@@ -325,9 +359,14 @@
             (env (closure-ref (id-name name)))
             (label (id->string name))
             (arity (length args))
+            (func-name (cps->name-string func))
             (prelude (lambda (mode)
-                       (make-insr-prelude '() (cps->name-string func)
-                                          mode arity))))
+                       (let ((f-label (proc->label f)))
+                         (when (= mode *normal-call*)
+                           (normal-call-register! f-label))
+                         (make-insr-prelude '() (cps->name-string func)
+                                            f-label
+                                            mode arity)))))
        (when (not env)
          (throw 'laco-error cps->lir
                 "app/k: the closure label `~a' doesn't have an env!" label))
@@ -342,10 +381,10 @@
              (make-insr-label '() #f label `(,(prelude *normal-call*) ,@e ,f)))))))
     (($ constant/k _ value)
      (create-constant-object value))
-    (($ lvar _ offset)
-     (make-insr-local '() mode offset (and (eq? mode 'call) prelude?)))
-    (($ fvar _ label offset)
-     (make-insr-free '() label mode offset (and (eq? mode 'call) prelude?)))
+    (($ lvar ($ id _ name _) offset)
+     (make-insr-local '() name mode offset (and (eq? mode 'call) prelude?)))
+    (($ fvar ($ id _ name _) label offset)
+     (make-insr-free '() label name mode offset (and (eq? mode 'call) prelude?)))
     (($ gvar ($ id _ name _))
      (let ((id-str (symbol->string name)))
        (match (top-level-ref name)
@@ -387,7 +426,7 @@
 (define (lir->expr lexpr)
   (match lexpr
     (($ insr-closure _ label _ _ body mode)
-     `(,(symbol-append 'closure-on- mode) ,label ,(lir->expr body)))
+     `(,(symbol-append 'closure-on- mode) ,label ,@(map lir->expr body)))
     (($ insr-proc _ proc label _ arity lexprs)
      `(proc ,proc ,label ,arity ,(map lir->expr lexprs)))
     (($ insr-label _ proc label exprs)
@@ -396,22 +435,26 @@
     (($ insr-pcall _ p keep?)
      `(prim-call ,(primitive-name p) ,(primitive->number p)
                  ,(if keep? 'keep 'clean)))
-    (($ insr-prelude _ proc mode arity)
-     `(prelude ,proc ,(mode->name mode) ,arity))
+    (($ insr-prelude _ proc label mode arity)
+     `(prelude ,proc ,label ,(mode->name mode) ,arity))
     (($ insr-proc-call _ proc label keep?)
      `(call-proc ,proc ,label ,(if keep? 'keep 'clean)))
     (($ insr-fjump _ label)
      `(fjump ,label))
-    (($ insr-local _ mode offset keep?)
-     `(local ,mode ,offset ,(cond
-                             ((eq? mode 'push) 'object)
-                             (keep? 'keep)
-                             (else 'clean))))
-    (($ insr-free _ label mode offset keep?)
-     `(free-var ,label ,mode ,offset ,(cond
-                                       ((eq? mode 'push) 'object)
-                                       (keep? 'keep)
-                                       (else 'clean))))
+    (($ insr-branch-end _ label)
+     `(branch-end ,label))
+    (($ insr-jump _ label)
+     `(jump ,label))
+    (($ insr-local _ name mode offset keep?)
+     `(local ,offset ,name ,mode ,(cond
+                                   ((eq? mode 'push) 'object)
+                                   (keep? 'keep)
+                                   (else 'clean))))
+    (($ insr-free _ label name mode offset keep?)
+     `(free-var ,name in ,label ,mode ,offset ,(cond
+                                                ((eq? mode 'push) 'object)
+                                                (keep? 'keep)
+                                                (else 'clean))))
     (($ integer-object _ value) `(integer ,value))
     (($ string-object _ value) `(string ,value))
     (($ boolean-object _ value) `(boolean ,(if value 'true 'false)))

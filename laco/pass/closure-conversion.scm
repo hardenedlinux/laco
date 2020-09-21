@@ -74,28 +74,35 @@
                     (cons x p)))
               '() fl))
 
+(define last-scope (make-parameter 'global))
+(define last-kont (make-parameter 'toplevel-kont))
+
 (define* (cc expr #:optional (mode 'normal))
   (match expr
     (($ lambda/k ($ cps _ kont name attr) args body)
      (let* ((frees (fix-fv (free-vars expr #t)))
             (env (new-env args frees)))
+       ;;(pk "current env" (map id-name (env-bindings env))) (read)
        (extend-env! (current-env) env)
        (closure-set! (id-name name) env)
-       (parameterize ((current-env env)
-                      (current-kont kont))
-         (case mode
-           ((normal)
-            (make-lambda/k (list kont name attr) args (cc body)))
-           ((closure)
-            ;; NOTE:
-            ;; 1. Counting frame size for each closure env in lir
-            ;; 2. For 'closure mode, fvars must be converted to lvar
-            ;; 3. If there's no any free-vars, then it's just a lambda, so that
-            ;;    we can lift it in lambda-lifting.
-            (if (null? frees)
-                (make-lambda/k (list kont name attr) args (cc body))
-                (make-closure/k (list kont name attr) env (cc body 'closure))))
-           (else (throw 'laco-error cc "Invalid cc mode `~a'~%" mode))))))
+       ;;       (pk "after added free-vars" (map id-name (car (env-frees env))))
+       (parameterize ((last-scope (current-env))
+                      (last-kont (current-kont)))
+         (parameterize ((current-env env)
+                        (current-kont name))
+           (case mode
+             ((normal)
+              (make-lambda/k (list kont name attr) args (cc body)))
+             ((closure)
+              ;; NOTE:
+              ;; 1. Counting frame size for each closure env in lir
+              ;; 2. For 'closure mode, fvars must be converted to lvar
+              ;; 3. If there's no any free-vars, then it's just a lambda, so that
+              ;;    we can lift it in lambda-lifting.
+              (if (null? frees)
+                  (make-lambda/k (list kont name attr) args (cc body))
+                  (make-closure/k (list kont name attr) env (cc body 'closure))))
+             (else (throw 'laco-error cc "Invalid cc mode `~a'~%" mode)))))))
     ;; (($ closure/k ($ cps _ kont name attr) env body)
     ;;  ;; TODO: The escaping function will be converted to closure/k.
     ;;  ;;       This will need escaping analysis or liveness analysis.
@@ -144,7 +151,7 @@
        (parameterize ((current-env env))
          (cc (cfs body
                   (list jname)
-                  (list (cc jcont)))))))
+                  (list jcont))))))
     (($ letval/k ($ bind-special-form/k ($ cps _ kont name attr) var value body))
      (env-local-push! (current-env) var)
      (make-letval/k (list kont name attr)
@@ -158,10 +165,11 @@
                  (cc f)
                  (map (lambda (e) (cc e 'closure)) args)))
     ((? id? id)
-     (let ((env (current-env))
-           ;; FIXME: deal with it when current-kont is 'global
-           (label (cps->name-string (current-kont)))
-           (name (id-name id)))
+     (let* ((env (current-env))
+            (current-kont-label (cps->name-string (current-kont)))
+            ;; FIXME: deal with it when current-kont is 'global
+            (last (last-kont))
+            (name (id-name id)))
        (cond
         ((top-level-ref name) (new-gvar id))
         ((not (toplevel? env))
@@ -169,12 +177,17 @@
           ((bindings-index env id)
            => (lambda (offset)
                 (new-lvar id offset)))
-          ((and (not (eq? label 'global)) (frees-index env id))
+          ((and (not (eq? current-kont-label 'global))
+                (if (eq? (last-scope) 'global)
+                    (throw 'laco-error cc
+                           "Undefined global variable `~a' in `~a'!"
+                           name current-kont-label)
+                    (bindings-index (last-scope) id)))
            => (lambda (index)
-                (new-fvar id label index)))
-          (else (throw 'laco-error cc "Undefined local variable `~a'!" label))))
+                (new-fvar id (cps->name-string last) index)))
+          (else (throw 'laco-error cc "Undefined local variable `~a'!" name))))
         (else (throw 'laco-error cc "Undefined global variable `~a' in `~a'!"
-                     name label)))))
+                     name current-kont-label)))))
     (else expr)))
 
 (define-pass closure-conversion expr (cc expr))

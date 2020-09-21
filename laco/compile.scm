@@ -132,7 +132,6 @@ Options:
     (run-pass
      lexpr
      reduce-labels
-     reduce-ret
      free-vars-lifting
      closure-capture-free-vars))
   (init-lir-optimizations)

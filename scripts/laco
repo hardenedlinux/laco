@@ -1,4 +1,4 @@
-#!/usr/bin/guile-2.2 \
+#!/gnu/store/wp7qdyqbv221ng8lbknrmpi2adrl17x8-profile/bin/guile \
 -e main
 !#
 

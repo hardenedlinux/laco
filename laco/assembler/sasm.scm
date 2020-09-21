@@ -46,7 +46,16 @@
   (label-register! name)
   #u8())
 
+(define-public (label-end name)
+  (when (is-normal-call? name)
+    (label-out!))
+  #u8())
+
 (define-public (closure-end label)
+  (label-register! label)
+  #u8())
+
+(define-public (branch-end label)
   (label-register! label)
   #u8())
 
@@ -59,7 +68,7 @@
     (single-encode 1 i))
    (else (throw 'laco-error local "Invalid offset `~a'!" i))))
 
-(define-public (call-local i keep?)
+(define-public (call-local name i keep?)
   (define (gen)
     (cond
      ((and (>= i 0) (< i 16))
@@ -67,6 +76,8 @@
      ((> i 15)
       (single-encode #b0101 i))
      (else (throw 'laco-error call-local "Invalid offset `~a'!" i))))
+  (when (is-normal-call? name)
+    (label-in! name))
   (cond
    (keep? (gen))
    (else
@@ -74,6 +85,7 @@
           (vm-stack-pop)))))
 
 ;; --------- special double encoding ----------
+;; 0010 xxxx xxaaaaaa    Ref free up(fp)^a in offset x
 (define-public (free label i)
   (let ((frame (make-bytevector 1 0))
         (f (label-back-index label)))
@@ -100,6 +112,8 @@
       (list
        (single-encode #b0011 (ash (logand i #b111100) -2))
        frame)))
+  (when (is-normal-call? label)
+    (label-in! label))
   (cond
    (keep? (gen))
    (else
@@ -107,7 +121,7 @@
           (vm-stack-pop)))))
 
 ;; --------- double encoding -----------
-(define-public (prelude mode-name arity)
+(define-public (prelude label mode-name arity)
   (let ((b (logior (ash arity 2) (name->mode mode-name))))
     (double-encode #b0000 b)))
 
@@ -126,6 +140,8 @@
        (else
         (label-counter 3)
         `#((call-proc ,label ,keep? #f))))))
+  (when (is-normal-call? label)
+    (label-in! label))
   (cond
    (keep? (gen))
    (else
