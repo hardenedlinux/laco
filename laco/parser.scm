@@ -28,8 +28,9 @@
 
 ;; NOTE: we don't allow primitives-redefine, so this list is for checking.
 (define *wrong-op-lst*
-  '(quote quasiquote unquote unquote-splicing lambda if set!
-          cond and or case let let* letrec begin do define delay))
+  `(quote quasiquote unquote unquote-splicing lambda if set!
+          cond and or case let let* letrec begin do define delay
+          ,@(@@ (laco primitives) *prim-table*)))
 
 (define (_quasiquote obj)
   (match obj
