@@ -114,9 +114,10 @@
   (when (or (< pn 0) (> pn 4095))
     (throw 'laco-error primitive-encode/basic
            "Invalid data, should be 0 ~ 4095" pn))
-  (let ((bv (make-bytevector 2 0)))
-    (bytevector-u8-set! bv 0 (logior #b11010000 (ash pn -8)))
-    (bytevector-u8-set! bv 1 (logand #xff pn))
+  (let ((fixed-pn (- pn 16))
+        (bv (make-bytevector 2 0)))
+    (bytevector-u8-set! bv 0 (logior #b11010000 (ash fixed-pn -8)))
+    (bytevector-u8-set! bv 1 (logand #xff fixed-pn))
     (label-counter 2)
     bv))
 

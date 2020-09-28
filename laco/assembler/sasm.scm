@@ -205,15 +205,13 @@
 ;; --------- special encode -----------
 ;; TODO: detect if it's primitive/extend
 (define-public (prim-call pn keep?)
-  (cond
-   (keep?
-    (primitive-encode/basic pn))
-   (else
-    (list (primitive-encode/basic pn)
-          (vm-stack-pop)))))
-
-(define-public (primitive/extend pn)
-  (primitive-encode/extend pn))
+  (let ((prim (if (> pn 15) primitive-encode/extend primitive-encode/basic)))
+    (cond
+     (keep?
+      (prim pn))
+     (else
+      (list (prim pn)
+            (vm-stack-pop))))))
 
 (define-public (special-encode i)
   (primitive-encode/extend i))

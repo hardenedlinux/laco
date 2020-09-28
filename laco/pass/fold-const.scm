@@ -26,12 +26,11 @@
 ;;       modified variable has to change its fold value, or even can't be folded
 
 ;; 1. (if 1 2 3) -k-> (if 1 2 3)
-;; 2. (if 1 2 (+ 3 4)) -k-> (letcont ((k (halt (+ 4 3)))) (if 1 2 k))
+;; 2. (if 1 2 (+ 3 4)) -k-> (letcont ((k (return (+ 4 3)))) (if 1 2 k))
 (define (fc expr)
   (match expr
     (($ letval/k ($ bind-special-form/k _ v e body))
-     (fc (normalize/preserving
-          (new-app/k (new-lambda/k (list v) (fc body)) (fc e)))))
+     (fc (cfs (fc body) (list v) (list (fc e)))))
     (($ app/k _ f args)
      (app/k-func-set! expr (fc f))
      (app/k-args-set! expr (map fc args))

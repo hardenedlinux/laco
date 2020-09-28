@@ -104,6 +104,7 @@
     <= ; 12
     >= ; 13
     restore ; 14
+    reserved-1 ; 15
 
     ;; extended primitives
     modulo ; 16 + 0
@@ -112,6 +113,7 @@
     map ; 16 + 3
     list-ref ; 16 + 4
     list-set! ; 16 + 5
+    append ; 16 + 6
     ))
 
 (define (print-primitives)
@@ -196,3 +198,6 @@
 
 (define-primitive (list-set! lst idx val)
   (gen-constant (list-set! lst idx val)))
+
+(define-primitive (append l1 l2)
+  (gen-constant (append l1 l2)))

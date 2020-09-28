@@ -32,13 +32,38 @@
           cond and or case let let* letrec begin do define delay
           ,@(@@ (laco primitives) *prim-table*)))
 
-(define (_quasiquote obj)
+;; (define (_quasiquote obj)
+;;   (match obj
+;;     ((('unquote unq) rest ...) `(cons ,unq ,(_quasiquote rest)))
+;;     (('unquote unq) unq)
+;;     ((('unquote-splicing unqsp) rest ...) `(append ,unqsp ,(_quasiquote rest)))
+;;     ((head rest ...) `(cons ,(_quasiquote head) ,(_quasiquote rest)))
+;;     (else `(quote ,obj))))
+
+(define* (_quasiquote obj #:optional (is-ref? #f))
   (match obj
-    ((('unquote unq) rest ...) `(cons ,unq ,(_quasiquote rest)))
-    (('unquote unq) unq)
-    ((('unquote-splicing unqsp) rest ...) `(concat ,unqsp ,(_quasiquote rest)))
-    ((head rest ...) (list 'cons (_quasiquote head) (_quasiquote rest)))
-    (else `(quote ,obj))))
+    (() '())
+    ((('unquote unq) rest ...)
+     (cons (cons 'unquote (_quasiquote unq #t)) (_quasiquote rest)))
+    (('unquote unq) (cons 'unquote unq))
+    ((('unquote-splicing unqsp) rest ...)
+     (cons (cons 'unquote-splicing (_quasiquote unqsp #t)) (_quasiquote rest)))
+    ((head rest ...) (cons (_quasiquote head) (_quasiquote rest)))
+    (else
+     (if is-ref?
+         (list obj)
+         `(quote ,obj)))))
+
+(define (list-comprehension->ast lst)
+  (let lp ((next lst) (ret '()))
+    (if (null? next)
+        ret
+        (match (car next)
+          (('unquote-splicing e)
+           (let ((ll (make-collection (reverse ret) 'list (length ret))))
+             (lp (cdr next)
+                 (make-call #f (make-ref #f 'append) (list ll e)))))
+          (else (lp (cdr next) (cons (car next) ret)))))))
 
 ;; NOTE: we don't support forward-reference, although I'm willing to...
 (define* (parse-it expr #:key (pos 'toplevel) (body-begin? #f) (use 'test) (op? #f))
@@ -213,12 +238,15 @@
                        ,(car rest) (lambda () (and ,@(cdr rest))))))))))
     (('quote s)
      (match s
-       ((or (? string? s) (? number? s))
+       ((or (? string?) (? number?) (? symbol?))
         (gen-constant s))
        ((? list?) (parse-it `(list ,@s)))
        (else (throw 'laco-error parse-it "quote: haven't support `~a'!" s))))
     (('unquote k) (parse-it k))
-    (('quasiquote q) (parse-it (_quasiquote q)))
+    (('unquote-splicing s) `(unquote-splicing ,(parse-it s)))
+    (('quasiquote q)
+     (let ((lst (map parse-it (_quasiquote q))))
+       (list-comprehension->ast lst)))
     (('list e ...) (make-collection (map parse-it e) 'list (length e)))
     (('vector e ...) (make-collection e 'vector (vector-length e)))
     ((op args ...)

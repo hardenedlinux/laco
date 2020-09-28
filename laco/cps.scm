@@ -383,12 +383,11 @@
             (fk (new-id "#letcont/k-"))
             (jcont (new-lambda/k
                     (list nv)
-                    (alpha-renaming (comp-cps body jname) (list var) (list nv))
+                    (alpha-renaming (comp-cps body cont) (list var) (list nv))
                     #:kont cont)))
-       (parameterize ((current-kont jname))
-         (new-letcont/k jname jcont
-                        (alpha-renaming (ast->cps value jname) (list var) (list nv))
-                        #:kont jname))))
+       (new-letcont/k jname jcont
+                      (alpha-renaming (ast->cps value jname) (list var) (list nv))
+                      #:kont cont)))
     (($ branch ($ ast _ (cnd b1 b2)))
      (let* ((jname (new-id "#jcont-"))
             (kname (new-id "#kont-"))
@@ -443,11 +442,11 @@
             (fk (new-id "#letcont/k-"))
             (jcont (new-lambda/k
                     (list nv)
-                    (alpha-renaming (ast->cps body jname) (list var) (list nv))
+                    (alpha-renaming (ast->cps body cont) (list var) (list nv))
                     #:kont cont)))
        (new-letcont/k jname jcont
                       (alpha-renaming (ast->cps value jname) (list ov) (list nv))
-                      #:kont jname)))
+                      #:kont cont)))
     (($ branch ($ ast _ (cnd b1 b2)))
      (let* ((kname (new-id "#kcont-"))
             (z (new-id "#cnd-"))
@@ -495,7 +494,7 @@
             (k (fold (lambda (ee ex p)
                        (comp-cps ee (new-lambda/k (list ex) p #:kont cont)))
                      (cond
-                      (is-prim?
+                      ((pk "is-prim?" (ref-var f) is-prim?)
                        (new-app/k cont (new-app/k fn el #:kont cont) #:kont cont))
                       (else
                        (new-app/k fn (append (list cont) el) #:kont cont)))

@@ -82,7 +82,7 @@
     (($ boolean-object _ b)
      (emit-boolean b))
     (($ list-object _ size lst)
-     (for-each emit-sasm (reverse lst))
+     (for-each emit-sasm lst)
      (emit-list-object size))
     (($ vector-object _ size lst)
      (for-each emit-sasm (reverse lst))
