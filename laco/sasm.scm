@@ -85,6 +85,8 @@
                 descp))
        ((('push-string-object s) . descp)
         (format port "~a(push-string-object ~s) ; ~a~%" (indent-spaces) s descp))
+       ((('push-symbol-object s) . descp)
+        (format port "~a(push-symbol-object ~a) ; ~a~%" (indent-spaces) s descp))
        ((('free label offset) . descp)
         (format port "~a(free ~a ~a) ; ~a~%" (indent-spaces) (drop-hash label)
                 offset descp))
@@ -113,6 +115,9 @@
 (define-public (sasm-main)
   (sasm-emit '((main-entry) . "")))
 
+(define-public (emit-intern-symbol-table)
+  (sasm-emit '((gen-intern-symbol-table) . "")))
+
 (define-public (sasm-true)
   (sasm-emit
    '((push-boolean-true) . "Boolean true")))
@@ -131,6 +136,9 @@
 
 (define-public (emit-string-object s)
   (sasm-emit `((push-string-object ,s) . "")))
+
+(define-public (emit-symbol-object s)
+  (sasm-emit `((push-symbol-object ,s) . "")))
 
 ;; NOTE: we may use arity in the future
 (define-public (emit-proc-object proc arity opt-index entry)

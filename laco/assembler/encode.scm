@@ -35,6 +35,7 @@
             integer-obj-encode
             string-obj-encode
             boolean-obj-encode
+            symbol-encode
             prim-obj-encode
             proc-obj-encode))
 
@@ -195,4 +196,14 @@
   (let ((bv (make-bytevector 1 0)))
     (bytevector-u8-set! bv 0 (logior (ash #b1110 4) value))
     (label-counter 1)
+    bv))
+
+(define (symbol-encode offset)
+  (when (or (< offset 0) (> offset (expt 2 16)))
+    (throw 'laco-error symbol-encode
+           "Invalid offset in symbol table `~a'!" offset))
+  (let ((bv (make-bytevector 3 0)))
+    (bytevector-u8-set! bv 0 #b11100110)
+    (bytevector-u16-set! bv 1 offset 'big)
+    (label-counter 3)
     bv))

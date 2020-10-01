@@ -18,6 +18,7 @@
   #:use-module (srfi srfi-1)
   #:use-module (ice-9 match)
   #:use-module (ice-9 q)
+  #:use-module (ice-9 iconv)
   #:use-module ((rnrs) #:select (define-record-type))
   #:export (newsym
             new-label
@@ -71,7 +72,10 @@
             is-normal-call?
             label-in!
             label-out!
-            label-back-index))
+            label-back-index
+            intern!
+            intern-offset
+            gen-intern-symbol-table))
 
 (define (newsym sym) (gensym (symbol->string sym)))
 (define (new-label str) (symbol->string (gensym str)))
@@ -273,3 +277,33 @@
      ((member label ll)
       => length)
      (else 0))))
+
+(define *intern-table* (make-hash-table))
+(define intern!
+  (let ((count (new-counter)))
+    (lambda (sym)
+      (let ((offset (count 0)))
+        (count (1+ (string-length (symbol->string sym))))
+        (hash-set! *intern-table* sym offset)))))
+(define (intern-offset sym)
+  (hash-ref *intern-table* sym))
+(define (symbol-table-size)
+  (hash-fold (lambda (_ v p) (+ v p)) 0 *intern-table*))
+(define (gen-intern-symbol-table)
+  (let ((cnt (hash-count (const #t) *intern-table*))
+        (size (symbol-table-size)))
+    (when (>= cnt (expt 2 16))
+      (throw 'laco-error gen-intern-symbol-table
+             "The current laco only support 16K symbols! `~a'" cnt))
+    (when (>= size (expt 2 16))
+      (throw 'laco-error gen-intern-symbol-table
+             "The current laco only support 16KB symbol-table size! `~a'" size))
+    (flatten
+     (list
+      (list->u16vector (list cnt))
+      (list->u16vector (list size))
+      (hash-map->list
+       (lambda (sym _)
+         (list (string->bytevector (symbol->string sym) "iso8859-1")
+               #vu8(0)))
+       *intern-table*)))))

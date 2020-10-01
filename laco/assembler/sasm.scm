@@ -254,3 +254,7 @@
 
 (define-public (push-boolean-true)
   (boolean-obj-encode 1))
+
+(define-public (push-symbol-object s)
+  (let ((offset (intern-offset s)))
+    (symbol-encode offset)))

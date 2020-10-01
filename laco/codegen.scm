@@ -79,6 +79,8 @@
      (emit-integer-object i))
     (($ string-object _ s)
      (emit-string-object s))
+    (($ symbol-object _ s)
+     (emit-symbol-object s))
     (($ boolean-object _ b)
      (emit-boolean b))
     (($ list-object _ size lst)
@@ -110,6 +112,7 @@
     (else (throw 'laco-error emit-sasm "Invalid lir `~a'!" lir))))
 
 (define (emit-sasm-memory lir)
+  (emit-intern-symbol-table)
   (sasm-main))
 
 (define (emit-sasm-clean lir)

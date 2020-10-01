@@ -32,7 +32,9 @@
 (define (insr->proc x) (module-ref sasm-module x))
 
 (define (memory->bytecode me)
-  (list (main-entry)))
+  (flatten
+   (list (gen-intern-symbol-table)
+         (main-entry))))
 
 (define (program->bytecode p)
   (define (->bytecode pe)

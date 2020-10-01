@@ -56,6 +56,10 @@
             boolean-object?
             make-boolean-object
 
+            symbol-object
+            symbol-object?
+            make-symbol-object
+
             create-constant-object
             create-collection-object))
 
@@ -103,6 +107,10 @@
   (fields
    (value boolean?)))
 
+(define-typed-record symbol-object (parent object)
+  (fields
+   (value symbol?)))
+
 ;; constant -> object
 (define (create-constant-object c)
   (let ((val (constant-val c)))
@@ -111,6 +119,9 @@
       ('list (make-list-object '() val))
       ('char (make-integer-object '() val))
       ('string (make-string-object '() val))
+      ('symbol
+       (intern! val)
+       (make-symbol-object '() val))
       ('boolean (make-boolean-object '() val))
       (else (throw 'laco-error create-constant-object "Invalid type `~a'!"
                    (constant-type c))))))
