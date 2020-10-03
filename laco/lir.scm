@@ -270,7 +270,7 @@
 (define (filter-locals locals frees)
   (lset-difference id-eq? (queue-slots frees) (queue-slots locals)))
 
-(define* (cps->lir expr #:key (cur-def #f) (mode 'push) (prelude? #f))
+(define* (cps->lir expr #:key (cur-def #f) (mode 'push) (keep-ret-context? #f))
   (match expr
     (($ lambda/k ($ cps _ kont name attr) args body)
      (let ((env (closure-ref (id-name name)))
@@ -278,8 +278,16 @@
        (when (not env)
          (throw 'laco-error cps->lir
                 "lambda/k: the closure label `~a' doesn't have an env!" label))
-       (make-insr-proc '() cur-def label env (length args)
-                       (list (cps->lir body) *proc-return*))))
+       (make-insr-proc
+        '() cur-def label env (length args)
+        (list (cps->lir
+               body
+               ;; If a lambda has closure-in-pcall flag, then it's a lifted lambda.
+               ;; So we have to keep its return value on stack.
+               ;; Please note that not all lifted-lambdas need to keep return value,
+               ;; Only the lifted closure-in-pcall.
+               #:keep-ret-context? (assoc-ref attr 'closure-in-pcall))
+              *proc-return*))))
     (($ closure/k ($ cps _ kont name attr) env body)
      (let* ((mode (if (is-escaped? expr) 'heap 'stack))
             (locals (env-bindings env))
@@ -292,7 +300,7 @@
                           (list (cps->lir body) *proc-return*)
                           mode)))
     (($ branch/k ($ cps _ kont name attr) cnd b1 b2)
-     (let* ((ce (cps->lir cnd #:prelude? #t))
+     (let* ((ce (cps->lir cnd #:keep-ret-context? #t))
             (bt (cps->lir b1))
             (bf (cps->lir b2))
             (label (id->string name))
@@ -354,8 +362,8 @@
     (($ app/k ($ cps _ kont name attr) func args)
      ;; NOTE: After normalize, the func never be anonymous function, it must be
      ;;       an id.
-     (let* ((f (cps->lir func #:mode 'call #:prelude? prelude?))
-            (e (map (lambda (e) (cps->lir e #:prelude? #t)) args))
+     (let* ((f (cps->lir func #:mode 'call #:keep-ret-context? keep-ret-context?))
+            (e (map (lambda (e) (cps->lir e #:keep-ret-context? #t)) args))
             (env (closure-ref (id-name name)))
             (label (id->string name))
             (arity (length args))
@@ -382,16 +390,18 @@
     (($ constant/k _ value)
      (create-constant-object value))
     (($ lvar ($ id _ name _) offset)
-     (make-insr-local '() name mode offset (and (eq? mode 'call) prelude?)))
+     (make-insr-local '() name mode offset
+                      (and (eq? mode 'call) keep-ret-context?)))
     (($ fvar ($ id _ name _) label offset)
-     (make-insr-free '() label name mode offset (and (eq? mode 'call) prelude?)))
+     (make-insr-free '() label name mode offset
+                     (and (eq? mode 'call) keep-ret-context?)))
     (($ gvar ($ id _ name _))
      (let ((id-str (symbol->string name)))
        (match (top-level-ref name)
          (($ insr-proc _ proc label _ arity _)
           (case mode
             ((push) (make-proc-object '() id-str arity label))
-            ((call) (make-insr-proc-call '() proc label prelude?))
+            ((call) (make-insr-proc-call '() proc label keep-ret-context?))
             (else
              (throw 'laco-error cps->lir "gvar: proc has invalid mode `~a'!"
                     mode))))
@@ -402,7 +412,8 @@
                    name (cps->expr (top-level-ref name))))
           (case mode
             ((push) (make-proc-object '() id-str (length args) (id->string label)))
-            ((call) (make-insr-proc-call '() id-str (id->string label) prelude?))
+            ((call) (make-insr-proc-call
+                     '() id-str (id->string label) keep-ret-context?))
             (else
              (throw 'laco-error cps->lir "gvar: proc has invalid mode `~a'!"
                     mode))))
@@ -412,7 +423,7 @@
     ((? primitive? p)
      (case mode
        ((push) (make-prim-object '() p))
-       ((call) (make-insr-pcall '() p prelude?))))
+       ((call) (make-insr-pcall '() p keep-ret-context?))))
     (else (throw 'laco-error cps->lir "Invalid cps `~a'!" (id-name expr)))))
 
 (define (cps->lir/g expr)
@@ -457,6 +468,7 @@
                                                 (else 'clean))))
     (($ integer-object _ value) `(integer ,value))
     (($ string-object _ value) `(string ,value))
+    (($ symbol-object _ value) `(symbol ,value))
     (($ boolean-object _ value) `(boolean ,(if value 'true 'false)))
     (($ prim-object _ p) `(primitive ,(primitive-name p)))
     (($ proc-object _ name arity entry) `(proc ,name ,arity ,entry))

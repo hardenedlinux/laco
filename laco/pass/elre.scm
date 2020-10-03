@@ -47,9 +47,9 @@
 
 (define is-closure-in-pcall? (make-parameter #f))
 
-(define *lvar-fixed-table (make-hash-table))
-(define (is-lvar-fixed name) (hash-ref *lvar-fixed-table name))
-(define (lvar-fixed! name) (hash-set! *lvar-fixed-table name #t))
+(define *fixed-table (make-hash-table))
+(define (is-fixed? name) (hash-ref *fixed-table name))
+(define (fix! name) (hash-set! *fixed-table name #t))
 
 (define (elre expr)
   (match expr
@@ -111,10 +111,11 @@
       ((and (is-closure-in-pcall?) (id-eq? f kont))
        (elre (car args)))
       (else (failed!))))
-    (($ closure/k ($ cps _ _ _ attr) env body)
+    (($ closure/k ($ cps _ name _ attr) env body)
      (cond
-      ((is-closure-in-pcall?)
+      ((and (is-closure-in-pcall?) (not (is-fixed? (id-name name))))
        (parameterize ((current-kont (stack-pop! (env-bindings env))))
+         (fix! (id-name name))
          (closure/k-body-set! expr (elre body))
          expr))
       (else
@@ -146,8 +147,8 @@
      (branch/k-fbranch-set! expr (elre b2))
      expr)
     (($ lvar _ offset)
-     (when (and (is-closure-in-pcall?) (not (is-lvar-fixed (id-name expr))))
-       (lvar-fixed! (id-name expr))
+     (when (and (is-closure-in-pcall?) (not (is-fixed? (id-name expr))))
+       (fix! (id-name expr))
        (lvar-offset-set! expr (1- offset)))
      expr)
     (else expr)))
