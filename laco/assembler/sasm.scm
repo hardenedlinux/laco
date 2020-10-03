@@ -256,5 +256,5 @@
   (boolean-obj-encode 1))
 
 (define-public (push-symbol-object s)
-  (let ((offset (intern-offset s)))
+  (let ((offset (car (intern-offset s))))
     (symbol-encode offset)))

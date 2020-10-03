@@ -47,6 +47,10 @@
 
 (define is-closure-in-pcall? (make-parameter #f))
 
+(define *lvar-fixed-table (make-hash-table))
+(define (is-lvar-fixed name) (hash-ref *lvar-fixed-table name))
+(define (lvar-fixed! name) (hash-set! *lvar-fixed-table name #t))
+
 (define (elre expr)
   (match expr
     (($ seq/k _ (($ seq/k _ _)))
@@ -140,6 +144,11 @@
      (branch/k-cnd-set! expr (elre cnd))
      (branch/k-tbranch-set! expr (elre b1))
      (branch/k-fbranch-set! expr (elre b2))
+     expr)
+    (($ lvar _ offset)
+     (when (and (is-closure-in-pcall?) (not (is-lvar-fixed (id-name expr))))
+       (lvar-fixed! (id-name expr))
+       (lvar-offset-set! expr (1- offset)))
      expr)
     (else expr)))
 

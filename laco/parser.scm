@@ -32,14 +32,6 @@
           cond and or case let let* letrec begin do define delay
           ,@(@@ (laco primitives) *prim-table*)))
 
-;; (define (_quasiquote obj)
-;;   (match obj
-;;     ((('unquote unq) rest ...) `(cons ,unq ,(_quasiquote rest)))
-;;     (('unquote unq) unq)
-;;     ((('unquote-splicing unqsp) rest ...) `(append ,unqsp ,(_quasiquote rest)))
-;;     ((head rest ...) `(cons ,(_quasiquote head) ,(_quasiquote rest)))
-;;     (else `(quote ,obj))))
-
 (define* (_quasiquote obj #:optional (is-ref? #f))
   (match obj
     (() '())
@@ -247,7 +239,8 @@
     (('quasiquote q)
      (let ((lst (map parse-it (_quasiquote q))))
        (list-comprehension->ast lst)))
-    (('list e ...) (make-collection (map parse-it e) 'list (length e)))
+    (('list e ...) (make-collection (map parse-it (_quasiquote e))
+                                    'list (length e)))
     (('vector e ...) (make-collection e 'vector (vector-length e)))
     ((op args ...)
      (let ((f (parse-it op #:use 'value #:op? #t)))

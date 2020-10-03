@@ -52,7 +52,7 @@
             lvar lvar?
             make-lvar
             new-lvar
-            lvar-offset
+            lvar-offset lvar-offset-set!
 
             fvar fvar?
             make-fvar
@@ -138,7 +138,7 @@
       (throw 'laco-error integer-check "`~a' is not an integer!" x)))
 
 (define *immediates-pred*
-  (list integer? string? char? boolean? pair? list? vector?))
+  (list integer? string? char? boolean? pair? list? vector? symbol?))
 
 (define (is-immediate? x)
   (any (lambda (c) (c x)) *immediates-pred*))

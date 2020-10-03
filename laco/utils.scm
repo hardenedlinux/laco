@@ -19,7 +19,9 @@
   #:use-module (ice-9 match)
   #:use-module (ice-9 q)
   #:use-module (ice-9 iconv)
-  #:use-module ((rnrs) #:select (define-record-type))
+  #:use-module ((rnrs) #:select (make-bytevector
+                                 define-record-type
+                                 bytevector-u16-set!))
   #:export (newsym
             new-label
             extract-ids
@@ -282,26 +284,30 @@
 (define intern!
   (let ((count (new-counter)))
     (lambda (sym)
-      (let ((offset (count 0)))
-        (count (1+ (string-length (symbol->string sym))))
-        (hash-set! *intern-table* sym offset)))))
+      (let ((offset (count 0))
+            (size (1+ (string-length (symbol->string sym)))))
+        (hash-set! *intern-table* sym (cons offset size))))))
 (define (intern-offset sym)
   (hash-ref *intern-table* sym))
 (define (symbol-table-size)
-  (hash-fold (lambda (_ v p) (+ v p)) 0 *intern-table*))
+  (hash-fold (lambda (_ v p) (+ (cdr v) p)) 0 *intern-table*))
 (define (gen-intern-symbol-table)
-  (let ((cnt (hash-count (const #t) *intern-table*))
-        (size (symbol-table-size)))
+  (let* ((cnt (hash-count (const #t) *intern-table*))
+         (size (symbol-table-size))
+         (cnt-bv (make-bytevector 2))
+         (size-bv (make-bytevector 2)))
     (when (>= cnt (expt 2 16))
       (throw 'laco-error gen-intern-symbol-table
              "The current laco only support 16K symbols! `~a'" cnt))
     (when (>= size (expt 2 16))
       (throw 'laco-error gen-intern-symbol-table
              "The current laco only support 16KB symbol-table size! `~a'" size))
+    (bytevector-u16-set! cnt-bv 0 cnt 'big)
+    (bytevector-u16-set! size-bv 0 size 'big)
     (flatten
      (list
-      (list->u16vector (list cnt))
-      (list->u16vector (list size))
+      cnt-bv
+      size-bv
       (hash-map->list
        (lambda (sym _)
          (list (string->bytevector (symbol->string sym) "iso8859-1")
