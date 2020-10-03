@@ -37,8 +37,8 @@
 ;; After closure-conversion, there's no letcont/k, so we can remove all
 ;; the useless "letcont/k-" id. Otherwise it would interfere the sorting of
 ;; free-vars.
-(define (re-orgnize-frees! frees env)
-  (env-frees-set! env (list->queue frees)))
+(define (eliminate-unused-vars! used-vars env)
+  (env-frees-set! env (list->queue used-vars)))
 
 (define lift-name (make-parameter #f))
 
@@ -54,10 +54,18 @@
        (top-level-set! (id-name fname) (ll func))
        (parameterize ((lift-name (id->string fname)))
          (ll body)))))
-    (($ closure/k  _ env body)
-     (re-orgnize-frees! (free-vars body #t) env)
-     (closure/k-body-set! expr (ll body))
-     expr)
+    (($ closure/k  ($ cps _ _ _ attr) env body)
+     (eliminate-unused-vars! (free-vars (new-lambda/k (env->args env) body) #t) env)
+     (cond
+      ((no-free-var? env)
+       ;; If the closure capture nothing, then lift it as a global function
+       (let ((cname (new-id "#lifted-")))
+         (top-level-set! (id-name cname)
+                         (new-lambda/k (env->args env) body #:attr attr))
+         (new-gvar cname)))
+      (else
+       (closure/k-body-set! expr (ll body))
+       expr)))
     ((? bind-special-form/k?)
      (bind-special-form/k-value-set! expr (ll (bind-special-form/k-value expr)))
      (bind-special-form/k-body-set! expr (ll (bind-special-form/k-body expr)))

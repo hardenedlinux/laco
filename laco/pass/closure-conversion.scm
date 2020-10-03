@@ -93,15 +93,14 @@
            (case mode
              ((normal)
               (make-lambda/k (list kont name attr) args (cc body)))
-             ((closure)
+             ((closure closure-in-pcall)
               ;; NOTE:
               ;; 1. Counting frame size for each closure env in lir
               ;; 2. For 'closure mode, fvars must be converted to lvar
-              ;; 3. If there's no any free-vars, then it's just a lambda, so that
-              ;;    we can lift it in lambda-lifting.
-              (if (null? frees)
-                  (make-lambda/k (list kont name attr) args (cc body))
-                  (make-closure/k (list kont name attr) env (cc body 'closure))))
+              (make-closure/k (list kont name (if (eq? mode 'closure-in-pcall)
+                                                  '((closure-in-pcall . #t))
+                                                  '()))
+                              env (cc body 'closure)))
              (else (throw 'laco-error cc "Invalid cc mode `~a'~%" mode)))))))
     ;; (($ closure/k ($ cps _ kont name attr) env body)
     ;;  ;; TODO: The escaping function will be converted to closure/k.
@@ -163,7 +162,10 @@
     (($ app/k ($ cps _ kont name attr) f args)
      (make-app/k (list kont name attr)
                  (cc f)
-                 (map (lambda (e) (cc e 'closure)) args)))
+                 (map (lambda (e) (cc e (if (primitive? f)
+                                            'closure-in-pcall
+                                            'closure)))
+                      args)))
     ((? id? id)
      (let* ((env (current-env))
             (current-kont-label (cps->name-string (current-kont)))

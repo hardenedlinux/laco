@@ -116,8 +116,10 @@ Options:
      primitive-conversion
      args-extend
      closure-conversion
-     lambda-lifting
-     eliminate-redundant))
+     eliminate-redundant
+     ;; NOTE: lambda-lifting must be at the end, otherwise the lifted things will
+     ;;       miss all the rest passes.
+     lambda-lifting))
   (init-optimizations)
   (parameterize ((current-kont 'global))
     (top-level-for-each

@@ -15,6 +15,7 @@
 ;;  along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (laco pass elre)
+  #:use-module (laco utils)
   #:use-module (laco types)
   #:use-module (laco env)
   #:use-module (laco cps)
@@ -43,6 +44,8 @@
                          (failed!)))
                     (else (cons x p))))
                 '() exprs)))
+
+(define is-closure-in-pcall? (make-parameter #f))
 
 (define (elre expr)
   (match expr
@@ -86,15 +89,33 @@
        (throw 'laco-error elre "Arguments list isn't equal in lambda apply"))
      ;; NOTE:
      ;; 1. We eliminate lambda/k, so free-vars have to tweak.
-     ;; 2.
      (elre (cfs body args1 (map elre args2))))
     (($ app/k ($ cps _ kont _ _) f args)
-     ;; case-5: (f (ret e) ...) -> (f e)
-     ;; Redundant ret in args context, this may be introduced by lambda-lifting
+     ;; case-6: (pcall (lambda (k args) ... (k expr)))
+     ;;         -> (pcall (lambda (args) ... expr))
+     ;; Closures caputured in pcall args shouldn't pass continuation
      (=> failed!)
-     (app/k-func-set! expr (car (eliminate-non-tail-return (list f))))
-     (app/k-args-set! expr (eliminate-non-tail-return args))
+     (parameterize ((is-closure-in-pcall? #t))
+       (app/k-args-set! expr (map elre args)))
      (failed!))
+    (($ app/k ($ cps _ kont _ _) f args)
+     ;; case-7: under closure-in-pcall
+     ;; (k expr) -> expr
+     ;; In this case, there should only one expr
+     (=> failed!)
+     (cond
+      ((and (is-closure-in-pcall?) (id-eq? f kont))
+       (elre (car args)))
+      (else (failed!))))
+    (($ closure/k ($ cps _ _ _ attr) env body)
+     (cond
+      ((is-closure-in-pcall?)
+       (parameterize ((current-kont (stack-pop! (env-bindings env))))
+         (closure/k-body-set! expr (elre body))
+         expr))
+      (else
+       (closure/k-body-set! expr (elre body))
+       expr)))
     ((? bind-special-form/k?)
      (bind-special-form/k-value-set! expr (elre (bind-special-form/k-value expr)))
      (bind-special-form/k-body-set! expr (elre (bind-special-form/k-body expr)))
@@ -103,9 +124,17 @@
      (app/k-func-set! expr (elre func))
      (app/k-args-set! expr (map elre args))
      expr)
-    (($ lambda/k _ _ body)
-     (parameterize ((current-kont (cps-kont expr)))
-       (lambda/k-body-set! expr (elre body)))
+    (($ lambda/k ($ cps _ _ _ attr) args body)
+     (cond
+      ((assoc-ref attr 'closure-in-pcall)
+       ;; case-6 for lifted lambdas
+       (parameterize ((current-kont (cps-kont expr))
+                      (is-closure-in-pcall? #t))
+         (lambda/k-args-set! expr (cdr args))
+         (lambda/k-body-set! expr (elre body))))
+      (else
+       (parameterize ((current-kont (cps-kont expr)))
+         (lambda/k-body-set! expr (elre body)))))
      expr)
     (($ branch/k _ cnd b1 b2)
      (branch/k-cnd-set! expr (elre cnd))

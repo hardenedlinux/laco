@@ -109,7 +109,7 @@
     ;; extended primitives
     modulo ; 16 + 0
     remainder ; 16 + 1
-    foreach ; 16 + 2
+    for-each ; 16 + 2
     map ; 16 + 3
     list-ref ; 16 + 4
     list-set! ; 16 + 5
