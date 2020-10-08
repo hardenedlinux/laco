@@ -105,6 +105,9 @@
      (branch/k-tbranch-set! expr (tco b1 #t))
      (branch/k-fbranch-set! expr (tco b2 #t))
      expr)
+    (($ assign/k _ v e)
+     (assign/k-expr-set! expr (tco e))
+     expr)
     (else expr)))
 
 (define-pass tail-call-optimizing expr (tco expr))

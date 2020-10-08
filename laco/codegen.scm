@@ -105,6 +105,17 @@
      (emit-jump label))
     (($ insr-proc-call _ proc label keep?)
      (emit-proc-call proc label keep?))
+    (($ insr-assign _ var value)
+     (emit-sasm value)
+     (match var
+       (($ insr-local _ _ name offset _)
+        (emit-local-assign name offset))
+       (($ insr-free _ label name _ offset _)
+        (emit-free-assign label name offset))
+       (($ insr-global _ name)
+        (emit-global-assign name))
+       (else (throw 'laco-error emit-sasm
+                    "BUG: invalid var `~a' in assign!" var))))
     (($ insr-local _ name mode offset keep?)
      (emit-local (symbol->string name) mode offset keep?))
     (($ insr-free _ label _ mode offset keep?)

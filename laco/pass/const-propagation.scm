@@ -29,15 +29,20 @@
     (($ primitive _ 'return _ _ _) #t)
     (else #f)))
 
+(define (is-any-effected-arg? args)
+  (any (lambda (x) (is-effect-var? (cps->name x))) args))
+
 (define (cp expr)
   (match expr
     (($ letcont/k ($ bind-special-form/k ($ cps _ kont name attr)
                      jname jcont ($ app/k _ jname args)))
      (=> fail!)
+     ;; TODO: For partial constant/k situation, we can still propagate them,
+     ;;        and reduce the number of args.
      (cond
+      ((is-any-effected-arg? (lambda/k-args jcont))
+       (fail!))
       ((every const-arg? args)
-       ;; FIXME: For partial constant/k situation, we can still propagate them,
-       ;;        and reduce the number of args.
        (beta-reduction/preserving
         (new-app/k (make-lambda/k (list kont name attr) (list jname)
                                   (cp (bind-special-form/k-body expr)))

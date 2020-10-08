@@ -89,6 +89,9 @@
      (if (equal? (lift-name) (symbol->string name))
          (new-gvar (new-id (lift-name) #f))
          expr))
+    (($ assign/k _ v e)
+     (assign/k-expr-set! expr (ll e))
+     expr)
     (else expr)))
 
 ;; Lambda-lifting does two things:

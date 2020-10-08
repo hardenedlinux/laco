@@ -86,6 +86,11 @@
             app/k-args app/k-args-set!
             make-app/k new-app/k
 
+            assign/k assign/k?
+            assign/k-var assign/k-var-set!
+            assign/k-expr assign/k-expr-set!
+            make-assign/k new-assign/k
+
             cont-apply
 
             union diff insec
@@ -254,20 +259,21 @@
 (define (cont-apply f e)
   (make-app/k (list prim:return (new-id "#kont-") (new-id "#k-")) f e))
 
+(define-typed-record assign/k (parent cps)
+  (fields
+   (var id?)
+   (expr valid-expr?)))
+(define* (new-assign/k v e #:key (kont prim:return)
+                       (name (new-id "#kont-4"))
+                       (attr '((side-effect? . #t))))
+  (make-assign/k (list kont name attr) v e))
+
 (define* (vars-fold rec acc op expr #:key (filter-prim? #f))
   (match expr
     ((? id? id) (list id))
     ((? primitive? p) (if filter-prim? '() (list p)))
-    #;
-    ((? assign? expr) ; all-subx-fv + assigned-var ; ;
-    ;; NOTE: it's reasonable to union assigned var, since there could be ; ;
-    ;;       self assigment, say, n=n+1. For such situation, the fv is ; ;
-    ;;       U{n,n} = n.                ; ;
-    (union (proc (ast-subx ast))       ; ;
-    (proc (assign-var ast))))
-    #;
-    (($ define/k _ f body)            ; ; ;
-    (op (rec body) (list f)))
+    (($ assign/k _ ref expr)
+     (op (rec expr) (list ref)))
     (($ lambda/k _ args body)
      (op (rec body) args))
     (($ branch/k _ cnd b1 b2)
@@ -296,7 +302,7 @@
    (else
     (let ((fv (vars-fold free-vars union diff expr #:filter-prim? #t))
           (attr (cps-attr expr)))
-      (set! attr (cons (cons 'free-vars fv) attr))
+      (when attr (set! attr (cons (cons 'free-vars fv) attr)))
       fv))))
 
 (define* (names expr #:optional (refresh? #f))
@@ -330,9 +336,11 @@
 
 ;; cps -> symbol-list -> id-list
 (define (alpha-renaming expr old new)
+  (define (new->index eid)
+    (list-index (lambda (sym) (eq? sym (id-name eid))) old))
   (define (rename eid)
     (cond
-     ((list-index (lambda (sym) (eq? sym (id-name eid))) old)
+     ((new->index eid)
       => (lambda (i) (list-ref new i)))
      (else eid)))
   (match expr
@@ -343,6 +351,13 @@
        expr)
       ;; new binding, don't apply rename more deeply
       (else expr)))
+    (($ assign/k _ v e)
+     (when (is-effect-var? (id-name v))
+       (let ((i (new->index v)))
+         (effect-var-register! (id-name (list-ref new i)))))
+     (assign/k-var-set! expr (alpha-renaming v old new))
+     (assign/k-expr-set! expr (alpha-renaming e old new))
+     expr)
     (($ app/k _ f e)
      ;;(format #t "alpha 1 ~a~%" expr)
      (app/k-func-set! expr (alpha-renaming f old new))
@@ -433,7 +448,12 @@
          ;; recursive doesn't mean recursivly defined, if the `var' was referred
          ;; within the body, then it's still recursive and can't be inlined.
          (register-as-recursive! var))
-       (top-level-set! var e))
+       (cond
+        ((top-level-ref var)
+         ;; If it exists, then transform it to an assignment
+         (new-assign/k (new-id var #f) e))
+        (else
+         (top-level-set! var e))))
      *laco/unspecified*)
     (($ binding ($ ast _ body) ($ ref _ var) value)
      (let* ((jname (new-id "#jcont-"))
@@ -465,6 +485,15 @@
             (kont3
              (new-lambda/k (list z) kont1)))
        (comp-cps cnd kont3)))
+    (($ assign ($ ast _ e) ($ ref _ var))
+     (let* ((vid (new-id var #f))
+            (ev (new-id "#assign-val-"))
+            (k (new-lambda/k
+                (list ev)
+                (new-app/k cont (new-assign/k vid ev))
+                #:name (new-id "#assign-") #:kont cont)))
+       (effect-var-register! (id-name vid))
+       (ast->cps e k)))
     (($ collection ($ ast _ vals) type size)
      (let ((cname (new-id "#c-"))
            (ex (map (lambda (_) (new-id "#e-")) vals)))
@@ -540,6 +569,8 @@
      `(letval ((,(cps->expr var) ,(cps->expr value))) ,(cps->expr body)))
     (($ app/k _ f e)
      `(,(cps->expr f) ,@(map (lambda (x) (cps->expr x #f)) e)))
+    (($ assign/k _ v e)
+     `(set! ,(cps->expr v) ,(cps->expr e)))
     (($ constant/k _ ($ constant _ val type)) val)
     (($ primitive _ name _ _ _) name)
     (($ lvar ($ id _ name _) offset)
@@ -548,6 +579,8 @@
      `(global ,name))
     (($ fvar ($ id _ name _) label offset)
      `(free ,name in ,label ,offset))
+    (($ local ($ id _ name _) value)
+     `(var ,name ,(cps->expr value)))
     ((? id? id) (id-name id))
     (else (throw 'laco-error 'cps->expr "Wrong cps: " cpse))))
 
@@ -555,9 +588,10 @@
   `(,(list (cps->expr (cps-kont cexpr)) (cps-name cexpr) (cps-attr cexpr))
     ,(cps->expr cexpr)))
 
+;; cps,id,prim -> symbol
 (define (cps->name cexpr)
   (match cexpr
-    ((? cps? c) (cps-name c))
+    ((? cps? c) (id-name (cps-name c)))
     ((? id? id) (id-name id))
     ((? primitive? p) (primitive-name p))
     (else (throw 'laco-error cps->name "BUG: Invalid cps `~a'!" cexpr))))

@@ -96,12 +96,13 @@
             (make-def (parse-it `(define* ,args ,@body) #:body-begin? #t) var))
            (else (throw 'laco-error parse-it
                         "define: no pattern to match! `~a'" expr)))))))
-    (('set! id val)
-     (cond
-      ((symbol? id) (make-assign (parse-it val) (parse-it id)))
-      (else
-       (throw 'laco-error parse-it
-              (format #f "Bad `set!' special form: `~a'" expr)))))
+    (('set! v val)
+     (let ((var (parse-it v)))
+       (cond
+        ((ref? var) (make-assign (parse-it val) var))
+        (else
+         (throw 'laco-error parse-it
+                (format #f "Invalid variable or reference `~a' in `set!' special form!" expr))))))
     (('if tst then els ...)
      (let* ((e (parse-it tst #:use 'test))
             (b1 (parse-it then #:body-begin? #t))

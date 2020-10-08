@@ -106,6 +106,9 @@
     (($ lambda/k _ args body)
      (lambda/k-body-set! expr (func-inline body))
      expr)
+    (($ assign/k _ v e)
+     (assign/k-expr-set! expr (func-inline e))
+     expr)
     (else expr)))
 
 (define-pass function-inline expr (func-inline expr))

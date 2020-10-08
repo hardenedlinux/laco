@@ -53,6 +53,9 @@
      (branch/k-tbranch-set! expr (uc b1))
      (branch/k-fbranch-set! expr (uc b2))
      expr)
+    (($ assign/k _ v e)
+     (assign/k-expr-set! expr (uc e))
+     expr)
     (else expr)))
 
 (define-pass useless-cont expr (uc expr))

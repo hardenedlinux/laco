@@ -49,6 +49,9 @@
     (($ seq/k _ exprs)
      (seq/k-exprs-set! expr (map fb exprs))
      expr)
+    (($ assign/k _ v e)
+     (assign/k-expr-set! expr (fb e))
+     expr)
     (else expr)))
 
 (define-pass fold-branch expr (fb expr))

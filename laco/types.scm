@@ -62,7 +62,11 @@
             gvar gvar?
             make-gvar
             new-gvar
-            gvar-offset))
+            gvar-offset
+
+            local local?
+            local-value
+            new-local))
 
 (define-record-type constant (fields val type))
 
@@ -198,3 +202,9 @@
 ;; id -> gvar
 (define (new-gvar id)
   (make-gvar (id-name id) (id-orig id)))
+
+;; local slot for local binding
+;; NOTE: In codegen, it's nothing but a pushing object dropped var name
+(define-record-type local (parent id) (fields value))
+(define (new-local var value)
+  (make-local (id-name var) (id-orig var) value))

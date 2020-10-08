@@ -69,6 +69,9 @@
      (branch/k-tbranch-set! expr (pc b1))
      (branch/k-fbranch-set! expr (pc b2))
      expr)
+    (($ assign/k _ v e)
+     (assign/k-expr-set! expr (pc e))
+     expr)
     (else expr)))
 
 (define-pass primitive-conversion expr (pc expr))

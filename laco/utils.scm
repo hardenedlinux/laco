@@ -77,7 +77,9 @@
             label-back-index
             intern!
             intern-offset
-            gen-intern-symbol-table))
+            gen-intern-symbol-table
+            effect-var-register!
+            is-effect-var?))
 
 (define (newsym sym) (gensym (symbol->string sym)))
 (define (new-label str) (symbol->string (gensym str)))
@@ -170,7 +172,7 @@
 (define (symbol-list? lst)
   (make-object-list-pred lst symbol?))
 
-(define (any? o) #t)
+(define any? (const #t))
 
 (define (laco-list? x) #f)
 (define (laco-pair? x) #f)
@@ -313,3 +315,9 @@
          (list (string->bytevector (symbol->string sym) "iso8859-1")
                #vu8(0)))
        *intern-table*)))))
+
+(define *effect-vars* (make-hash-table))
+(define (effect-var-register! v)
+  (hash-set! *effect-vars* v #t))
+(define (is-effect-var? v)
+  (hash-ref *effect-vars* v))

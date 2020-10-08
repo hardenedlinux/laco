@@ -258,3 +258,34 @@
 (define-public (push-symbol-object s)
   (let ((offset (car (intern-offset s))))
     (symbol-encode offset)))
+
+;; --------- assignment ------------
+(define-public (local-assign offset)
+  (let ((frame (make-bytevector 1 0)))
+    (when (and (< offset 0) (>= offset 160))
+      (throw 'laco-error local-assign "Invalid local offset `~a'"
+             offset))
+    (bytevector-u8-set! frame 0 (logand offset #xFF))
+    (label-counter 1)
+    (list
+     (single-encode #b0111 (ash (logand offset #b111100000000) -8))
+     frame)))
+
+(define-public (free-assign label offset)
+  (let ((frame (make-bytevector 1 0))
+        (f (label-back-index label)))
+    (when (and (< offset 0) (>= offset 64))
+      (throw 'laco-error free-assign "Invalid free offset `~a'"
+             offset))
+    (when (and (< f 0) (>= f 64))
+      (throw 'laco-error free-assign
+             "Invalid free frame back index `~a'" f))
+    (bytevector-u8-set! frame 0
+                        (logior (ash (logand offset #b11) 6) f))
+    (label-counter 1)
+    (list
+     (single-encode #b0110 (ash (logand offset #b11111100) -2))
+     frame)))
+
+(define-public (global-assign name)
+  (throw 'laco-error global-assign "Not implement yet!"))

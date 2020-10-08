@@ -100,6 +100,11 @@
             insr-closure-body insr-closure-body-set!
             insr-closure-mode
 
+            insr-assign insr-assign?
+            make-insr-assign
+            insr-assign-var insr-assign-var-set!
+            insr-assign-expr insr-assign-expr-set!
+
             *proc-return*
 
             label-ref
@@ -231,6 +236,11 @@
    (frees hash-table?)
    (body valid-insr-list?)
    (mode symbol?)))
+
+(define-typed-record insr-assign (parent insr)
+  (fields
+   (var insr-free? insr-local?)
+   (expr insr? object?)))
 
 (define (get-global-offset name)
   ;; TODO: compute the offset of the specified global var name
@@ -387,8 +397,12 @@
              (make-insr-label '() #f label `(,(prelude *tail-call*) ,@e ,f)))
             (else
              (make-insr-label '() #f label `(,(prelude *normal-call*) ,@e ,f)))))))
+    (($ assign/k _ v e)
+     (make-insr-assign '() (cps->lir v) (cps->lir e)))
     (($ constant/k _ value)
      (create-constant-object value))
+    (($ local ($ id _ name _) value)
+     (cps->lir value))
     (($ lvar ($ id _ name _) offset)
      (make-insr-local '() name mode offset
                       (and (eq? mode 'call) keep-ret-context?)))
@@ -466,6 +480,8 @@
                                                 ((eq? mode 'push) 'object)
                                                 (keep? 'keep)
                                                 (else 'clean))))
+    (($ insr-assign _ v e)
+     `(assign ,(lir->expr v) ,(lir->expr e)))
     (($ integer-object _ value) `(integer ,value))
     (($ string-object _ value) `(string ,value))
     (($ symbol-object _ value) `(symbol ,value))

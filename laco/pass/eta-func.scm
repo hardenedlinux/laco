@@ -62,6 +62,9 @@
      (branch/k-tbranch-set! expr (ef b1))
      (branch/k-fbranch-set! expr (ef b2))
      expr)
+    (($ assign/k _ v e)
+     (assign/k-expr-set! expr (ef e))
+     expr)
     (else expr)))
 
 (define-pass eta-function expr (ef expr))

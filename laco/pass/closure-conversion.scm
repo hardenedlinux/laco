@@ -138,9 +138,11 @@
      ;;    merged into the current-env.
      ;; 2. For non-escaping situation, we perform inline to eliminate letcont/k.
      ;;    For escaping, we will convert the escaped closure to closure/k.
-     ;; 3. For side-effect cases, we perform assignment-elimination (TODO).
-     ;; 4. Although we can set bindings to global, it's safe because of
-     ;;    alpha-renaming, however, it can't be released when the scope came to end.
+     ;; 3. I was considering to perform assignment-elimination to transform all local
+     ;;    assignments to bindings. However, it's not good for embedded system, since
+     ;;    every assignment increase stack. So we still make assignment an instruction.
+     ;; 4. Although we can set bindings to global, and it's safe because of
+     ;;    alpha-renaming, however, it can't be recycled by GC when the scope ends.
      (let ((env (if (toplevel? (current-env))
                     (new-env '() (free-vars expr))
                     (current-env))))
@@ -148,6 +150,9 @@
          (extend-env! (current-env) env)
          (closure-set! (id-name name) env))
        (parameterize ((current-env env))
+         ;; TODO:
+         ;; 1. Don't inline directly
+         ;; 2. Push the args to locals
          (cc (cfs body
                   (list jname)
                   (list jcont))))))
@@ -157,15 +162,32 @@
                     var
                     (cc value)
                     (cc body)))
-    (($ app/k _ ($ lambda/k _ args body) exprs)
-     (cc (cfs body args exprs)))
+    (($ app/k _ ($ lambda/k _ args
+                   ($ seq/k ($ cps _ kont name attr) exprs))
+        es)
+     (cond
+      ((is-effect-var? (id-name (car args)))
+       (env-local-push! (current-env) (car args))
+       (make-seq/k
+        (list kont name attr)
+        ;; TODO: Seperate args and locals, and when we push locals,
+        ;;       we have to fix the vm->sp.
+        `(,(new-local (car args) (cc (car es)))
+          ,@(map cc exprs))))
+      (else
+       (cc (cfs (lambda/k-body (app/k-func expr)) args es)))))
     (($ app/k ($ cps _ kont name attr) f args)
      (make-app/k (list kont name attr)
                  (cc f)
-                 (map (lambda (e) (cc e (if (primitive? f)
+                 (map (lambda (e) (cc e (if (and (primitive? f)
+                                                 (lambda/k? e))
                                             'closure-in-pcall
                                             'closure)))
                       args)))
+    (($ assign/k _ v e)
+     (assign/k-var-set! expr (cc v))
+     (assign/k-expr-set! expr (cc e))
+     expr)
     ((? id? id)
      (let* ((env (current-env))
             (current-kont-label (cps->name-string (current-kont)))

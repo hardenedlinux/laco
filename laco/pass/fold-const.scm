@@ -53,6 +53,9 @@
     (($ collection/k _ _ _ _ value)
      (collection/k-value-set! expr (map fc value))
      expr)
+    (($ assign/k _ v e)
+     (assign/k-expr-set! expr (fc e))
+     expr)
     (else expr)))
 
 (define-pass fold-constant expr (fc expr))

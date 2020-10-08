@@ -99,8 +99,13 @@
      ;;         -> (pcall (lambda (args) ... expr))
      ;; Closures caputured in pcall args shouldn't pass continuation
      (=> failed!)
-     (parameterize ((is-closure-in-pcall? #t))
-       (app/k-args-set! expr (map elre args)))
+     (app/k-args-set!
+      expr
+      (map (lambda (e)
+             (if (lambda/k? e)
+                 (parameterize ((is-closure-in-pcall? #t))
+                   (elre e))
+                 (elre e))) args))
      (failed!))
     (($ app/k ($ cps _ kont _ _) f args)
      ;; case-7: under closure-in-pcall
@@ -124,6 +129,9 @@
     ((? bind-special-form/k?)
      (bind-special-form/k-value-set! expr (elre (bind-special-form/k-value expr)))
      (bind-special-form/k-body-set! expr (elre (bind-special-form/k-body expr)))
+     expr)
+    (($ assign/k _ v e)
+     (assign/k-expr-set! expr (elre e))
      expr)
     (($ app/k _ func args)
      (app/k-func-set! expr (elre func))
