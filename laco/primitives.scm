@@ -114,6 +114,9 @@
     list-ref ; 16 + 4
     list-set! ; 16 + 5
     append ; 16 + 6
+    eqv? ; 16 + 6
+    eq? ; 16 + 7
+    equal? ; 16 + 8
     ))
 
 (define (print-primitives)
@@ -201,3 +204,12 @@
 
 (define-primitive (append l1 l2)
   (gen-constant (append l1 l2)))
+
+(define-primitive (eq? a b)
+  (gen-constant (eq? a b)))
+
+(define-primitive (eqv? a b)
+  (gen-constant (eqv? a b)))
+
+(define-primitive (equal? a b)
+  (gen-constant (equal? a b)))
