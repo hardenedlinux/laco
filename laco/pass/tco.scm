@@ -29,6 +29,7 @@
 
 (define* (tco expr #:optional (tail-body? #f))
   (define (tag-tail-call! exprs)
+    (format #t "tag-tail-call!: tail-body? (~a)~%~a~%" tail-body? (map cps->expr exprs))
     (when (not (null? exprs))
       (let* ((len (1- (length exprs)))
              (tail (car (list-tail exprs len))))
@@ -98,7 +99,7 @@
      (bind-special-form/k-body-set! expr (tco (bind-special-form/k-body expr) #t))
      expr)
     (($ lambda/k _ _ body)
-     (lambda/k-body-set! expr (tco body tail-body?))
+     (lambda/k-body-set! expr (tco body #t))
      expr)
     (($ branch/k _ cnd b1 b2)
      (branch/k-cnd-set! expr (tco cnd))
