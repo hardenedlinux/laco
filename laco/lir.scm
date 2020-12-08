@@ -128,7 +128,7 @@
 ;;    lookup by offset.
 ;; 5. The inner defined functions are all sorted as closures.
 ;; 6. The procedure must be defined in toplevel.
-;; 7. No recursive, the CPS tree is converted to flat instruction queue by invoking order.
+;; 7. No recursive, the CPS tree is converted to flat instruction queue by the invoking order.
 ;;
 ;;
 ;; The optimizings in LIR:
