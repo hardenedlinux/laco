@@ -99,7 +99,15 @@
      (bind-special-form/k-body-set! expr (tco (bind-special-form/k-body expr) #t))
      expr)
     (($ lambda/k _ _ body)
-     (lambda/k-body-set! expr (tco body #t))
+     (cond
+      ((and (seq/k? body) (not (null? (seq/k-exprs body))))
+       (let* ((el (reverse (seq/k-exprs body)))
+              (tail (car el))
+              (rest (cdr el)))
+         (lambda/k-body-set! expr (cons (reverse (map tco rest))
+                                        (tco tail #t)))))
+      (else
+       (lambda/k-body-set! expr (tco body #t))))
      expr)
     (($ branch/k _ cnd b1 b2)
      (branch/k-cnd-set! expr (tco cnd))
