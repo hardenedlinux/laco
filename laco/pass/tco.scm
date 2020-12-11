@@ -29,7 +29,6 @@
 
 (define* (tco expr #:optional (tail-body? #f))
   (define (tag-tail-call! exprs)
-    (format #t "tag-tail-call!: tail-body? (~a)~%~a~%" tail-body? (map cps->expr exprs))
     (when (not (null? exprs))
       (let* ((len (1- (length exprs)))
              (tail (car (list-tail exprs len))))
@@ -104,8 +103,8 @@
        (let* ((el (reverse (seq/k-exprs body)))
               (tail (car el))
               (rest (cdr el)))
-         (lambda/k-body-set! expr (cons (reverse (map tco rest))
-                                        (tco tail #t)))))
+         (seq/k-exprs-set! expr (cons (reverse (map tco rest))
+                                      (tco tail #t)))))
       (else
        (lambda/k-body-set! expr (tco body #t))))
      expr)
