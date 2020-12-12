@@ -114,9 +114,9 @@
     list-ref ; 16 + 4
     list-set! ; 16 + 5
     append ; 16 + 6
-    eqv? ; 16 + 6
-    eq? ; 16 + 7
-    equal? ; 16 + 8
+    eqv? ; 16 + 7
+    eq? ; 16 + 8
+    equal? ; 16 + 9
     ))
 
 (define (print-primitives)

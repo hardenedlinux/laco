@@ -420,10 +420,11 @@
              (throw 'laco-error cps->lir "gvar: proc has invalid mode `~a'!"
                     mode))))
          (($ lambda/k ($ cps _ _ label attr) args _)
-          (when (not (is-recursive? name))
-            (throw 'laco-error cps->lir
-                   "BUG: Invalid global or wrong recursive! `~a', `~a'"
-                   name (cps->expr (top-level-ref name))))
+          #;
+          (when (not (is-recursive? name)) ;
+          (throw 'laco-error cps->lir   ;
+          "BUG: Invalid global or wrong recursive! `~a', `~a'" ;
+          name (cps->expr (top-level-ref name))))
           (case mode
             ((push) (make-proc-object '() id-str (length args) (id->string label)))
             ((call) (make-insr-proc-call

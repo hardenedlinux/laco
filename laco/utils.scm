@@ -271,8 +271,7 @@
   (queue-in! *label-queue* label))
 (define (label-out!)
   ;;(pk "label-out!")
-  (when (not (queue-empty? *label-queue*))
-    (queue-out! *label-queue*)))
+  (queue-out! *label-queue*))
 ;; NOTE: after fv-lifting, there's no free-var in tail-call or tail-rec context,
 ;;       so we can use label to indicate the stack frame.
 (define (label-back-index label)

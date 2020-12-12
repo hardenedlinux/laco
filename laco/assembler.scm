@@ -60,9 +60,9 @@
 
 (define (gen-version-bv)
   ;; TODO: Add version management
-  #u8(0 0 1))
+  #vu8(0 0 1))
 
-(define *head* #u8(76 69 70)) ; LEF
+(define *head* #vu8(76 69 70)) ; LEF
 (define (gen-lef port m p c)
   (put-bytevector port *head*)
   (put-bytevector port (gen-version-bv))

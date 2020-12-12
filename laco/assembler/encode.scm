@@ -112,7 +112,7 @@
     bv))
 
 (define (primitive-encode/extend pn)
-  (when (or (< pn 0) (> pn 4095))
+  (when (or (< pn 16) (> pn 4095))
     (throw 'laco-error primitive-encode/basic
            "Invalid data, should be 0 ~ 4095" pn))
   (let ((fixed-pn (- pn 16))
@@ -176,7 +176,7 @@
     (bytevector-u8-set! bv 1 8)
     ;; encoding length = header + type + string + '\0'
     (label-counter (+ 2 (string-length str) 1))
-    (list bv sbv #u8(0))))
+    (list bv sbv #vu8(0))))
 
 (define (collection-obj-encode type size)
   (when (or (< size 0) (>= size (expt 2 16)))

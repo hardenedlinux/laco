@@ -17,7 +17,8 @@
 (define-module (laco assembler sasm)
   #:use-module ((rnrs) #:select (make-bytevector
                                  bytevector-u8-set!
-                                 bytevector-u32-set!))
+                                 bytevector-u32-set!
+                                 bytevector-length))
   #:use-module (laco assembler encode)
   #:use-module (laco utils)
   #:export (main-entry
@@ -27,11 +28,13 @@
 
 (define *label-table* (make-hash-table))
 (define (label-register! name)
+  ;; (format #t "label ~a: ~a~%" name (label-counter 0))
   (hash-set! *label-table* name (label-counter 0)))
 (define-syntax-rule (label-ref name)
   (hash-ref *label-table* name))
 
 (define (vm-stack-pop)
+  ;; (format #t "vm-stack-pop: 1~%")
   (primitive-encode/basic 1))
 
 (define (main-entry)
@@ -44,23 +47,28 @@
 
 (define-public (label name)
   (label-register! name)
-  #u8())
+  #vu8())
 
 (define-public (label-end name)
   (when (is-normal-call? name)
     (label-out!))
-  #u8())
+  #vu8())
 
+;; NOTE: These 2 kind of labels offset can only be confirmed when it ends.
+;; --------------------------------------------------
 (define-public (closure-end label)
   (label-register! label)
-  #u8())
+  #vu8())
 
 (define-public (branch-end label)
   (label-register! label)
-  #u8())
+  #vu8())
+;; --------------------------------------------------
+
 
 ;; ------- single encoding -----------------
 (define-public (local i)
+  ;; (format #t "local: 1~%")
   (cond
    ((and (>= i 0) (< i 16))
     (single-encode 0 i))
@@ -70,6 +78,7 @@
 
 (define-public (call-local name i keep?)
   (define (gen)
+    ;; (format #t "call-local: 1~%")
     (cond
      ((and (>= i 0) (< i 16))
       (single-encode #b0100 i))
@@ -87,6 +96,7 @@
 ;; --------- special double encoding ----------
 ;; 0010 xxxx xxaaaaaa    Ref free up(fp)^a in offset x
 (define-public (free label i)
+  ;; (format #t "free: 2~%")
   (let ((frame (make-bytevector 1 0))
         (f (label-back-index label)))
     (when (and (< i 0) (>= i 64))
@@ -94,13 +104,14 @@
     (when (and (< f 0) (>= i 64))
       (throw 'laco-error free "Invalid free frame back index `~a'" f))
     (bytevector-u8-set! frame 0 (logior (ash (logand i #b11) 6) f))
-    (label-counter 1)
+    (label-counter 1) ; count for frame
     (list
      (single-encode #b0010 (ash (logand i #b111100) -2))
      frame)))
 
 (define-public (call-free label i keep?)
   (define (gen)
+    ;; (format #t "call-free: 2~%")
     (let ((frame (make-bytevector 1 0))
           (f (label-back-index label)))
       (when (and (< i 0) (>= i 64))
@@ -108,7 +119,7 @@
       (when (and (< f 0) (>= i 64))
         (throw 'laco-error free "Invalid free frame back index `~a'" f))
       (bytevector-u8-set! frame 0 (logior (ash (logand i #b11) 6) f))
-      (label-counter 1)
+      (label-counter 1) ; count for frame
       (list
        (single-encode #b0011 (ash (logand i #b111100) -2))
        frame)))
@@ -122,31 +133,35 @@
 
 ;; --------- double encoding -----------
 (define-public (prelude label mode-name arity)
+  ;; (format #t "prelude: 2~%")
   (let ((b (logior (ash arity 2) (name->mode mode-name))))
     (double-encode #b0000 b)))
 
 ;; --------- triple encoding -----------
 (define-public (vec-ref offset i)
+  ;; (format #t "vec-ref: ~a~%" 0)
   (throw 'laco-error vec-ref "Haven't implemented yet!"))
 
 (define* (call-proc label keep? #:optional (count? #t))
-  (define (gen)
-    (let ((offset (label-ref label)))
-      (cond
-       (offset
-        (triple-encode #b0000
-                       (ash (logand offset #xff00) -8)
-                       (logand offset #xff)))
-       (else
-        (label-counter 3)
-        `#((call-proc ,label ,keep? #f))))))
   (when (is-normal-call? label)
     (label-in! label))
-  (cond
-   (keep? (gen))
-   (else
-    (list (gen)
-          (vm-stack-pop)))))
+  (let ((offset (label-ref label)))
+    (cond
+     (offset
+      (triple-encode #b0000
+                     (ash (logand offset #xff00) -8)
+                     (logand offset #xff)
+                     count?))
+     (else
+      ;; (format #t "call-proc: ~a 3~%" label)
+      (label-counter 3)
+      (let ((bv `#((call-proc ,label ,keep? #f))))
+        ;; NOTE: We have to put keep? clause here to avoid twice eval of
+        ;;       (vm-stack-pop), otherwise the LEF body will move forward 1 byte
+        ;;       offset.
+        (if keep?
+            bv
+            (list bv (vm-stack-pop))))))))
 
 (define* (fjump label #:optional (count? #t))
   (let ((offset (label-ref label)))
@@ -157,6 +172,7 @@
                      (logand offset #xff)
                      count?))
      (else
+      ;; (format #t "fjump: 3~%")
       (label-counter 3)
       `#((fjump ,label #f))))))
 
@@ -169,58 +185,65 @@
                      (logand offset #xff)
                      count?))
      (else
+      ;; (format #t "jump: 3~%")
       (label-counter 3)
       `#((jump ,label #f))))))
 
 ;; --------- quadruple encode -----------
 (define-public (vec-set! offset i v)
+  ;; (format #t "vec-set!: ~a~%" 0)
   (throw 'laco-error vec-set! "Haven't implemented yet!"))
 
-(define* (closure-on-heap arity frame-size entry #:optional (count #t))
+(define* (closure-on-heap arity frame-size entry #:optional (count? #t))
   (quadruple-encode #b0001
                     (logior (ash arity 4) frame-size)
                     (ash (logand entry #xff00) -8)
                     (logand entry #xff)
-                    count))
+                    count?))
 
-(define* (closure-on-stack arity frame-size entry #:optional (count #t))
+(define* (closure-on-stack arity frame-size entry #:optional (count? #t))
   (quadruple-encode #b0010
                     (logior (ash arity 4) frame-size)
                     (ash (logand entry #xff00) -8)
                     (logand entry #xff)
-                    count))
+                    count?))
 
-(define* (closure mode arity frame-size entry-label #:optional (count #t))
+(define* (closure mode arity frame-size entry-label #:optional (count? #t))
   (let ((entry (label-ref entry-label)))
     (cond
      (entry
       (case mode
-        ((stack) (closure-on-stack arity frame-size entry count))
-        ((heap) (closure-on-heap arity frame-size entry count))
+        ((stack) (closure-on-stack arity frame-size entry count?))
+        ((heap) (closure-on-heap arity frame-size entry count?))
         (else (throw 'laco-error closure "Invalid mode `~a'!" mode))))
      (else
+      ;; (format #t "closure: 4~%")
       (label-counter 4)
       `#((closure ,mode ,arity ,frame-size ,entry-label #f))))))
 
 ;; --------- special encode -----------
 ;; TODO: detect if it's primitive/extend
 (define-public (prim-call pn keep?)
+  ;; (format #t "prim-call: ~a~%" (if (> pn 15) 2 1))
   (let ((prim (if (> pn 15) primitive-encode/extend primitive-encode/basic)))
     (cond
      (keep?
       (prim pn))
      (else
       (list (prim pn)
-            (vm-stack-pop))))))
+            (pk "prim-call"(vm-stack-pop)))))))
 
 (define-public (special-encode i)
+  ;; (format #t "special-encode: ~a~%" 2)
   (primitive-encode/extend i))
 
 (define-public (halt)
-  #u8(255))
+  ;; (format #t "halt: ~a~%" 1)
+  #vu8(255))
 
 ;; ----------- object creation -----------
 (define-public (push-integer-object i)
+  ;; (format #t "push-integer-object: ~a~%" 6)
   (integer-obj-encode i))
 
 (define-public (push-string-object s)
@@ -236,31 +259,37 @@
 ;; 1. add opt-index
 ;; 2. detect opt-index and convert vargs to list in vm.c
 ;; 3. patch local-call and free-call
-(define* (push-proc-object entry arity opt-index #:optional (count #t))
+(define* (push-proc-object entry arity opt-index #:optional (count? #t))
   (let ((offset (label-ref entry))
         ;; If there's no opt-index, then we set it to the last index of args
         (opt (or opt-index arity)))
     (cond
-     (offset (proc-obj-encode offset arity opt count))
+     (offset (proc-obj-encode offset arity opt count?))
      (else
+      ;; (format #t "push-proc-object: ~a~%" 6)
       (label-counter 6)
       `#((push-proc-object ,entry #f))))))
 
 (define-public (push-prim-object pn)
+  ;; (format #t "push-prim-object: ~a~%" 6)
   (prim-obj-encode pn))
 
 (define-public (push-boolean-false)
+  ;; (format #t "push-boolean-false: ~a~%" 1)
   (boolean-obj-encode 0))
 
 (define-public (push-boolean-true)
+  ;; (format #t "push-boolean-true: ~a~%" 1)
   (boolean-obj-encode 1))
 
 (define-public (push-symbol-object s)
+  ;; (format #t "push-symbol-object: ~a~%" 0)
   (let ((offset (car (intern-offset s))))
     (symbol-encode offset)))
 
 ;; --------- assignment ------------
 (define-public (local-assign offset)
+  ;; (format #t "local-assign: ~a~%" 1)
   (let ((frame (make-bytevector 1 0)))
     (when (and (< offset 0) (>= offset 160))
       (throw 'laco-error local-assign "Invalid local offset `~a'"
@@ -272,6 +301,7 @@
      frame)))
 
 (define-public (free-assign label offset)
+  ;; (format #t "free-assign: ~a~%" 1)
   (let ((frame (make-bytevector 1 0))
         (f (label-back-index label)))
     (when (and (< offset 0) (>= offset 64))
@@ -288,4 +318,5 @@
      frame)))
 
 (define-public (global-assign name)
+  ;; (format #t "global-assign: ~a~%" 0)
   (throw 'laco-error global-assign "Not implement yet!"))
