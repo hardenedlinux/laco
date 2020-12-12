@@ -120,6 +120,8 @@
     usleep ; 16 + 10
     ))
 
+; (is-op-a-primitive? )
+
 (define (print-primitives)
   (display "--------PRIMITIVES--------\n")
   (pretty-print
