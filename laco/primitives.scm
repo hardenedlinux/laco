@@ -117,6 +117,7 @@
     eqv? ; 16 + 7
     eq? ; 16 + 8
     equal? ; 16 + 9
+    usleep ; 16 + 10
     ))
 
 (define (print-primitives)
@@ -133,7 +134,7 @@
                 (primitive-name p)))))
 
 (define *inapplicable-primitive*
-  '(halt return display restore))
+  '(halt return display restore usleep))
 
 (define (applicable-primitive? p)
   (not (memq (primitive-name p) *inapplicable-primitive* )))
@@ -213,3 +214,6 @@
 
 (define-primitive (equal? a b)
   (gen-constant (equal? a b)))
+
+(define-primitive (usleep us)
+  (throw 'laco-error 'prim:usleep "BUG: shouldn't be called in compile time!"))
