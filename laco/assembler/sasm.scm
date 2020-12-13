@@ -28,7 +28,7 @@
 
 (define *label-table* (make-hash-table))
 (define (label-register! name)
-  ;; (format #t "label ~a: ~a~%" name (label-counter 0))
+  (format #t "label ~a: ~a~%" name (label-counter 0))
   (hash-set! *label-table* name (label-counter 0)))
 (define-syntax-rule (label-ref name)
   (hash-ref *label-table* name))
@@ -47,6 +47,8 @@
 
 (define-public (label name)
   (label-register! name)
+  (when (is-normal-call? name)
+    (label-in! name))
   #vu8())
 
 (define-public (label-end name)
@@ -85,8 +87,6 @@
      ((> i 15)
       (single-encode #b0101 i))
      (else (throw 'laco-error call-local "Invalid offset `~a'!" i))))
-  (when (is-normal-call? name)
-    (label-in! name))
   (cond
    (keep? (gen))
    (else
@@ -123,8 +123,6 @@
       (list
        (single-encode #b0011 (ash (logand i #b111100) -2))
        frame)))
-  (when (is-normal-call? label)
-    (label-in! label))
   (cond
    (keep? (gen))
    (else
@@ -143,8 +141,6 @@
   (throw 'laco-error vec-ref "Haven't implemented yet!"))
 
 (define* (call-proc label keep? #:optional (count? #t))
-  (when (is-normal-call? label)
-    (label-in! label))
   (let ((offset (label-ref label)))
     (cond
      (offset
