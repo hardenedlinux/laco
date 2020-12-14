@@ -278,7 +278,7 @@
 ;;       so we can use label to indicate the stack frame.
 (define (label-back-index label)
   (let ((ll (queue-slots *label-queue*)))
-    ;;(pk "ll" ll)
+    ;;(pk "ll" ll label)
     (cond
      ((member label ll)
       => length)

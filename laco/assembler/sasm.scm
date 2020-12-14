@@ -28,7 +28,7 @@
 
 (define *label-table* (make-hash-table))
 (define (label-register! name)
-  (format #t "label ~a: ~a~%" name (label-counter 0))
+  ;;(format #t "label ~a: ~a~%" name (label-counter 0))
   (hash-set! *label-table* name (label-counter 0)))
 (define-syntax-rule (label-ref name)
   (hash-ref *label-table* name))
@@ -208,10 +208,12 @@
   (let ((entry (label-ref entry-label)))
     (cond
      (entry
-      (case mode
-        ((stack) (closure-on-stack arity frame-size entry count?))
-        ((heap) (closure-on-heap arity frame-size entry count?))
-        (else (throw 'laco-error closure "Invalid mode `~a'!" mode))))
+      (closure-on-heap arity frame-size entry count?)
+      #;
+      (case mode                        ;
+      ((stack) (closure-on-stack arity frame-size entry count?)) ;
+      ((heap) (closure-on-heap arity frame-size entry count?)) ;
+      (else (throw 'laco-error closure "Invalid mode `~a'!" mode))))
      (else
       ;; (format #t "closure: 4~%")
       (label-counter 4)
@@ -227,7 +229,7 @@
       (prim pn))
      (else
       (list (prim pn)
-            (pk "prim-call"(vm-stack-pop)))))))
+            (vm-stack-pop))))))
 
 (define-public (special-encode i)
   ;; (format #t "special-encode: ~a~%" 2)
