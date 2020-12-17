@@ -74,7 +74,10 @@
          (else (failed!)))))
     (($ app/k ($ cps _ kont _ _) f args)
      (cond
-      ((and tail-body? (kont-eq? (car args) kont))
+      ((and (current-def) tail-body? (kont-eq? (car args) kont))
+       ;; (pk "case-1" (cps->expr expr))
+       ;; (pk "current-def" (current-def))
+       ;; (pk "cps->name" (cps->name f))
        ;; CASE:
        ;; 1. tail-body
        ;; 2. k is current-kont
@@ -83,6 +86,7 @@
            (tag-proper-tail-recursion! expr)
            (cps-property-set! expr 'tail-call #t)))
       ((and tail-body? (kont-eq? kont f))
+       ;; (pk "case-2" (cps->expr expr))
        ;; CASE (k args ...) -> tail-call
        (cps-property-set! expr 'tail-call #t)))
      (app/k-func-set! expr (tco f))
@@ -90,9 +94,9 @@
      expr)
     (($ letfun/k ($ bind-special-form/k _ var value body))
      (parameterize ((current-def (id-name var)))
-       (bind-special-form/k-value-set! expr (tco value tail-body?))
-       (bind-special-form/k-body-set! expr (tco body #t))
-       expr))
+       (bind-special-form/k-value-set! expr (tco value tail-body?)))
+     (bind-special-form/k-body-set! expr (tco body #t))
+     expr)
     ((? bind-special-form/k?)
      (bind-special-form/k-value-set! expr (tco (bind-special-form/k-value expr) tail-body?))
      (bind-special-form/k-body-set! expr (tco (bind-special-form/k-body expr) #t))
