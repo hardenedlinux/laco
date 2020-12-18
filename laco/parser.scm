@@ -126,7 +126,7 @@
          ((('else rhs ...))
           (parse-it `(begin ,@rhs) #:pos 'closure-level #:body-begin? #t))
          (((tst '=> rhs) rest ...)
-          (let ((x (tmpvar)))
+          (let ((x tmpvar))
             (parse-it `(let ((,x ,tst))
                          (if ,x
                              (,rhs ,x)
