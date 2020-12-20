@@ -244,6 +244,18 @@
   ;; (format #t "push-integer-object: ~a~%" 6)
   (integer-obj-encode i))
 
+(define-public (push-real-object r)
+  ;; (format #t "push-real-object: ~a~%" 6)
+  (real-obj-encode r))
+
+(define-public (push-rational-object r)
+  ;; (format #t "push-rational-object: ~a~%" 6)
+  (rational-obj-encode r))
+
+(define-public (push-complex-object i)
+  ;; (format #t "push-complex-object: 6 or 10~%")
+  (complex-obj-encode i))
+
 (define-public (push-string-object s)
   (string-obj-encode s))
 

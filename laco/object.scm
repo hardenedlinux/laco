@@ -56,6 +56,18 @@
             boolean-object?
             make-boolean-object
 
+            real-object
+            real-object?
+            make-real-object
+
+            rational-object
+            rational-object?
+            make-rational-object
+
+            complex-object
+            complex-object?
+            make-complex-object
+
             symbol-object
             symbol-object?
             make-symbol-object
@@ -111,6 +123,18 @@
   (fields
    (value symbol?)))
 
+(define-typed-record real-object (parent object)
+  (fields
+   (value real?)))
+
+(define-typed-record complex-object (parent object)
+  (fields
+   (value complex?)))
+
+(define-typed-record rational-object (parent object)
+  (fields
+   (value rational?)))
+
 ;; constant -> object
 (define (create-constant-object c)
   (let ((val (constant-val c)))
@@ -118,6 +142,9 @@
       ('integer (make-integer-object '() val))
       ('list (make-list-object '() val))
       ('char (make-integer-object '() val))
+      ('real (make-real-object '() val))
+      ('complex (make-complex-object '() val))
+      ('rational (make-rational-object '() val))
       ('string (make-string-object '() val))
       ('symbol
        (intern! val)

@@ -19,9 +19,11 @@
   #:use-module (ice-9 iconv)
   #:use-module ((rnrs) #:select (make-bytevector
                                  bytevector-u8-set!
+                                 bytevector-s16-set!
                                  bytevector-s32-set!
                                  bytevector-u16-set!
                                  bytevector-u32-set!
+                                 bytevector-ieee-single-set!
                                  define-record-type))
   #:export (label-counter
             single-encode
@@ -33,6 +35,9 @@
             special-encode
             collection-obj-encode
             integer-obj-encode
+            real-obj-encode
+            rational-obj-encode
+            complex-obj-encode
             string-obj-encode
             boolean-obj-encode
             symbol-encode
@@ -125,15 +130,74 @@
 (define (integer-obj-encode data)
   (when (or (< data (- (1- (expt 2 31)))) (> data (1- (expt 2 31))))
     (throw 'laco-error integer-obj-encode
-           "Invalid integer object `0x~a', should be 32bit!"
-           (number->string data 16)))
-  (let ((bv (make-bytevector 6 0))
-        (d (if (>= data 0) data (- data))))
+           "Invalid integer object `~a', should be 32bit!" data))
+  (let ((bv (make-bytevector 6 0)))
     (bytevector-u8-set! bv 0 #b11100010)
     (bytevector-u8-set! bv 1 0)
     (bytevector-s32-set! bv 2 data 'big)
     (label-counter 6)
     bv))
+
+;; In LambdaChip, Real is IEEE754 in 32bit
+(define *IEEE754-32bit-max* 3.4028235e38)
+(define *IEEE754-32bit-min* (* 1.0 (expt 2 -149)))
+(define (real-obj-encode data)
+  (when (or (< data *IEEE754-32bit-min*) (> data *IEEE754-32bit-max*))
+    (throw 'laco-error real-obj-encode
+           "Invalid real object `~a', should be 32bit!" data))
+  (let ((bv (make-bytevector 6 0)))
+    (bytevector-u8-set! bv 0 #b11100010)
+    (bytevector-u8-set! bv 1 13)
+    (bytevector-ieee-single-set! bv 2 data 'big)
+    (label-counter 6)
+    bv))
+
+(define (rational-obj-encode data)
+  (let ((bv (make-bytevector 6 0))
+        (type (if (positive? data) 14 15))
+        (n (numerator data))
+        (d (denominator data)))
+    (when (or (< n (- (1- (expt 2 15)))) (> data (1- (expt 2 15))))
+      (throw 'laco-error rational-obj-encode
+             "Rational number has invalid numerator object `~a', should be 16bit!"
+             (number->string n)))
+    (when (or (< n (- (1- (expt 2 15)))) (> data (1- (expt 2 15))))
+      (throw 'laco-error rational-obj-encode
+             "Rational number has invalid denominator object `~a', should be 16bit!"
+             (number->string d)))
+    (bytevector-u8-set! bv 0 #b11100010)
+    (bytevector-u8-set! bv 1 type)
+    (bytevector-u16-set! bv 2 n 'big)
+    (bytevector-u16-set! bv 4 d 'big)
+    (label-counter 6)
+    bv))
+
+(define (complex-obj-encode data)
+  (let ((r (real-part data))
+        (i (imag-part data)))
+    (when (or (< r (- (1- (expt 2 15)))) (> r (1- (expt 2 15))))
+      (throw 'laco-error complex-obj-encode
+             "Invalid complex object real part `~a', should be signed 16bit!" r))
+    (when (or (< i (- (1- (expt 2 15)))) (> i (1- (expt 2 15))))
+      (throw 'laco-error complex-obj-encode
+             "Invalid complex object imagine part `~a', should be signed 16bit!" i))
+    (cond
+     ((and (exact? r) (exact? i))
+      (let ((bv (make-bytevector 6 0)))
+        (bytevector-u8-set! bv 0 #b11100010)
+        (bytevector-u8-set! bv 1 16)
+        (bytevector-s16-set! bv 2 r 'big)
+        (bytevector-s16-set! bv 4 i 'big)
+        (label-counter 6)
+        bv))
+     (else
+      (let ((bv (make-bytevector 10 0)))
+        (bytevector-u8-set! bv 0 #b11100010)
+        (bytevector-u8-set! bv 1 17)
+        (bytevector-ieee-single-set! bv 2 r 'big)
+        (bytevector-ieee-single-set! bv 6 i 'big)
+        (label-counter 10)
+        bv)))))
 
 (define (prim-obj-encode pn)
   ;; FIXME: Check pn

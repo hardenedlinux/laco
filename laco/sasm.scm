@@ -126,13 +126,17 @@
   (sasm-emit
    '((push-boolean-false) . "Boolean false")))
 
-(define-public (emit-constant type i)
-  (if (integer-check i type)
-      (sasm-emit `((push-4bit-const ,i) . ,(format #f "Constant 0x~X" i)))
-      (throw 'laco-error emit-constant "Invalid integer value!" i)))
-
 (define-public (emit-integer-object i)
   (sasm-emit `((push-integer-object ,i) . "")))
+
+(define-public (emit-real-object r)
+  (sasm-emit `((push-real-object ,r) . "")))
+
+(define-public (emit-rational-object r)
+  (sasm-emit `((push-rational-object ,r) . "")))
+
+(define-public (emit-complex-object c)
+  (sasm-emit `((push-complex-object ,c) . "")))
 
 (define-public (emit-string-object s)
   (sasm-emit `((push-string-object ,s) . "")))
@@ -160,18 +164,6 @@
       (sasm-emit
        `((push-char-const ,(char->integer c)) . ,(format #f "Char `~a'" c)))
       (throw 'laco-error emit-char "Invalid char value!" c)))
-
-(define-public (emit-integer i)
-  (emit-constant (detect-minimum-range i) i))
-
-;; This is only for const unboxing
-;; constant -> unspecified
-(define-public (emit-const-imm x)
-  (cond
-   ((is-integer-node? x) (emit-integer (constant-val x)))
-   ((is-boolean-node? x) (emit-boolean (constant-val x)))
-   ((is-char-node? x) (emit-char (constant-val x)))
-   (else (throw 'laco-error emit-const-imm "Invalid immediate `~a`!" x))))
 
 (define-public (emit-closure mode arity frame-size entry-label)
   (sasm-emit `((closure ,mode ,arity ,frame-size ,entry-label)

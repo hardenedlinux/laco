@@ -77,6 +77,12 @@
     (($ integer-object _ i)
      ;; TODO: how to associate the variable?
      (emit-integer-object i))
+    (($ real-object _ r)
+     (emit-real-object r))
+    (($ rational-object _ r)
+     (emit-rational-object r))
+    (($ complex-object _ c)
+     (emit-complex-object c))
     (($ string-object _ s)
      (emit-string-object s))
     (($ symbol-object _ s)

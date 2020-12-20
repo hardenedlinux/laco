@@ -72,17 +72,26 @@
 
 (define (detect-literal-type x)
   (cond
-   ((symbol? x) 'symbol)
-   ((char? x) 'char)
-   ((integer? x) 'integer)
-   ;; TODO: support real number
-   ((string? x) 'string)
-   ((boolean? x) 'boolean)
-   ((pair? x) 'pair)
-   ((list? x) 'list)
-   ((vector? x) 'vector)
-   ((unspecified? x) 'unspecified)
-   (else (throw 'laco-error 'detect-literal-type "Invalid literal type!" x))))
+   ((rational? x)
+    (if (inexact? x)
+        'real
+        (if (= 1 (denominator x))
+            'real
+            'rational)))
+   (else
+    (cond
+     ((symbol? x) 'symbol)
+     ((char? x) 'char)
+     ((integer? x) 'integer)
+     ((complex? x) 'complex)
+     ((real? x) 'real)
+     ((string? x) 'string)
+     ((boolean? x) 'boolean)
+     ((pair? x) 'pair)
+     ((list? x) 'list)
+     ((vector? x) 'vector)
+     ((unspecified? x) 'unspecified)
+     (else (throw 'laco-error 'detect-literal-type "Invalid literal type!" x))))))
 
 (define *laco/unspecified* (make-constant 'unspecified 'unspecified))
 (define *laco/chars* (list->vector
@@ -142,7 +151,7 @@
       (throw 'laco-error integer-check "`~a' is not an integer!" x)))
 
 (define *immediates-pred*
-  (list integer? string? char? boolean? pair? list? vector? symbol?))
+  (list integer? string? char? boolean? pair? list? vector? symbol? real? number? complex? rational?))
 
 (define (is-immediate? x)
   (any (lambda (c) (c x)) *immediates-pred*))
