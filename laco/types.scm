@@ -72,7 +72,7 @@
 
 (define (detect-literal-type x)
   (cond
-   ((rational? x)
+   ((and (not (integer? x)) (rational? x))
     (if (inexact? x)
         'real
         (if (= 1 (denominator x))
