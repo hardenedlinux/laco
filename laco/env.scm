@@ -100,10 +100,11 @@
   (slot-index (ref env) (lambda (x) (id-eq? x id))))
 
 (define (bindings-index env k)
-  ;;(pk "bindings" (map (lambda (x) ((if (id? x) id-name primitive-name) x)) (car (env-frees env))) (id-name k))
+  ;;(pk "bindings" (map (lambda (x) ((if (id? x) id-name primitive-name) x)) (car (env-bindings env))) (id-name k))
   (id-index env env-bindings k))
 
 (define (frees-index env k)
+  (pk "frees" (map (lambda (x) ((if (id? x) id-name primitive-name) x)) (car (env-frees env))) (id-name k))
   (id-index env env-frees k))
 
 (define (binding-exists? env id)

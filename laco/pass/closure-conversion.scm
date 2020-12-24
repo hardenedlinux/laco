@@ -78,10 +78,11 @@
 (define last-kont (make-parameter 'toplevel-kont))
 
 (define* (cc expr #:optional (mode 'normal))
-  (match expr
+  (match (pk "expr" (cps->expr expr) expr)
     (($ lambda/k ($ cps _ kont name attr) args body)
      (let* ((frees (fix-fv (free-vars expr #t)))
             (env (new-env args frees)))
+       (pk "detected frees" (map id-name frees))
        ;;(pk "current env" (map id-name (env-bindings env))) (read)
        (extend-env! (current-env) env)
        (closure-set! (id-name name) env)
@@ -90,6 +91,7 @@
                       (last-kont (current-kont)))
          (parameterize ((current-env env)
                         (current-kont name))
+           (pk "env frees" (map cps->name-string (car (env-frees env))))
            (case mode
              ((normal)
               (make-lambda/k (list kont name attr) args (cc body)))
@@ -98,8 +100,8 @@
               ;; 1. Counting frame size for each closure env in lir
               ;; 2. For 'closure mode, fvars must be converted to lvar
               (make-closure/k (list kont name (if (eq? mode 'closure-in-pcall)
-                                                  '((closure-in-pcall . #t))
-                                                  '()))
+                                                  (assoc-set! attr 'closure-in-call #t)
+                                                  attr))
                               env (cc body 'closure)))
              (else (throw 'laco-error cc "Invalid cc mode `~a'~%" mode)))))))
     ;; (($ closure/k ($ cps _ kont name attr) env body)
@@ -134,13 +136,13 @@
                         (cc func)
                         (cc body)))))
     (($ letcont/k ($ bind-special-form/k ($ cps _ kont name attr) jname jcont body))
-     ;; 1. In closure-conversion, we eliminate all letcont/k, the bindings should be
+     ;; 1. In closure-conversion, we eliminate all letcont/k, the bindings must be
      ;;    merged into the current-env.
      ;; 2. For non-escaping situation, we perform inline to eliminate letcont/k.
      ;;    For escaping, we will convert the escaped closure to closure/k.
      ;; 3. I was considering to perform assignment-elimination to transform all local
      ;;    assignments to bindings. However, it's not good for embedded system, since
-     ;;    every assignment increase stack. So we still make assignment an instruction.
+     ;;    every assignment increases stack. So we still make assignment an instruction.
      ;; 4. Although we can set bindings to global, and it's safe because of
      ;;    alpha-renaming, however, it can't be recycled by GC when the scope ends.
      (let ((env (if (toplevel? (current-env))
@@ -195,18 +197,18 @@
             (last (last-kont))
             (name (id-name id)))
        (cond
-        ((top-level-ref name) (new-gvar id))
-        ((not (toplevel? env))
+        ((top-level-ref name) (new-gvar id)) ; check if it's global
+        ((not (toplevel? env)) ; check if it's local var
          (cond
           ((bindings-index env id)
            => (lambda (offset)
                 (new-lvar id offset)))
-          ((and (not (eq? current-kont-label 'global))
+          ((and (not (eq? current-kont-label 'global)) ; check if it's free var
                 (if (eq? (last-scope) 'global)
                     (throw 'laco-error cc
                            "Undefined global variable `~a' in `~a'!"
                            name current-kont-label)
-                    (bindings-index (last-scope) id)))
+                    (frees-index env id)))
            => (lambda (index)
                 (new-fvar id (cps->name-string last) index)))
           (else (throw 'laco-error cc "Undefined local variable `~a'!" name))))
