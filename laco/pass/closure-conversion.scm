@@ -74,36 +74,34 @@
                     (cons x p)))
               '() fl))
 
-(define last-scope (make-parameter 'global))
 (define last-kont (make-parameter 'toplevel-kont))
 
 (define* (cc expr #:optional (mode 'normal))
-  (match (pk "expr" (cps->expr expr) expr)
+  (match expr
     (($ lambda/k ($ cps _ kont name attr) args body)
      (let* ((frees (fix-fv (free-vars expr #t)))
             (env (new-env args frees)))
-       (pk "detected frees" (map id-name frees))
+       ;;(pk "detected frees" (map id-name frees))
        ;;(pk "current env" (map id-name (env-bindings env))) (read)
        (extend-env! (current-env) env)
        (closure-set! (id-name name) env)
        ;;       (pk "after added free-vars" (map id-name (car (env-frees env))))
-       (parameterize ((last-scope (current-env))
-                      (last-kont (current-kont)))
-         (parameterize ((current-env env)
-                        (current-kont name))
-           (pk "env frees" (map cps->name-string (car (env-frees env))))
-           (case mode
-             ((normal)
-              (make-lambda/k (list kont name attr) args (cc body)))
-             ((closure closure-in-pcall)
-              ;; NOTE:
-              ;; 1. Counting frame size for each closure env in lir
-              ;; 2. For 'closure mode, fvars must be converted to lvar
-              (make-closure/k (list kont name (if (eq? mode 'closure-in-pcall)
-                                                  (assoc-set! attr 'closure-in-call #t)
-                                                  attr))
-                              env (cc body 'closure)))
-             (else (throw 'laco-error cc "Invalid cc mode `~a'~%" mode)))))))
+       (parameterize ((last-kont (current-kont))
+                      (current-env env)
+                      (current-kont name))
+         ;;(pk "env frees" (map cps->name-string (car (env-frees env))))
+         (case mode
+           ((normal)
+            (make-lambda/k (list kont name attr) args (cc body)))
+           ((closure closure-in-pcall)
+            ;; NOTE:
+            ;; 1. Counting frame size for each closure env in lir
+            ;; 2. For 'closure mode, fvars must be converted to lvar
+            (make-closure/k (list kont name (if (eq? mode 'closure-in-pcall)
+                                                (assoc-set! attr 'closure-in-call #t)
+                                                attr))
+                            env (cc body 'closure)))
+           (else (throw 'laco-error cc "Invalid cc mode `~a'~%" mode))))))
     ;; (($ closure/k ($ cps _ kont name attr) env body)
     ;;  ;; TODO: The escaping function will be converted to closure/k.
     ;;  ;;       This will need escaping analysis or liveness analysis.
@@ -204,11 +202,7 @@
            => (lambda (offset)
                 (new-lvar id offset)))
           ((and (not (eq? current-kont-label 'global)) ; check if it's free var
-                (if (eq? (last-scope) 'global)
-                    (throw 'laco-error cc
-                           "Undefined global variable `~a' in `~a'!"
-                           name current-kont-label)
-                    (frees-index env id)))
+                (frees-index env id))
            => (lambda (index)
                 (new-fvar id (cps->name-string last) index)))
           (else (throw 'laco-error cc "Undefined local variable `~a'!" name))))

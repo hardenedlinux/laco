@@ -28,36 +28,39 @@
 ;; Eliminate all the redundant code:
 ;; NOTE:
 ;; 1. We're not going to eliminate tail-call (return ...) in this pass.
-;;    The left `return' should imply tail-call after elre, since `return` within non
-;;    tail-calls are all eliminated in case-2.
+;;    The preserved `return' should imply tail-call after elre, since `return`
+;;    within non-tail-calls are all eliminated in case-2.
 ;; 2. FIXME: Make sure all the left `return' are tail-calls, we need them for
 ;;    low-level TCO stack tweaking in LIR.
 
 (define (eliminate-non-tail-return exprs)
-  (let ((kont (current-kont)))
-    (fold-right (lambda (x p)
-                  (match x
-                    (($ app/k _ f (arg))
-                     (=> failed!)
-                     (if (kont-eq? f kont)
-                         (cons arg p)
-                         (failed!)))
-                    (else (cons x p))))
-                '() exprs)))
+  (let ((kont (current-kont))
+        (el (reverse exprs)))
+    (append
+     (fold (lambda (x p)
+             (match x
+               (($ app/k _ f (arg))
+                (=> failed!)
+                (if (eq? 'return (cps->name f))
+                    (cons arg p)
+                    (failed!)))
+               (else (cons x p))))
+           '() (cdr el))
+     (list (car el)))))
 
 (define is-closure-in-pcall? (make-parameter #f))
 
-(define *fixed-table (make-hash-table))
-(define (is-fixed? name) (hash-ref *fixed-table name))
-(define (fix! name) (hash-set! *fixed-table name #t))
+(define *fixed-table* (make-hash-table))
+(define (is-fixed? name) (hash-ref *fixed-table* name))
+(define (fix! name) (hash-set! *fixed-table* name #t))
 
 (define (elre expr)
   (match expr
     (($ seq/k _ (($ seq/k _ _)))
      ;; case-1: (begin (begin body ...)) -> (begin body ...)
      ;;
-     ;; Of course we can make sure no redundant seq was introduced in the parser,
-     ;; however, you have to consider if users do it in their code, such like:
+     ;; Of course we can eliminate redundant seq which was introduced in the parser,
+     ;; however, you have to consider if users do it in their own code, such like:
      ;; (let ((...)) (begin body ...))
      (elre (car (seq/k-exprs expr))))
     (($ seq/k _ exprs)

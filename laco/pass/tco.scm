@@ -82,6 +82,7 @@
        ;; 1. tail-body
        ;; 2. k is current-kont
        ;; 3. (f k args ...) -> tail-call or tail-rec
+       ;; 4. (f (lambda ... g) ...) -> g is in closure, so g is not a tail-call
        (if (eq? (current-def) (cps->name f))
            (tag-proper-tail-recursion! expr)
            (cps-property-set! expr 'tail-call #t)))
