@@ -57,4 +57,4 @@
           ;; skip <eof>
           `(begin ,@(reverse! ret)))
          (else (lp (cons e ret)))))))
-  (make-mod filename mod-path (read-all-exprs) (new-env)))
+  (make-mod filename mod-path (read-all-exprs) (new-env (string->symbol filename))))

@@ -21,6 +21,7 @@
   #:use-module ((rnrs) #:select (define-record-type))
   #:export (env
             env?
+            env-name env->name-string
             env-bindings env-bindings-set!
             env-prev env-prev-set!
             env-frees env-frees-set!
@@ -36,6 +37,7 @@
             bindings-index
             frees-index
             binding-exists?
+            is-free-var?
 
             *top-level*
             new-env
@@ -60,18 +62,22 @@
 
 (define-typed-record env
   (fields
+   (name symbol?)
    (prev env? not)
    (bindings queue? not)
    (frees queue? not)))
 
 (define-record-type toplevel (parent env) (fields definition))
 (define (new-toplevel)
-  (make-toplevel #f #f #f (make-hash-table)))
+  (make-toplevel 'global #f #f #f (make-hash-table)))
 
-(define* (new-env #:optional (params '()) (frees '()))
+(define* (new-env name #:optional (params '()) (frees '()))
   (let ((bindings (list->queue params))
         (frees (list->queue frees)))
-    (make-env #f bindings frees)))
+    (make-env name #f bindings frees)))
+
+(define (env->name-string env)
+  (symbol->string (env-name env)))
 
 (define *top-level* (new-toplevel))
 
@@ -94,18 +100,27 @@
   (env-prev-set! new prev))
 
 (define (id-index env ref id)
-  ;;(pk "frees" (map id-name (car (env-frees env)))) (read)
   (when (not (env? env))
     (throw 'laco-error id-index "`~a' is invalid env for ~a!" env ref))
   (slot-index (ref env) (lambda (x) (id-eq? x id))))
 
 (define (bindings-index env k)
-  ;;(pk "bindings" (map (lambda (x) ((if (id? x) id-name primitive-name) x)) (car (env-bindings env))) (id-name k))
+  (pk "bindings" (map (lambda (x) ((if (id? x) id-name primitive-name) x)) (car (env-bindings env))) (id-name k))
   (id-index env env-bindings k))
 
-(define (frees-index env k)
-  (pk "frees" (map (lambda (x) ((if (id? x) id-name primitive-name) x)) (car (env-frees env))) (id-name k))
+(define (is-free-var? env k)
+  ;;(pk "frees" (map (lambda (x) ((if (id? x) id-name primitive-name) x)) (car (env-frees env))) (id-name k))
   (id-index env env-frees k))
+
+(define (frees-index env k)
+  (let ((prev (env-prev env)))
+    (cond
+     ((and prev (not (toplevel? prev)))
+      (cond
+       ((bindings-index prev k)
+        => (lambda (i) (values prev i)))
+       (else (frees-index prev k))))
+     (else #f))))
 
 (define (binding-exists? env id)
   (let ((bindings (env-bindings env))
@@ -135,7 +150,7 @@
   (hash-set! *closure-lookup-table* label bindings))
 (define (closure-ref label)
   ;; FIXME: Shouldn't create new env
-  (hash-ref *closure-lookup-table* label (new-env '())))
+  (hash-ref *closure-lookup-table* label (new-env label '())))
 
 ;; NOTE: We record all recursive functions in this table, rather than tag it in attr
 ;;       of each CPS node, since the CPS node may be eliminated

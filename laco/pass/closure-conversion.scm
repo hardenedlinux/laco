@@ -80,7 +80,7 @@
   (match expr
     (($ lambda/k ($ cps _ kont name attr) args body)
      (let* ((frees (fix-fv (free-vars expr #t)))
-            (env (new-env args frees)))
+            (env (new-env (id-name name) args frees)))
        ;;(pk "detected frees" (map id-name frees))
        ;;(pk "current env" (map id-name (env-bindings env))) (read)
        (extend-env! (current-env) env)
@@ -115,7 +115,7 @@
                     (cc b2)))
     (($ collection/k ($ cps _ kont name attr) var type size value)
      (let ((env (if (toplevel? (current-env))
-                    (new-env '() (free-vars expr))
+                    (new-env (id-name name) '() (free-vars expr))
                     (current-env))))
        (env-local-push! env var)
        (make-collection/k (list kont name attr)
@@ -125,7 +125,7 @@
      (make-seq/k (list kont name attr) (map cc exprs)))
     (($ letfun/k ($ bind-special-form/k ($ cps _ kont name attr) fname func body))
      (let ((env (if (toplevel? (current-env))
-                    (new-env '() (free-vars expr))
+                    (new-env (id-name name) '() (free-vars expr))
                     (current-env))))
        (env-local-push! env fname)
        (parameterize ((current-env env))
@@ -144,7 +144,7 @@
      ;; 4. Although we can set bindings to global, and it's safe because of
      ;;    alpha-renaming, however, it can't be recycled by GC when the scope ends.
      (let ((env (if (toplevel? (current-env))
-                    (new-env '() (free-vars expr))
+                    (new-env (id-name name) '() (free-vars expr))
                     (current-env))))
        (when (toplevel? (current-env))
          (extend-env! (current-env) env)
@@ -192,7 +192,6 @@
      (let* ((env (current-env))
             (current-kont-label (cps->name-string (current-kont)))
             ;; FIXME: deal with it when current-kont is 'global
-            (last (last-kont))
             (name (id-name id)))
        (cond
         ((top-level-ref name) (new-gvar id)) ; check if it's global
@@ -202,9 +201,10 @@
            => (lambda (offset)
                 (new-lvar id offset)))
           ((and (not (eq? current-kont-label 'global)) ; check if it's free var
+                (is-free-var? env id)
                 (frees-index env id))
-           => (lambda (index)
-                (new-fvar id (cps->name-string last) index)))
+           values => (lambda (scope index)
+                       (new-fvar id (env->name-string scope) index)))
           (else (throw 'laco-error cc "Undefined local variable `~a'!" name))))
         (else (throw 'laco-error cc "Undefined global variable `~a' in `~a'!"
                      name current-kont-label)))))
