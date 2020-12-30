@@ -86,6 +86,7 @@
             insr-free insr-free?
             make-insr-free
             insr-free-label insr-free-label-set!
+            insr-free-offset insr-free-offset-set!
             insr-free-name insr-free-name-set!
 
             insr-global insr-global?

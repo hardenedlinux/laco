@@ -28,28 +28,34 @@
 (define need-capture? (make-parameter #f))
 (define current-frees (make-parameter #f))
 
-(define (fix-local lexpr)
+;; NOTE;
+;; The offset of the closure captured variables start from (local 0),
+;; so we need to increase offset of locals starts from the size of closure frame.
+;; NOTE:
+;; There's no free vars before fix-offset, since they're all converted to locals.
+(define (fix-offset lexpr)
   (match lexpr
     (($ insr-closure _ _ _ frees body _)
      (parameterize ((need-capture? #t)
                     (current-frees frees))
-       (insr-closure-body-set! lexpr (map fix-local body)))
+       (insr-closure-body-set! lexpr (map fix-offset body)))
      lexpr)
     (($ insr-label _ _ _ exprs)
-     (insr-label-body-set! lexpr (map fix-local exprs))
+     (insr-label-body-set! lexpr (map fix-offset exprs))
      lexpr)
     (($ insr-proc _ _ _ _ _ exprs)
-     (insr-proc-body-set! lexpr (map fix-local exprs))
+     (insr-proc-body-set! lexpr (map fix-offset exprs))
      lexpr)
     (($ insr-local _ name _ offset _)
      (cond
       ((and (need-capture?) (not (hash-ref (current-frees) name)))
        (let ((fixed-offset (+ offset (hash-count (const #t) (current-frees)))))
+         ;;(pk "tag" name offset fixed-offset) (read)
          (insr-local-offset-set! lexpr fixed-offset)
          lexpr))
       (else lexpr)))
     (($ list-object _ _ value)
-     (list-object-value-set! lexpr (map fix-local value))
+     (list-object-value-set! lexpr (map fix-offset value))
      lexpr)
     (else lexpr)))
 
@@ -73,7 +79,7 @@
             (match pattern
               ((? integer? local-offset)
                (let ((local (make-insr-local '() name mode local-offset keep?)))
-                 ;;(pk "tag" label name) (read)
+                 ;; (pk "tag" label name offset local-offset) (read)
                  (hash-set! (current-frees) name (cons lexpr local))
                  local))
               (((? insr-free? free) . (? insr-local? local))
@@ -86,4 +92,4 @@
      lexpr)
     (else lexpr)))
 
-(define-pass closure-capture-free-vars lexpr (fix-local (ccfv lexpr)))
+(define-pass closure-capture-free-vars lexpr (fix-offset (ccfv lexpr)))

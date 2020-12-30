@@ -33,7 +33,7 @@
   (match lexpr
     (($ insr-label _ _ label (($ insr-prelude _ _ _ m _) rest ...))
      (when (= m *normal-call*)
-       (pk "check" label m *normal-call*)
+       ;; (pk "check" label m *normal-call*)
        (normal-call-register! label))
      (if (and (not (need-capture?)) (or (= m *tail-rec*) (= m *tail-call*)))
          (parameterize ((need-lift? #t))
@@ -42,7 +42,7 @@
      lexpr)
     (($ insr-proc _ _ label _ _ (($ insr-prelude _ _ _ m _) rest ...))
      (when (= m *normal-call*)
-       (pk "check" label m *normal-call*)
+       ;; (pk "check" label m *normal-call*)
        (normal-call-register! label))
      (if (and (not (need-capture?)) (or (= m *tail-rec*) (= m *tail-call*)))
          (parameterize ((need-lift? #t))

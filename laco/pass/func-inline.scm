@@ -64,7 +64,7 @@
      ;; For the case that generates redundant lambdas.
      (=> failed!)
      (if (is-inlineable? attr)
-         body
+         (func-inline body)
          (failed!)))
     (($ letcont/k ($ bind-special-form/k _ jname jcont
                      ($ letfun/k ($ bind-special-form/k _ fname fbody body))))
