@@ -37,10 +37,14 @@
 ;; After closure-conversion, there's no letcont/k, so we can remove all
 ;; the useless "letcont/k-" id. Otherwise it would interfere the sorting of
 ;; free-vars.
-(define (eliminate-unused-vars! used-vars env)
-  (env-frees-set! env (list->queue used-vars)))
+(define (eliminate-unused-free-vars! name fvars env)
+  (let ((fvars-in-use (insec fvars (car (env-frees env)))))
+    ;;(pk "fvars"  (map id-name fvars) (map id-name fvars-in-use)) (read)
+    (env-frees-set! env (list->queue fvars-in-use))
+    (closure-set! name env) ; update for closure capturing
+    ))
 
-(define lift-name (make-parameter #f))
+(define lift-name (make-parameter ""))
 
 (define (ll expr)
   (match expr
@@ -54,18 +58,21 @@
        (top-level-set! (id-name fname) (ll func))
        (parameterize ((lift-name (id->string fname)))
          (ll body)))))
-    (($ closure/k  ($ cps _ _ _ attr) env body)
-     (eliminate-unused-vars! (free-vars (new-lambda/k (env->args env) body) #t) env)
-     (cond
-      ((no-free-var? env)
-       ;; If the closure capture nothing, then lift it as a global function
-       (let ((cname (new-id "#lifted-")))
-         (top-level-set! (id-name cname)
-                         (new-lambda/k (env->args env) body #:attr attr))
-         (new-gvar cname)))
-      (else
-       (closure/k-body-set! expr (ll body))
-       expr)))
+    (($ closure/k  ($ cps _ name _ attr) env body)
+     (let ((helper-proc (new-lambda/k (env->args env) body #:attr attr)))
+       ;;(pk "args" (map id-name (env->args env)))
+       ;;(pk "proc" (cps->expr helper-proc))(read)
+       (eliminate-unused-free-vars! name (fix-fv (free-vars helper-proc)) env)
+       (cond
+        ((no-free-var? env)
+         (pk "hit" (cps->name-string expr)) (read)
+         ;; If the closure capture nothing, then lift it as a global function
+         (let ((cname (new-id "#lifted-")))
+           (top-level-set! (id-name cname) helper-proc)
+           (new-gvar cname)))
+        (else
+         (closure/k-body-set! expr (ll body))
+         expr))))
     ((? bind-special-form/k?)
      (bind-special-form/k-value-set! expr (ll (bind-special-form/k-value expr)))
      (bind-special-form/k-body-set! expr (ll (bind-special-form/k-body expr)))
@@ -86,7 +93,7 @@
      (seq/k-exprs-set! expr (map ll exprs))
      expr)
     (($ lvar ($ id _ name _) _)
-     (if (equal? (lift-name) (symbol->string name))
+     (if (string=? (lift-name) (symbol->string name))
          (new-gvar (new-id (lift-name) #f))
          expr))
     (($ assign/k _ v e)

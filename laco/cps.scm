@@ -113,7 +113,9 @@
             is-escaped?
 
             top-level->src
-            cps->expr/g))
+            cps->expr/g
+
+            fix-fv))
 
 ;; kontext means kontinuation-context
 
@@ -276,6 +278,8 @@
      (op (rec expr) (list ref)))
     (($ lambda/k _ args body)
      (op (rec body) args))
+    (($ closure/k _ env body)
+     (op (rec body) (queue-slots (env-bindings env))))
     (($ branch/k _ cnd b1 b2)
      (apply acc (map rec (list cnd b1 b2))))
     (($ seq/k _ exprs)
@@ -623,3 +627,11 @@
 
 (define (cps->expr/g cpse)
   `(module ,@(top-level->src) ,(cps->expr cpse)))
+
+;; NOTE: Filter global var
+(define (fix-fv fl)
+  (fold-right (lambda (x p)
+                (if (pk "top?" (id-name x) (top-level-ref (id-name x)))
+                    p
+                    (cons x p)))
+              '() fl))

@@ -1,4 +1,4 @@
-#!/gnu/store/wp7qdyqbv221ng8lbknrmpi2adrl17x8-profile/bin/guile \
+#!/home/nalaginrut/.guix-profile/bin/guile \
 -e main
 !#
 

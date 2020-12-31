@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020
+;;  Copyright (C) 2020,2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -80,7 +80,13 @@
             intern-offset
             gen-intern-symbol-table
             effect-var-register!
-            is-effect-var?))
+            is-effect-var?
+            is-captured-fv?
+            register-captured-fv!
+            ordered-frees-add!
+            get-ordered-frees
+            fvar->lvar-fixed-offset
+            ordered-frees-fix!))
 
 (define (newsym sym) (gensym (symbol->string sym)))
 (define (new-label str) (symbol->string (gensym str)))
@@ -323,3 +329,32 @@
   (hash-set! *effect-vars* v #t))
 (define (is-effect-var? v)
   (hash-ref *effect-vars* v))
+
+(define *upper-level-fv* (make-hash-table))
+(define* (is-captured-fv? v #:optional (default '()))
+  (hash-ref *upper-level-fv* v default))
+(define (register-captured-fv! v ccn)
+  (hash-set! *upper-level-fv* v ccn))
+
+(define *ordered-frees-table* (make-hash-table))
+(define (ordered-frees-add! label item)
+  (let ((frees (hash-ref *ordered-frees-table* label (new-queue))))
+    (when (not (member (car item) (map car (queue-slots frees))))
+      (hash-set! *ordered-frees-table*
+                 label
+                 (queue-in! frees item)))))
+(define (get-ordered-frees label)
+  (queue-slots (hash-ref *ordered-frees-table* label (new-queue))))
+(define (fvar->lvar-fixed-offset label pred)
+  (let ((frees (hash-ref *ordered-frees-table* label (new-queue))))
+    (or (list-index pred (queue-slots frees))
+        0)))
+(define (ordered-frees-fix! label pred fixed-offset)
+  (let* ((frees (hash-ref *ordered-frees-table* label
+                          (format #f
+                                  "BUG: it's impossible `~a' has no frees here!"
+                                  label)))
+         (index (list-index pred (queue-slots frees)))
+         (item (list-ref (queue-slots frees) index)))
+    (list-set! (queue-slots frees) index
+               `(,(car item) ,(cadr item) ,fixed-offset))))

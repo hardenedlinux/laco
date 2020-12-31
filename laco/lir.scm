@@ -178,7 +178,7 @@
   (fields
    (mode symbol?)
    (name symbol?)
-   (offset integer?)
+   (offset integer? list?)
    (keep? boolean?)))
 
 ;; Pop ss[offset] to TOS
@@ -277,10 +277,6 @@
               frees (iota len))
     ht))
 
-;; queue -> queue
-(define (filter-locals locals frees)
-  (lset-difference id-eq? (queue-slots frees) (queue-slots locals)))
-
 (define* (cps->lir expr #:key (cur-def #f) (mode 'push) (keep-ret-context? #f))
   (match expr
     (($ lambda/k ($ cps _ kont name attr) args body)
@@ -302,7 +298,7 @@
     (($ closure/k ($ cps _ kont name attr) env body)
      (let* ((mode (if (is-escaped? expr) 'heap 'stack))
             (locals (env-bindings env))
-            (frees (frees->lookup-table (filter-locals locals (env-frees env))))
+            (frees (frees->lookup-table (queue-slots (env-frees env))))
             (arity (queue-length (env-bindings env))))
        (make-insr-closure '()
                           (id->string name)
@@ -473,10 +469,11 @@
     (($ insr-jump _ label)
      `(jump ,label))
     (($ insr-local _ name mode offset keep?)
-     `(local ,offset ,name ,mode ,(cond
-                                   ((eq? mode 'push) 'object)
-                                   (keep? 'keep)
-                                   (else 'clean))))
+     `(local ,(if (list? offset) (car offset) offset)
+        ,name ,mode ,(cond
+                      ((eq? mode 'push) 'object)
+                      (keep? 'keep)
+                      (else 'clean))))
     (($ insr-free _ label name mode offset keep?)
      `(free-var ,name in ,label ,mode ,offset ,(cond
                                                 ((eq? mode 'push) 'object)

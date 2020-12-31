@@ -23,11 +23,14 @@
   #:use-module (srfi srfi-1)
   #:use-module (ice-9 match))
 
-;; Lift free-vars if they're in tail-call body
+;; Lift free-vars in the current closure if they're in tail-call body
 
+(define current-closure-name (make-parameter "global"))
+(define current-frees (make-parameter #f))
 (define need-lift? (make-parameter #f))
 (define closure-escape? (make-parameter #f))
 (define need-capture? (make-parameter #f))
+(define *closures* (make-hash-table))
 
 (define (fvl lexpr)
   (match lexpr
@@ -50,9 +53,17 @@
          (insr-proc-body-set! lexpr (map fvl (insr-proc-body lexpr))))
      lexpr)
     (($ insr-free _ label name mode offset keep?)
-     (if (and (not (need-capture?)) (need-lift?))
-         (make-insr-local '() name mode offset keep?)
-         lexpr))
+     (cond
+      ((and (not (need-capture?)) (need-lift?))
+       (hash-remove! (insr-closure-frees (hash-ref *closures* label)) name)
+       (make-insr-local '() name mode offset keep?))
+      (else
+       (when (not (string=? label (current-closure-name)))
+         ;; Tag the captured free-var
+         (register-captured-fv!
+          (pk "register name" label (current-closure-name) name (cons label name))
+          (cons label (is-captured-fv? name))))
+       lexpr)))
     (($ insr-proc _ _ _ _ _ lexprs)
      (insr-proc-body-set! lexpr (map fvl lexprs))
      lexpr)
@@ -65,9 +76,11 @@
     (($ insr-proc _ _ _ _ _ body)
      (insr-proc-body-set! lexpr (fvl body))
      lexpr)
-    (($ insr-closure _ _ _ _ body mode)
+    (($ insr-closure _ name _ frees body mode)
      ;; NOTE: Don't lift closure captured free-vars
-     (parameterize ((need-capture? #t))
+     (parameterize ((current-closure-name name)
+                    (need-capture? #t))
+       (hash-set! *closures* name lexpr)
        (insr-closure-body-set! lexpr (map fvl body))
        lexpr))
     (($ list-object _ _ value)

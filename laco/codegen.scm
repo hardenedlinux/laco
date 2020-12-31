@@ -38,25 +38,27 @@
        (lp (cdr next) (cons (bindings-index env id) ret)))
       (else (lp cdr next) ret))))
 
-(define (gen-closure-frame frees)
+(define (gen-closure-frame closure-label)
   ;; 1. If the value is integer, then it means the free-var was converted to local
   ;;    in fv-lifting, so we just ignore it.
   ;; 2. If it's lifted in fv-lifting, then it means it's closure-on-stack, so we
   ;;    don't actually capture it.
-  (filter-map
+  (map
    (lambda (x)
      (match x
-       ((? integer? x) #f)
-       ((($ insr-free _ label name _ offset keep?) . (? insr-local?))
-        (make-insr-free '() label name 'push offset #t))
+       ((_ ($ insr-free _ label name _ offset keep?) fixed-offset)
+        ;; NOTE: Since the offset will add the size of the captures, so we have to
+        ;;       use the fixed-offset here.
+        (make-insr-free '() label name 'push fixed-offset #t))
        (else (throw 'laco-error gen-closure-frame "Invalid item `~a'!" x))))
-   (hash-map->list (lambda (_ x) x) frees)))
+   (get-ordered-frees closure-label)))
 
 ;; lir -> unspecified
 (define (emit-sasm lir)
   (match lir
     (($ insr-closure _ label arity frees body mode)
-     (define frame (gen-closure-frame frees))
+     ;; NOTE: We don't use frees in insr-closure, we have to use ordered frees
+     (define frame (gen-closure-frame label))
      (define end-label (new-label "closure-end-"))
      (for-each emit-sasm frame)
      (emit-closure mode arity (length frame) label)

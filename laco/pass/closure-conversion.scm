@@ -66,14 +66,6 @@
 ;;    of it, this is called `known function'. We can pass all free-vars as arguments
 ;;    to it, so it's not a closure anymore.
 
-;; NOTE: Filter global var
-(define (fix-fv fl)
-  (fold-right (lambda (x p)
-                (if (top-level-ref (id-name x))
-                    p
-                    (cons x p)))
-              '() fl))
-
 (define last-kont (make-parameter 'toplevel-kont))
 
 (define* (cc expr #:optional (mode 'normal))
@@ -81,7 +73,7 @@
     (($ lambda/k ($ cps _ kont name attr) args body)
      (let* ((frees (fix-fv (free-vars expr #t)))
             (env (new-env (id-name name) args frees)))
-       ;;(pk "detected frees" (map id-name frees))
+       ;;(pk "detected frees" (map id-name frees)) (read)
        ;;(pk "current env" (map id-name (env-bindings env))) (read)
        (extend-env! (current-env) env)
        (closure-set! (id-name name) env)
@@ -115,7 +107,7 @@
                     (cc b2)))
     (($ collection/k ($ cps _ kont name attr) var type size value)
      (let ((env (if (toplevel? (current-env))
-                    (new-env (id-name name) '() (free-vars expr))
+                    (new-env (id-name name) '() (fix-fv (free-vars expr)))
                     (current-env))))
        (env-local-push! env var)
        (make-collection/k (list kont name attr)
@@ -125,7 +117,7 @@
      (make-seq/k (list kont name attr) (map cc exprs)))
     (($ letfun/k ($ bind-special-form/k ($ cps _ kont name attr) fname func body))
      (let ((env (if (toplevel? (current-env))
-                    (new-env (id-name name) '() (free-vars expr))
+                    (new-env (id-name name) '() (fix-fv (free-vars expr)))
                     (current-env))))
        (env-local-push! env fname)
        (parameterize ((current-env env))
@@ -144,7 +136,7 @@
      ;; 4. Although we can set bindings to global, and it's safe because of
      ;;    alpha-renaming, however, it can't be recycled by GC when the scope ends.
      (let ((env (if (toplevel? (current-env))
-                    (new-env (id-name name) '() (free-vars expr))
+                    (new-env (id-name name) '() (fix-fv (free-vars expr)))
                     (current-env))))
        (when (toplevel? (current-env))
          (extend-env! (current-env) env)

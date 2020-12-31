@@ -34,82 +34,83 @@ SUFFIXES = .scm .go
 .scm.go:
 	$(AM_V_GEN)$(top_builddir)/pre-inst-env $(GUILE_TOOLS) compile $(GUILE_WARNINGS) -o "$@" "$<"
 
-SOURCES = laco/pass/func-inline.go \
+SOURCES = laco/pass/normalize.go \
           laco/pass/closure-conversion.go \
-          laco/pass/normalize.go \
-          laco/pass/tco.go \
           laco/pass/elre.go \
+          laco/pass/tco.go \
           laco/pass/fold-const.go \
           laco/pass/lambda-lifting.go \
           laco/pass/const-propagation.go \
-          laco/pass/useless-constant.go \
-          laco/pass/fold-branch.go \
-          laco/pass/escape-analysis.go \
-          laco/pass/eta-func.go \
-          laco/pass/dce.go \
-          laco/pass/delta-reduction.go \
-          laco/pass/primitive-conversion.go \
           laco/pass/eta-cont.go \
+          laco/pass/dce.go \
           laco/pass/args-extend.go \
+          laco/pass/fold-branch.go \
+          laco/pass/useless-constant.go \
+          laco/pass/eta-func.go \
+          laco/pass/delta-reduction.go \
           laco/pass/useless-cont.go \
-          laco/pass/primitive-conversion.scm \
+          laco/pass/primitive-conversion.go \
+          laco/pass/escape-analysis.go \
+          laco/pass/func-inline.go \
           laco/pass/lambda-lifting.scm \
-          laco/pass/elre.scm \
-          laco/pass/closure-conversion.scm \
-          laco/pass/args-extend.scm \
-          laco/pass/normalize.scm \
-          laco/pass/fold-const.scm \
           laco/pass/tco.scm \
           laco/pass/func-inline.scm \
-          laco/pass/escape-analysis.scm \
-          laco/pass/dce.scm \
-          laco/pass/useless-constant.scm \
-          laco/pass/eta-func.scm \
+          laco/pass/elre.scm \
+          laco/pass/closure-conversion.scm \
           laco/pass/useless-cont.scm \
-          laco/pass/eta-cont.scm \
-          laco/pass/delta-reduction.scm \
-          laco/pass/const-propagation.scm \
+          laco/pass/useless-constant.scm \
+          laco/pass/primitive-conversion.scm \
+          laco/pass/normalize.scm \
+          laco/pass/fold-const.scm \
           laco/pass/fold-branch.scm \
+          laco/pass/eta-func.scm \
+          laco/pass/eta-cont.scm \
+          laco/pass/escape-analysis.scm \
+          laco/pass/delta-reduction.scm \
+          laco/pass/dce.scm \
+          laco/pass/const-propagation.scm \
+          laco/pass/args-extend.scm \
           laco/assembler/sasm.go \
           laco/assembler/encode.go \
           laco/assembler/sasm.scm \
           laco/assembler/encode.scm \
-          laco/lpass/reduce-labels.go \
           laco/lpass/fv-lifting.go \
           laco/lpass/closure-capture-fv.go \
+          laco/lpass/reduce-labels.go \
+          laco/lpass/remove-unused-captures.scm \
           laco/lpass/fv-lifting.scm \
           laco/lpass/closure-capture-fv.scm \
           laco/lpass/reduce-labels.scm \
-          laco/cps.go \
           laco/lir.go \
+          laco/cps.go \
           laco/compile.go \
-          laco/object.go \
           laco/codegen.go \
-          laco/parser.go \
-          laco/ast.go \
           laco/primitives.go \
+          laco/parser.go \
           laco/sasm.go \
+          laco/object.go \
           laco/types.go \
-          laco/pass.go \
-          laco/env.go \
           laco/utils.go \
+          laco/pass.go \
+          laco/ast.go \
+          laco/env.go \
           laco/module.go \
           laco/assembler.go \
-          laco/sasm.scm \
-          laco/primitives.scm \
-          laco/pass.scm \
-          laco/object.scm \
+          laco/codegen.scm \
+          laco/utils.scm \
+          laco/module.scm \
           laco/lir.scm \
           laco/env.scm \
-          laco/cps.scm \
-          laco/compile.scm \
-          laco/codegen.scm \
-          laco/parser.scm \
-          laco/ast.scm \
-          laco/utils.scm \
+          laco/primitives.scm \
           laco/types.scm \
+          laco/sasm.scm \
+          laco/pass.scm \
+          laco/parser.scm \
+          laco/cps.scm \
+          laco/object.scm \
           laco/assembler.scm \
-          laco/module.scm
+          laco/compile.scm \
+          laco/ast.scm
 
 TESTS = 
 
@@ -178,81 +179,121 @@ EXTRA_DIST += README \
               NEWS \
               AUTHORS \
               ChangeLog \
+              NEWS \
+              AUTHORS \
+              ChangeLog \
+              NEWS \
+              AUTHORS \
+              ChangeLog \
+              NEWS \
+              AUTHORS \
+              ChangeLog \
+              NEWS \
+              AUTHORS \
+              ChangeLog \
+              NEWS \
+              AUTHORS \
+              ChangeLog \
               guix.scm \
               hall.scm \
               build-aux/texinfo.tex \
-              build-aux/mdate-sh \
               build-aux/missing \
+              build-aux/mdate-sh \
               build-aux/install-sh \
               build-aux/test-driver.scm \
               build-aux/texinfo.tex \
-              build-aux/mdate-sh \
               build-aux/missing \
+              build-aux/mdate-sh \
               build-aux/install-sh \
               build-aux/test-driver.scm \
               build-aux/texinfo.tex \
-              build-aux/mdate-sh \
               build-aux/missing \
+              build-aux/mdate-sh \
               build-aux/install-sh \
               build-aux/test-driver.scm \
               build-aux/texinfo.tex \
-              build-aux/mdate-sh \
               build-aux/missing \
+              build-aux/mdate-sh \
               build-aux/install-sh \
               build-aux/test-driver.scm \
               build-aux/texinfo.tex \
-              build-aux/mdate-sh \
               build-aux/missing \
+              build-aux/mdate-sh \
               build-aux/install-sh \
               build-aux/test-driver.scm \
               build-aux/texinfo.tex \
-              build-aux/mdate-sh \
               build-aux/missing \
+              build-aux/mdate-sh \
               build-aux/install-sh \
               build-aux/test-driver.scm \
               build-aux/texinfo.tex \
-              build-aux/mdate-sh \
               build-aux/missing \
+              build-aux/mdate-sh \
               build-aux/install-sh \
               build-aux/test-driver.scm \
               build-aux/texinfo.tex \
-              build-aux/mdate-sh \
               build-aux/missing \
+              build-aux/mdate-sh \
               build-aux/install-sh \
               build-aux/test-driver.scm \
               build-aux/texinfo.tex \
-              build-aux/mdate-sh \
               build-aux/missing \
+              build-aux/mdate-sh \
               build-aux/install-sh \
               build-aux/test-driver.scm \
               build-aux/texinfo.tex \
-              build-aux/mdate-sh \
               build-aux/missing \
+              build-aux/mdate-sh \
               build-aux/install-sh \
               build-aux/test-driver.scm \
               build-aux/texinfo.tex \
-              build-aux/mdate-sh \
               build-aux/missing \
+              build-aux/mdate-sh \
               build-aux/install-sh \
               build-aux/test-driver.scm \
               build-aux/texinfo.tex \
-              build-aux/mdate-sh \
               build-aux/missing \
+              build-aux/mdate-sh \
               build-aux/install-sh \
               build-aux/test-driver.scm \
               build-aux/texinfo.tex \
-              build-aux/mdate-sh \
               build-aux/missing \
+              build-aux/mdate-sh \
               build-aux/install-sh \
               build-aux/test-driver.scm \
               build-aux/texinfo.tex \
-              build-aux/mdate-sh \
               build-aux/missing \
+              build-aux/mdate-sh \
               build-aux/install-sh \
               build-aux/test-driver.scm \
               build-aux/texinfo.tex \
-              build-aux/mdate-sh \
               build-aux/missing \
+              build-aux/mdate-sh \
+              build-aux/install-sh \
+              build-aux/test-driver.scm \
+              build-aux/texinfo.tex \
+              build-aux/missing \
+              build-aux/mdate-sh \
+              build-aux/install-sh \
+              build-aux/test-driver.scm \
+              build-aux/texinfo.tex \
+              build-aux/missing \
+              build-aux/mdate-sh \
+              build-aux/install-sh \
+              build-aux/test-driver.scm \
+              build-aux/texinfo.tex \
+              build-aux/missing \
+              build-aux/mdate-sh \
+              build-aux/install-sh \
+              build-aux/test-driver.scm \
+              build-aux/texinfo.tex \
+              build-aux/missing \
+              build-aux/mdate-sh \
+              build-aux/install-sh \
+              build-aux/test-driver.scm \
+              build-aux/texinfo.tex \
+              build-aux/missing \
+              build-aux/mdate-sh \
               build-aux/install-sh \
               build-aux/test-driver.scm \
               build-aux/test-driver.scm \
