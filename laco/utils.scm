@@ -266,29 +266,31 @@
 
 (define *normal-call-table* (make-hash-table))
 (define (normal-call-register! label)
+  ;;(pk "normal-call-register" label)
   (hash-set! *normal-call-table* label #t))
 ;; symbol -> bool
 (define (is-normal-call? label)
+  ;;(pk "is-normal-call?" label)
   ;;(pk "call-table" (hash-map->list cons *normal-call-table*))
   (hash-ref *normal-call-table* (format #f "#~a" label)))
 
 (define *label-queue* (new-queue))
 (define (label-in! label)
   ;;(pk "label-in!" label)
-  (queue-in! *label-queue* label))
+  (stack-push! *label-queue* label))
 (define (label-out!)
-  ;;(pk "label-out!" )
-  (queue-out! *label-queue*)
-  )
+  ;;(pk "label-out!")
+  (stack-pop! *label-queue*))
+
 ;; NOTE: after fv-lifting, there's no free-var in tail-call or tail-rec context,
 ;;       so we can use label to indicate the stack frame.
 (define (label-back-index label)
   (let ((ll (queue-slots *label-queue*)))
-    ;;(pk "ll" ll label)
+    ;; (pk "ll" ll label)
     (cond
-     ((member label ll)
-      => length)
-     (else 0))))
+     ((list-index (lambda (x) (eq? x label)) ll) => identity)
+     (else (throw 'laco-error label-back-index
+                  "Invalid label `~a' for free var!" label)))))
 
 (define *intern-table* (make-hash-table))
 (define intern!
@@ -348,7 +350,8 @@
 (define (fvar->lvar-fixed-offset label pred)
   (let ((frees (hash-ref *ordered-frees-table* label (new-queue))))
     (or (list-index pred (queue-slots frees))
-        0)))
+        (throw 'laco-error fvar->lvar-fixed-offset
+               "Invalid fvar `~a' in label `~a' to get fixed-offset!"))))
 (define (ordered-frees-fix! label pred fixed-offset)
   (let* ((frees (hash-ref *ordered-frees-table* label
                           (format #f

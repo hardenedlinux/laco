@@ -76,6 +76,12 @@
     (($ insr-proc _ _ _ _ _ body)
      (insr-proc-body-set! lexpr (fvl body))
      lexpr)
+    (($ insr-closure _ label _ frees (($ insr-prelude _ _ _ m _) rest ...) mode)
+     (=> back)
+     (when (= m *normal-call*)
+       ;; (pk "check" label m *normal-call*)
+       (normal-call-register! label))
+     (back))
     (($ insr-closure _ name _ frees body mode)
      ;; NOTE: Don't lift closure captured free-vars
      (parameterize ((current-closure-name name)

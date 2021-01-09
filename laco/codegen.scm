@@ -49,6 +49,7 @@
        ((_ ($ insr-free _ label name _ offset keep?) fixed-offset)
         ;; NOTE: Since the offset will add the size of the captures, so we have to
         ;;       use the fixed-offset here.
+        ;;(pk "capture free" label name fixed-offset)
         (make-insr-free '() label name 'push fixed-offset #t))
        (else (throw 'laco-error gen-closure-frame "Invalid item `~a'!" x))))
    (get-ordered-frees closure-label)))
