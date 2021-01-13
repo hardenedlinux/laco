@@ -66,8 +66,6 @@
 ;;    of it, this is called `known function'. We can pass all free-vars as arguments
 ;;    to it, so it's not a closure anymore.
 
-(define last-kont (make-parameter 'toplevel-kont))
-
 (define* (cc expr #:optional (mode 'normal))
   (match expr
     (($ lambda/k ($ cps _ kont name attr) args body)
@@ -78,8 +76,7 @@
        (extend-env! (current-env) env)
        (closure-set! (id-name name) env)
        ;;       (pk "after added free-vars" (map id-name (car (env-frees env))))
-       (parameterize ((last-kont (current-kont))
-                      (current-env env)
+       (parameterize ((current-env env)
                       (current-kont name))
          ;;(pk "env frees" (map cps->name-string (car (env-frees env))))
          (case mode
@@ -154,9 +151,7 @@
                     var
                     (cc value)
                     (cc body)))
-    (($ app/k _ ($ lambda/k _ args
-                   ($ seq/k ($ cps _ kont name attr) exprs))
-        es)
+    (($ app/k _ ($ lambda/k _ args ($ seq/k ($ cps _ kont name attr) exprs)) es)
      (cond
       ((is-effect-var? (id-name (car args)))
        (env-local-push! (current-env) (car args))
