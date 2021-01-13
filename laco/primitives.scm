@@ -118,12 +118,10 @@
     eq? ; 16 + 8
     equal? ; 16 + 9
     usleep ; 16 + 10
-    gpio-pin-configure! ; 16 + 11
-    gpio-pin-set! ; 16 + 12
-    gpio-pin-toggle! ; 16 + 13
+    gpio-config! ; 16 + 11
+    gpio-set! ; 16 + 12
+    gpio-toggle! ; 16 + 13
     ))
-
-; (is-op-a-primitive? )
 
 (define (print-primitives)
   (display "--------PRIMITIVES--------\n")
@@ -139,7 +137,7 @@
                 (primitive-name p)))))
 
 (define *inapplicable-primitive*
-  '(halt return display restore usleep gpio-pin-configure! gpio-pin-set! gpio-pin-toggle!))
+  '(halt return display restore usleep gpio-config! gpio-set! gpio-toggle!))
 
 (define (applicable-primitive? p)
   (not (memq (primitive-name p) *inapplicable-primitive* )))
@@ -223,11 +221,11 @@
 (define-primitive (usleep us)
   (throw 'laco-error 'prim:usleep "BUG: usleep shouldn't be called in compile time!"))
 
-(define-primitive (gpio-pin-configure! port pin flags)
-  (throw 'laco-error 'prim:gpio-pin-configure! "BUG: gpio-pin-configure! shouldn't be called in compile time!"))
+(define-primitive (gpio-config! port pin flags)
+  (throw 'laco-error 'prim:gpio-config! "BUG: gpio-config! shouldn't be called in compile time!"))
 
-(define-primitive (gpio-pin-set! port pin value)
-  (throw 'laco-error 'prim:gpio-pin-set! "BUG: gpio-pin-set! shouldn't be called in compile time!"))
+(define-primitive (gpio-set! port pin value)
+  (throw 'laco-error 'prim:gpio-set! "BUG: gpio-set! shouldn't be called in compile time!"))
 
-(define-primitive (gpio-pin-toggle! port pin)
-  (throw 'laco-error 'prim:gpio-pin-toggle! "BUG: gpio-pin-toggle! shouldn't be called in compile time!"))
+(define-primitive (gpio-toggle! port pin)
+  (throw 'laco-error 'prim:gpio-toggle! "BUG: gpio-toggle! shouldn't be called in compile time!"))
