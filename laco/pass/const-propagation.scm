@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020
+;;  Copyright (C) 2020-2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -38,7 +38,7 @@
                      jname jcont ($ app/k _ jname args)))
      (=> fail!)
      ;; TODO: For partial constant/k situation, we can still propagate them,
-     ;;        and reduce the number of args.
+     ;;       and reduce the number of args.
      (cond
       ((is-any-effected-arg? (lambda/k-args jcont))
        (fail!))

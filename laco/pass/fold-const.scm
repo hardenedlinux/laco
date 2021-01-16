@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020
+;;  Copyright (C) 2020-2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -22,8 +22,8 @@
   #:use-module (ice-9 match))
 
 ;; FIXME: We have to tweak fold-const when we have side-effect analysis.
-;; TODO: For now, we haven't supported assignment yet. If we have it, then the
-;;       modified variable has to change its fold value, or even can't be folded
+;; TODO: If we have supported assignment, then the modified variable has to change
+;;       its fold value, or even can't be folded
 
 ;; 1. (if 1 2 3) -k-> (if 1 2 3)
 ;; 2. (if 1 2 (+ 3 4)) -k-> (letcont ((k (return (+ 4 3)))) (if 1 2 k))
