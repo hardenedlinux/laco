@@ -75,7 +75,7 @@
   (cond
    ((and (>= i 0) (< i 16))
     (single-encode 0 i))
-   ((and (>= i 16) (< i 31))
+   ((and (>= i 16) (< i 32))
     (single-encode 1 i))
    (else (throw 'laco-error local "Invalid offset `~a'!" i))))
 
@@ -85,7 +85,7 @@
     (cond
      ((and (>= i 0) (< i 16))
       (single-encode #b0100 i))
-     ((and (>= i 16) (< i 31))
+     ((and (>= i 16) (< i 32))
       (single-encode #b0101 i))
      (else (throw 'laco-error call-local "Invalid offset `~a'!" i))))
   (cond
