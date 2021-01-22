@@ -524,14 +524,22 @@
             (el (map (lambda (_) (new-id "#x-")) e))
             (is-prim? (and (ref? f) (is-op-a-primitive? (ref-var f))))
             (func (if (ref? f) (new-id (ref-var f) #f) f))
-            (k (fold (lambda (ee ex p)
-                       (comp-cps ee (new-lambda/k (list ex) p #:kont cont)))
-                     (cond
-                      (is-prim?
-                       (new-app/k cont (new-app/k fn el #:kont cont) #:kont cont))
-                      (else
-                       (new-app/k fn (append (list cont) el) #:kont cont)))
-                     e el)))
+            (k (fold
+                (lambda (ee ex p)
+                  (comp-cps
+                   ee
+                   (new-lambda/k
+                    (list ex) p
+                    #:kont cont #:attr '((binding . #t)))))
+                (cond
+                 (is-prim?
+                  (new-app/k cont (new-app/k fn el #:kont cont
+                                             #:attr '((binding-body . #t)))
+                             #:kont cont))
+                 (else
+                  (new-app/k fn (append (list cont) el) #:kont cont
+                             #:attr '((binding-body . #t)))))
+                e el)))
        (comp-cps (or is-prim? func) (new-lambda/k (list fn) k #:kont fn))))
     (($ ref _ sym)
      (cond
@@ -551,7 +559,13 @@
     ;; collection-set! collection-ref
     (else (throw 'laco-error 'ast->cps "Wrong expr: " expr))))
 
-(define* (cps->expr cpse #:optional (hide-begin? #t))
+(define* (cps->expr cpse)
+  (define (seq-flatten ll)
+    (fold-right (lambda (x p)
+                  (if (and (list? x) (eq? 'begin (car x)))
+                      (append (seq-flatten (cdr x)) p)
+                      (cons x p)))
+                '() ll))
   (match cpse
     (($ lambda/k _ args body)
      `(lambda (,@(map cps->expr args)) ,(cps->expr body)))
@@ -562,9 +576,7 @@
     (($ collection/k _ var type size value)
      `(collection ,type ,@(map cps->expr value)))
     (($ seq/k _ exprs)
-     (if hide-begin?
-         (map cps->expr exprs)
-         `(begin ,@(map cps->expr exprs))))
+     (seq-flatten `(begin ,@(map cps->expr exprs))))
     (($ letfun/k ($ bind-special-form/k _ fname fun body))
      `(letfun ((,(cps->expr fname) ,(cps->expr fun))) ,(cps->expr body)))
     (($ letcont/k ($ bind-special-form/k _ jname jcont body))
@@ -572,7 +584,7 @@
     (($ letval/k ($ bind-special-form/k _  var value body))
      `(letval ((,(cps->expr var) ,(cps->expr value))) ,(cps->expr body)))
     (($ app/k _ f e)
-     `(,(cps->expr f) ,@(map (lambda (x) (cps->expr x #f)) e)))
+     `(,(cps->expr f) ,@(map (lambda (x) (cps->expr x)) e)))
     (($ assign/k _ v e)
      `(set! ,(cps->expr v) ,(cps->expr e)))
     (($ constant/k _ ($ constant _ val type)) val)

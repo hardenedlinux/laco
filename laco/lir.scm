@@ -369,7 +369,8 @@
     (($ app/k ($ cps _ kont name attr) func args)
      ;; NOTE: After normalize, the func never be anonymous function, it must be
      ;;       an id.
-     (let* ((f (cps->lir func #:mode 'call #:keep-ret-context? keep-ret-context?))
+     (let* ((keep? (if (assoc-ref attr 'keep-result?) #t keep-ret-context?))
+            (f (cps->lir func #:mode 'call #:keep-ret-context? keep?))
             (e (map (lambda (e) (cps->lir e #:keep-ret-context? #t)) args))
             (env (closure-ref (id-name name)))
             (label (id->string name))

@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020
+;;  Copyright (C) 2020-2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -66,8 +66,19 @@
 ;;    of it, this is called `known function'. We can pass all free-vars as arguments
 ;;    to it, so it's not a closure anymore.
 
+(define in-flatten? (make-parameter #f))
+
 (define* (cc expr #:optional (mode 'normal))
   (match expr
+    (($ app/k _ f (($ lambda/k ($ cps _ kont name attr) (param) body) args ...))
+     (=> failed!)
+     (cond
+      ((assoc-ref attr 'binding)
+       (env-local-push! (current-env) param)
+       (let ((value (new-app/k (cc f) (map cc `(,prim:restore ,@args))
+                               #:attr '((keep-result? #t)))))
+         (make-seq/k (list kont name attr) `(,value ,(cc body)))))
+      (else (failed!))))
     (($ lambda/k ($ cps _ kont name attr) args body)
      (let* ((frees (fix-fv (free-vars expr #t)))
             (env (new-env (id-name name) args frees)))
@@ -123,9 +134,10 @@
      ;;    merged into the current-env.
      ;; 2. For non-escaping situation, we perform inline to eliminate letcont/k.
      ;;    For escaping, we will convert the escaped closure to closure/k.
-     ;; 3. I was considering to perform assignment-elimination to transform all local
-     ;;    assignments to bindings. However, it's not good for embedded system, since
-     ;;    every assignment increases stack. So we still make assignment an instruction.
+     ;; 3. I was considering to perform assignment-elimination to transform all
+     ;;    local assignments to bindings. However, it's not good for embedded
+     ;;    system, since every assignment increases stack. So we still make
+     ;;    assignment an instruction.
      ;; 4. Although we can set bindings to global, and it's safe because of
      ;;    alpha-renaming, however, it can't be recycled by GC when the scope ends.
      (let ((env (if (toplevel? (current-env))
