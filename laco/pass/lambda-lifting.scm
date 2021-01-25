@@ -65,7 +65,6 @@
        (eliminate-unused-free-vars! name (fix-fv (free-vars helper-proc)) env)
        (cond
         ((no-free-var? env)
-         (pk "hit" (cps->name-string expr)) (read)
          ;; If the closure capture nothing, then lift it as a global function
          (let ((cname (new-id "#lifted-")))
            (top-level-set! (id-name cname) helper-proc)
