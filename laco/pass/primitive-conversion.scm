@@ -22,6 +22,10 @@
   #:use-module (laco primitives)
   #:use-module (ice-9 match))
 
+;; Primitive conversion will transform a primitve into a k-lambda, this is necessary
+;; when the primitive appears in an argument list, for example:
+;; (func a b +) ==> (func a b (lambda (k x y) (k (+ x y))))
+
 (define (pc expr)
   (define (convert e)
     (cond
