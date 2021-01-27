@@ -69,12 +69,10 @@
 (define-syntax define-primitive
   (lambda (x)
     (syntax-case x (:has-side-effect)
-      ((_ (name0 args0 ...) body0 ...)
-       #`(define-primitive
-           name0 #f
-           (lambda (args0 ...) body0 ...)))
-      ((_ (name1 args0 ...) :has-side-effect body0 ...)
-       #`(define-primitive name1 #t (lambda (args0 ...) body0 ...)))
+      ((_ (name0) func)
+       #`(define-primitive name0 #f func))
+      ((_ (name1 :has-side-effect) func)
+       #`(define-primitive name1 #t func))
       ((_ name side-effect? func)
        #`(define-public
            #,(datum->syntax #'name (symbol-append 'prim: (syntax->datum #'name)))
@@ -143,89 +141,116 @@
   (not (memq (primitive-name p) *inapplicable-primitive* )))
 
 ;; halt can associate with primitive `halt', its activity is TOS.
-(define-primitive (pop args ...)
-  (throw 'laco-error 'prim:pop "BUG: shouldn't be called in compile time!"))
+(define-primitive (pop)
+  (lambda _
+    (throw 'laco-error 'prim:pop "BUG: shouldn't be called in compile time!")))
 
-(define-primitive (+ args ...)
-  (gen-constant (+ args ...)))
+(define-primitive (+)
+  (lambda args
+    (gen-constant (apply + args))))
 
-(define-primitive (- args ...)
-  (gen-constant (- args ...)))
+(define-primitive (-)
+  (lambda (args)
+    (gen-constant (apply - args))))
 
-(define-primitive (* args ...)
-  (gen-constant (* args ...)))
+(define-primitive (*)
+  (lambda args
+    (gen-constant (apply * args))))
 
-(define-primitive (/ args ...)
-  (gen-constant (/ args ...)))
+(define-primitive (/)
+  (lambda args
+    (gen-constant (apply / args))))
 
-(define-primitive (return x)
-  x)
+(define-primitive (return) identity)
 
-(define-primitive (restore x)
-  (throw 'laco-error 'prim:restore "BUG: shouldn't be called in compile time!"))
+(define-primitive (restore)
+  (lambda _
+    (throw 'laco-error 'prim:restore "BUG: shouldn't be called in compile time!")))
 
-(define-primitive (display x)
-  (throw 'laco-error 'prim:display "BUG: shouldn't be called in compile time!"))
+(define-primitive (display)
+  (lambda _
+    (throw 'laco-error 'prim:display "BUG: shouldn't be called in compile time!")))
 
-(define-primitive (apply f args)
-  (throw 'laco-error 'prim:apply "BUG: shouldn't be called in compile time!"))
+(define-primitive (apply)
+  (lambda _
+    (throw 'laco-error 'prim:apply "BUG: shouldn't be called in compile time!")))
 
-(define-primitive (not arg)
-  (gen-constant (not arg)))
+(define-primitive (not)
+  (lambda arg
+    (gen-constant (not arg))))
 
-(define-primitive (= args ...)
-  (gen-constant (= args ...)))
+(define-primitive (=)
+  (lambda args
+    (gen-constant (apply = args))))
 
-(define-primitive (< args ...)
-  (gen-constant (< args ...)))
+(define-primitive (<)
+  (lambda args
+    (gen-constant (apply < args))))
 
-(define-primitive (> args ...)
-  (gen-constant (> args ...)))
+(define-primitive (>)
+  (lambda args
+    (gen-constant (apply > args))))
 
-(define-primitive (<= args ...)
-  (gen-constant (<= args ...)))
+(define-primitive (<=)
+  (lambda args
+    (gen-constant (apply <= args))))
 
-(define-primitive (>= args ...)
-  (gen-constant (>= args ...)))
+(define-primitive (>=)
+  (lambda args
+    (gen-constant (apply >= args))))
 
-(define-primitive (modulo args ...)
-  (gen-constant (modulo args ...)))
+(define-primitive (modulo)
+  (lambda args
+    (gen-constant (apply modulo args))))
 
-(define-primitive (remainder args ...)
-  (gen-constant (remainder args ...)))
+(define-primitive (remainder)
+  (lambda args
+    (gen-constant (apply remainder args))))
 
-(define-primitive (for-each proc lst lst* ...)
-  (gen-constant (for-each proc lst lst* ...)))
+(define-primitive (for-each)
+  (lambda (proc lst . lst*)
+    (gen-constant (apply for-each proc lst lst*))))
 
-(define-primitive (map proc lst lst* ...)
-  (gen-constant (map proc lst lst* ...)))
+(define-primitive (map)
+  (lambda (proc lst . lst*)
+    (gen-constant (apply map proc lst lst*))))
 
-(define-primitive (list-ref lst idx)
-  (gen-constant (list-ref lst idx)))
+(define-primitive (list-ref)
+  (lambda (lst idx)
+    (gen-constant (list-ref lst idx))))
 
-(define-primitive (list-set! lst idx val)
-  (gen-constant (list-set! lst idx val)))
+(define-primitive (list-set!)
+  (lambda (lst idx val)
+    (gen-constant (list-set! lst idx val))))
 
-(define-primitive (append l1 l2)
-  (gen-constant (append l1 l2)))
+(define-primitive (append)
+  (lambda (l1 l2)
+    (gen-constant (append l1 l2))))
 
-(define-primitive (eq? a b)
-  (gen-constant (eq? a b)))
+(define-primitive (eq?)
+  (lambda (a b)
+    (gen-constant (eq? a b))))
 
-(define-primitive (eqv? a b)
-  (gen-constant (eqv? a b)))
+(define-primitive (eqv?)
+  (lambda (a b)
+    (gen-constant (eqv? a b))))
 
-(define-primitive (equal? a b)
-  (gen-constant (equal? a b)))
+(define-primitive (equal?)
+  (lambda (a b)
+    (gen-constant (equal? a b))))
 
-(define-primitive (usleep us)
-  (throw 'laco-error 'prim:usleep "BUG: usleep shouldn't be called in compile time!"))
+(define-primitive (usleep)
+  (lambda _
+    (throw 'laco-error 'prim:usleep "BUG: usleep shouldn't be called in compile time!")))
 
-(define-primitive (gpio-config! port pin flags)
-  (throw 'laco-error 'prim:gpio-config! "BUG: gpio-config! shouldn't be called in compile time!"))
+(define-primitive (gpio-config!)
+  (lambda _
+    (throw 'laco-error 'prim:gpio-config! "BUG: gpio-config! shouldn't be called in compile time!")))
 
-(define-primitive (gpio-set! port pin value)
-  (throw 'laco-error 'prim:gpio-set! "BUG: gpio-set! shouldn't be called in compile time!"))
+(define-primitive (gpio-set!)
+  (lambda _
+    (throw 'laco-error 'prim:gpio-set! "BUG: gpio-set! shouldn't be called in compile time!")))
 
-(define-primitive (gpio-toggle! port pin)
-  (throw 'laco-error 'prim:gpio-toggle! "BUG: gpio-toggle! shouldn't be called in compile time!"))
+(define-primitive (gpio-toggle!)
+  (lambda _
+    (throw 'laco-error 'prim:gpio-toggle! "BUG: gpio-toggle! shouldn't be called in compile time!")))
