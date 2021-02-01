@@ -119,6 +119,7 @@
     gpio-config! ; 16 + 11
     gpio-set! ; 16 + 12
     gpio-toggle! ; 16 + 13
+    get-board-id ; 16 + 14
     ))
 
 (define (print-primitives)
@@ -135,7 +136,7 @@
                 (primitive-name p)))))
 
 (define *inapplicable-primitive*
-  '(halt return display restore usleep gpio-config! gpio-set! gpio-toggle!))
+  '(halt return display restore usleep gpio-config! gpio-set! gpio-toggle! get-board-id))
 
 (define (applicable-primitive? p)
   (not (memq (primitive-name p) *inapplicable-primitive* )))
@@ -254,3 +255,7 @@
 (define-primitive (gpio-toggle!)
   (lambda _
     (throw 'laco-error 'prim:gpio-toggle! "BUG: gpio-toggle! shouldn't be called in compile time!")))
+
+(define-primitive (get-board-id)
+  (lambda _
+    (throw 'laco-error 'prim:get-board-id "BUG: get-board-id shouldn't be called in compile time!")))
