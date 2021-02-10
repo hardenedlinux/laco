@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020
+;;  Copyright (C) 2020-2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -19,12 +19,12 @@
   #:use-module (laco assembler sasm)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
+  #:use-module (laco records)
   #:use-module ((rnrs) #:select (make-bytevector
                                  bytevector?
                                  bytevector-u32-set!
                                  bytevector-length
-                                 put-bytevector
-                                 define-record-type))
+                                 put-bytevector))
   #:export (assembler))
 
 (define sasm-module (resolve-module '(laco assembler sasm)))

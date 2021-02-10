@@ -17,7 +17,7 @@
 (define-module (laco module)
   #:use-module (laco utils)
   #:use-module (laco env)
-  #:use-module ((rnrs) #:select (define-record-type))
+  #:use-module (laco records)
   #:export (mod
             mod?
             mod-filename

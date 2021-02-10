@@ -76,7 +76,8 @@
       ("automake" ,automake)
       ("pkg-config" ,pkg-config)
       ("texinfo" ,texinfo)))
-  (inputs `(("guile" ,guile-2.2)))
+  (inputs `(("guile" ,guile-3.0)))
+  (propagated-inputs `(("guile" ,guile-3.0)))
   (synopsis "Lambda Compiler")
   (description
     "Laco is a r7rs Scheme compiler for LambdaChip VM which is designed for functional programming on embedded system.")

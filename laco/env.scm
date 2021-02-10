@@ -1,4 +1,4 @@
-;;  Copyright (C) 2020
+;;  Copyright (C) 2020-2021
 ;;      "Mu Lei" known as "NalaGinrut" <NalaGinrut@gmail.com>
 ;;  This file is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License as published by
@@ -18,7 +18,7 @@
   #:use-module (laco ast)
   #:use-module (laco types)
   #:use-module (laco primitives)
-  #:use-module ((rnrs) #:select (define-record-type))
+  #:use-module (laco records)
   #:export (env
             env?
             env-name env->name-string

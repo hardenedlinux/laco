@@ -21,7 +21,6 @@
 
 (define-module (laco records)
   #:use-module (laco records syntactic)
-  #:use-module (laco records inspection)
   #:use-module (laco records procedural)
   #:re-export (record-type-descriptor
                define-record-type
@@ -33,15 +32,4 @@
                record-constructor
                record-predicate
                record-accessor
-               record-mutator
-
-               record?
-               record-rtd
-               record-type-name
-               record-type-parent
-               record-type-uid
-               record-type-generative?
-               record-type-sealed?
-               record-type-opaque?
-               record-type-field-names
-               record-field-mutable?))
+               record-mutator))

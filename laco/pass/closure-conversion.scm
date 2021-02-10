@@ -22,9 +22,9 @@
   #:use-module (laco primitives)
   #:use-module (laco pass normalize)
   #:use-module (laco pass)
+  #:use-module (laco records)
   #:use-module (ice-9 match)
-  #:use-module ((srfi srfi-1) #:select (fold-right))
-  #:use-module ((rnrs) #:select (define-record-type)))
+  #:use-module ((srfi srfi-1) #:select (fold-right)))
 
 ;; NOTE:
 ;; 1. We only perform CC after DCE, so there's no unused binding.

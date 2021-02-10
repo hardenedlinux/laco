@@ -18,9 +18,9 @@
   #:use-module (laco utils)
   #:use-module (laco sasm)
   #:use-module (laco types)
+  #:use-module (laco records)
   #:use-module (ice-9 match)
   #:use-module (ice-9 pretty-print)
-  #:use-module ((rnrs) #:select (define-record-type))
   #:export (symbol->primitive
             is-op-a-primitive?
             primitive-register!
