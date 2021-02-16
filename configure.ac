@@ -4,7 +4,7 @@ dnl -*- Autoconf -*-
 AC_INIT(laco, 0.0.1)
 AC_SUBST(HVERSION, "\"0.0.1\"")
 AC_SUBST(AUTHOR, "\"Mu Lei known as NalaGinrut\"")
-AC_SUBST(COPYRIGHT, "'(2020)")
+AC_SUBST(COPYRIGHT, "'(2021)")
 AC_SUBST(LICENSE, gpl3+)
 AC_CONFIG_SRCDIR(laco.scm)
 AC_CONFIG_AUX_DIR([build-aux])
