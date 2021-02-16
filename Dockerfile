@@ -8,10 +8,10 @@ RUN     apt-get update \
 ARG CACHE_LACO=1
 RUN     git clone --depth 1 --single-branch --branch master https://gitlab.com/lambdachip/laco.git \
         && cd laco \
-	&& ./configure \
+	&& ./configure --prefix=/usr \
 	&& make \
         && make install \
-        && cp -f script/laco /bin/ \
+        && cp -f scripts/laco /bin/ \
         && cd .. \
         && rm -fr laco
 

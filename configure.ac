@@ -20,15 +20,15 @@ GUILE_PKG([3.0 2.2 2.0])
 GUILE_PROGS
 GUILE_SITE_DIR
 if test "x$GUILD" = "x"; then
-   AC_MSG_ERROR(['guild' binary not found; please check your guile-2.x installation.])
+AC_MSG_ERROR(['guild' binary not found; please check your guile-2.x installation.])
 fi
 
 dnl Hall auto-generated guile-module dependencies
 
 
 dnl Installation directories for .scm and .go files.
-guilemoduledir="${datarootdir}/guile/site/$GUILE_EFFECTIVE_VERSION"
-guileobjectdir="${libdir}/guile/$GUILE_EFFECTIVE_VERSION/site-ccache"
+guilemoduledir=`guile -c '(display (%site-dir))'`
+guileobjectdir=`guile -c '(display (%site-ccache-dir))'`
 AC_SUBST([guilemoduledir])
 AC_SUBST([guileobjectdir])
 

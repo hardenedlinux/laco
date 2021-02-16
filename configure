@@ -2860,13 +2860,13 @@ $as_echo "$as_me: WARNING: extensiondir not found" >&2;}
 
 
 if test "x$GUILD" = "x"; then
-   as_fn_error $? "'guild' binary not found; please check your guile-2.x installation." "$LINENO" 5
+as_fn_error $? "'guild' binary not found; please check your guile-2.x installation." "$LINENO" 5
 fi
 
 
 
-guilemoduledir="${datarootdir}/guile/site/$GUILE_EFFECTIVE_VERSION"
-guileobjectdir="${libdir}/guile/$GUILE_EFFECTIVE_VERSION/site-ccache"
+guilemoduledir=`guile -c '(display (%site-dir))'`
+guileobjectdir=`guile -c '(display (%site-ccache-dir))'`
 
 
 

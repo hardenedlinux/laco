@@ -588,8 +588,8 @@ echo 'BEGIN {' >"$ac_tmp/subs1.awk" &&
 cat >>"$ac_tmp/subs1.awk" <<\_ACAWK &&
 S["LTLIBOBJS"]=""
 S["LIBOBJS"]=""
-S["guileobjectdir"]="${exec_prefix}/lib/guile/3.0/site-ccache"
-S["guilemoduledir"]="${prefix}/share/guile/site/3.0"
+S["guileobjectdir"]="/gnu/store/m5iprcg6pb5ch86r9agmqwd8v6kp7999-guile-3.0.5/lib/guile/3.0/site-ccache"
+S["guilemoduledir"]="/gnu/store/m5iprcg6pb5ch86r9agmqwd8v6kp7999-guile-3.0.5/share/guile/site/3.0"
 S["GUILE_EXTENSION"]="/gnu/store/m5iprcg6pb5ch86r9agmqwd8v6kp7999-guile-3.0.5/lib/guile/3.0/extensions"
 S["GUILE_SITE_CCACHE"]="/gnu/store/m5iprcg6pb5ch86r9agmqwd8v6kp7999-guile-3.0.5/lib/guile/3.0/site-ccache"
 S["GUILE_SITE"]="/gnu/store/m5iprcg6pb5ch86r9agmqwd8v6kp7999-guile-3.0.5/share/guile/site/3.0"
