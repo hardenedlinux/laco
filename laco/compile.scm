@@ -55,15 +55,13 @@
 (define (init-optimizations)
   (process-use-modules
    (map (lambda (s) `((laco pass ,(string->symbol (file-basename s)))))
-        (scandir (string-append (dirname (module-filename (current-module)))
-                                "/pass")
+        (scandir "laco/pass"
                  (lambda (s) (string-match "\\.scm" s))))))
 
 (define (init-lir-optimizations)
   (process-use-modules
    (map (lambda (s) `((laco lpass ,(string->symbol (file-basename s)))))
-        (scandir (string-append (dirname (module-filename (current-module)))
-                                "/lpass")
+        (scandir "laco/lpass"
                  (lambda (s) (string-match "\\.scm" s))))))
 
 (define announce-head
