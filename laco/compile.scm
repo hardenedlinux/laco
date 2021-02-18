@@ -55,7 +55,8 @@
 (define (init-optimizations)
   (process-use-modules
    (map (lambda (s) `((laco pass ,(string->symbol (file-basename s)))))
-        (scandir (string-append (dirname (current-filename)) "/pass")
+        (scandir (string-append (dirname (module-filename (current-module)))
+                                "/pass")
                  (lambda (s) (string-match "\\.scm" s))))))
 
 (define (init-lir-optimizations)
