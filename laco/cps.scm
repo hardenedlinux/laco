@@ -643,7 +643,7 @@
 ;; NOTE: Filter global var
 (define (fix-fv fl)
   (fold-right (lambda (x p)
-                (if (id-name x) (top-level-ref (id-name x))
+                (if (top-level-ref (id-name x))
                     p
                     (cons x p)))
               '() fl))
