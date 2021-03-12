@@ -19,6 +19,7 @@
   #:use-module (laco types)
   #:use-module (laco env)
   #:use-module (laco cps)
+  #:use-module (laco primitives)
   #:use-module (laco pass)
   #:use-module (laco pass normalize)
   #:use-module (laco pass closure-conversion)
@@ -49,6 +50,7 @@
      (list (car el)))))
 
 (define is-closure-in-pcall? (make-parameter #f))
+(define inside-lambda? (make-parameter #f))
 
 (define *fixed-table* (make-hash-table))
 (define (is-fixed? name) (hash-ref *fixed-table* name))
@@ -119,6 +121,15 @@
       ((and (is-closure-in-pcall?) (id-eq? f kont))
        (elre (car args)))
       (else (failed!))))
+    (($ app/k _ f args)
+     ;; case-8: not inside a lambda:
+     ;; (return e) -> e
+     ;; e.g: (define a (return 123)) -> (define a 123)
+     (=> failed!)
+     (cond
+      ((and (not (inside-lambda?)) (eq? prim:return f))
+       (elre (car args)))
+      (else (failed!))))
     (($ closure/k ($ cps _ name _ attr) env body)
      (cond
       ((and (is-closure-in-pcall?) (not (is-fixed? (id-name name))))
@@ -145,7 +156,8 @@
       ((assoc-ref attr 'closure-in-pcall)
        ;; case-6 for lifted lambdas
        (parameterize ((current-kont (cps-kont expr))
-                      (is-closure-in-pcall? #t))
+                      (is-closure-in-pcall? #t)
+                      (inside-lambda? #t))
          (lambda/k-args-set! expr (cdr args))
          (lambda/k-body-set! expr (elre body))))
       (else

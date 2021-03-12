@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020,2021
+;;  Copyright (C) 2020-2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -72,7 +72,7 @@ Author: NalaGinrut <mulei@gnu.org>
 
 (define announce-foot
   (format #f "~%~a~%Version: ~a.~%God bless hacking.~%~%" "GPLv3+"
-          "0.0.1"))
+          "0.1.0"))
 
 (define help-str
   "

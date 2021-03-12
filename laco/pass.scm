@@ -18,6 +18,8 @@
   #:use-module (laco utils)
   #:use-module (laco cps)
   #:use-module (laco lir)
+  #:use-module (laco object)
+  #:use-module (laco primitives)
   #:use-module (ice-9 match)
   #:use-module (ice-9 pretty-print)
   #:use-module (srfi srfi-1)
@@ -60,6 +62,8 @@
             ;;  (match e
             ;;    ((? cps?) (cps->expr e))
             ;;    ((? insr?) (lir->expr e))
+            ;;    ((? primitive?) (primitive-name e))
+            ;;    ((? object?) (object->value e))
             ;;    (else (error "BUG: invalid type" e))))
             e))
         expr (list 'lst ...)))

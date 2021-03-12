@@ -72,6 +72,7 @@
             symbol-object?
             make-symbol-object
 
+            object->value
             create-constant-object
             create-collection-object))
 
@@ -152,6 +153,20 @@
       ('boolean (make-boolean-object '() val))
       (else (throw 'laco-error create-constant-object "Invalid type `~a'!"
                    (constant-type c))))))
+
+(define (object->value o)
+  (cond
+   ((integer-object? o) (integer-object-value o))
+   ((list-object? o) (list-object-value o))
+   ((char-object? o) (char-object-value o))
+   ((real-object? o) (real-object-value o))
+   ((complex-object? o) (complex-object-value o))
+   ((rational-object? o) (rational-object-value o))
+   ((string-object? o) (string-object-value o))
+   ((symbol-object? o) (symbol-object-value o))
+   ((boolean-object? o) (boolean-object-value o))
+   ((prim-object? o) (prim-object-prim o))
+   (else (throw 'laco-error object->value "Invalid type `~a'!" o))))
 
 ;; collection -> object
 (define (create-collection-object type size val)

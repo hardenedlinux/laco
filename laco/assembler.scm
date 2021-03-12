@@ -36,6 +36,15 @@
    (list (gen-intern-symbol-table)
          (main-entry))))
 
+(define (global->bytecode g)
+  (map (lambda (ge)
+         (match ge
+           (((? asm-insr? insr) args ...)
+            (apply (insr->proc insr) args))
+           (else (throw 'laco-error global->bytecode
+                        "Invalid global expression `~a'!" ge))))
+       g))
+
 (define (program->bytecode p)
   (define (->bytecode pe)
     (match pe
@@ -60,16 +69,18 @@
 
 (define (gen-version-bv)
   ;; TODO: Add version management
-  #vu8(0 0 1))
+  #vu8(0 1 0))
 
 (define *head* #vu8(76 69 70)) ; LEF
-(define (gen-lef port m p c)
+(define (gen-lef port m g p c)
   (put-bytevector port *head*)
   (put-bytevector port (gen-version-bv))
   (put-bytevector port (size-of-section m))
+  (put-bytevector port (size-of-section g))
   (put-bytevector port (size-of-section p))
   (put-bytevector port (size-of-section c))
   (for-each (lambda (b) (put-bytevector port b)) m)
+  (for-each (lambda (b) (put-bytevector port b)) g)
   (for-each (lambda (b) (put-bytevector port b)) p)
   (for-each (lambda (b) (put-bytevector port b)) c))
 
@@ -87,10 +98,14 @@
    gen-lef
    out
    (match sasm
-     (('lef ('memory m-expr ...) ('program p-expr ...) ('clean c-expr ...))
+     (('lef ('memory m-expr ...)
+            ('global g-expr ...)
+            ('program p-expr ...)
+            ('clean c-expr ...))
       ;; NOTE: The order matters
-      (let* ((p (program->bytecode p-expr))
+      (let* ((p (fix-location (program->bytecode p-expr)))
+             (g (global->bytecode g-expr))
              (m (memory->bytecode m-expr))
              (c (clean->bytecode c-expr)))
-        (list m (fix-location p) c)))
+        (list m g p c)))
      (else (throw 'laco-error assembler "Invalid assembler code!" sasm)))))

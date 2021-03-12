@@ -92,6 +92,12 @@
             insr-global insr-global?
             make-insr-global
             insr-global-name
+            insr-global-mode
+
+            insr-global-call insr-global-call?
+            make-insr-global-call
+            insr-global-call-name
+            insr-global-call-label
 
             insr-closure insr-closure?
             make-insr-closure
@@ -194,8 +200,14 @@
 ;; Global variables are stored in a special area
 (define-typed-record insr-global (parent insr)
   (fields
-   (mode symbol?)
-   (offset integer?)))
+   (name symbol?)
+   (label string?)))
+
+;; Call global variable
+(define-typed-record insr-global-call (parent insr)
+  (fields
+   (name symbol?)
+   (label string?)))
 
 ;; Jump if TOS is false
 (define-typed-record insr-fjump (parent insr)
@@ -240,7 +252,7 @@
 
 (define-typed-record insr-assign (parent insr)
   (fields
-   (var insr-free? insr-local?)
+   (var insr-free? insr-local? insr-global?)
    (expr insr? object?)))
 
 (define (get-global-offset name)
@@ -259,14 +271,16 @@
 (define *proc-return* (make-insr-pcall '() prim:restore #t))
 
 ;; insr -> string
-(define (proc->label proc)
-  (match proc
+(define (insr->label insr)
+  (match insr
     (($ insr-proc-call _ _ label _) label)
     (($ insr-free _ label _ _ _ _) label)
     (($ insr-local _ label _ _ _) (symbol->string label))
+    (($ insr-global _ _ label) label)
+    (($ insr-global-call _ _ label) label)
+    (($ insr-label _ _ label _) label)
     (($ lambda/k ($ cps _ _ label _) _ _) label)
-    (else
-     (throw 'laco-error proc->label "BUG: the proc `~a' has no label!" proc))))
+    (else "unknown")))
 
 ;; list -> hash-table
 (define (frees->lookup-table frees)
@@ -377,7 +391,7 @@
             (arity (length args))
             (func-name (cps->name-string func))
             (prelude (lambda (mode)
-                       (let ((f-label (proc->label f)))
+                       (let ((f-label (insr->label f)))
                          (when (= mode *normal-call*)
                            (normal-call-register! f-label))
                          (make-insr-prelude '() (cps->name-string func)
@@ -408,31 +422,43 @@
      (make-insr-free '() label name mode offset
                      (and (eq? mode 'call) keep-ret-context?)))
     (($ gvar ($ id _ name _))
-     (let ((id-str (symbol->string name)))
-       (match (top-level-ref name)
-         (($ insr-proc _ proc label _ arity _)
-          (case mode
-            ((push) (make-proc-object '() id-str arity label))
-            ((call) (make-insr-proc-call '() proc label keep-ret-context?))
-            (else
-             (throw 'laco-error cps->lir "gvar: proc has invalid mode `~a'!"
-                    mode))))
-         (($ lambda/k ($ cps _ _ label attr) args _)
-          #;
-          (when (not (is-recursive? name)) ;
-          (throw 'laco-error cps->lir   ;
-          "BUG: Invalid global or wrong recursive! `~a', `~a'" ;
-          name (cps->expr (top-level-ref name))))
-          (case mode
-            ((push) (make-proc-object '() id-str (length args) (id->string label)))
-            ((call) (make-insr-proc-call
-                     '() id-str (id->string label) keep-ret-context?))
-            (else
-             (throw 'laco-error cps->lir "gvar: proc has invalid mode `~a'!"
-                    mode))))
-         ((? object? obj) obj)
-         (#f (throw 'laco-error cps->lir "Missing global var `~a'!" name))
-         (else (throw 'laco-error cps->lir "Invalid global var `~a'!" name)))))
+     (cond
+      ((top-level-ref name)
+       => (lambda (g)
+            (let ((label (insr->label g)))
+              (case mode
+                ((push) (make-insr-global '() name label))
+                ((call) (make-insr-global-call '() name label))))))
+      (else
+       (throw 'laco-error cps->lir "Missing global var `~a'!" name)))
+     #;
+     (let ((id-str (symbol->string name))) ; ;
+     (match (pk "global-ref" name (top-level-ref name)) ; ;
+     (($ insr-proc _ proc label _ arity _) ; ;
+     (make-insr-global name mode)       ;
+     (case mode                         ; ;
+     ((push) (make) (make-proc-object '() id-str arity label)) ; ;
+     ((call) (make-insr-proc-call '() proc label keep-ret-context?)) ; ;
+     (else                              ; ;
+     (throw 'laco-error cps->lir "gvar: proc has invalid mode `~a'!" ; ;
+     mode))))                           ; ;
+     (($ lambda/k ($ cps _ _ label attr) args _) ; ;
+     #;                                 ; ;
+     (when (not (is-recursive? name)) ; ; ;
+     (throw 'laco-error cps->lir   ;    ; ;
+     "BUG: Invalid global or wrong recursive! `~a', `~a'" ; ; ;
+     name (cps->expr (top-level-ref name)))) ; ;
+     (case mode                         ; ;
+     ((push) (make-proc-object '() id-str (length args) (id->string label))) ; ;
+     ((call) (make-insr-proc-call       ; ;
+     '() id-str (id->string label) keep-ret-context?)) ; ;
+     (else                              ; ;
+     (throw 'laco-error cps->lir "gvar: proc has invalid mode `~a'!" ; ;
+     mode))))                           ; ;
+     ((? object? obj) obj)              ; ;
+     ((? insr-label? label) label)      ; ;
+     (#f (throw 'laco-error cps->lir "Missing global var `~a'!" name)) ; ;
+     (else (throw 'laco-error cps->lir "Invalid global var `~a'!" name)))))
     ((? primitive? p)
      (case mode
        ((push) (make-prim-object '() p))
@@ -469,6 +495,10 @@
      `(branch-end ,label))
     (($ insr-jump _ label)
      `(jump ,label))
+    (($ insr-global _ name)
+     `(global ,name))
+    (($ insr-global-call _ name)
+     `(global-call ,name))
     (($ insr-local _ name mode offset keep?)
      `(local ,(if (list? offset) (car offset) offset)
         ,name ,mode ,(cond

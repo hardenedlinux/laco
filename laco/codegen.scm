@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020
+;;  Copyright (C) 2020-2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -129,6 +129,10 @@
      (emit-local (symbol->string name) mode offset keep?))
     (($ insr-free _ label _ mode offset keep?)
      (emit-free label mode offset keep?))
+    (($ insr-global _ name _)
+     (emit-global name))
+    (($ insr-global-call _ name _)
+     (emit-global-call name))
     (else (throw 'laco-error emit-sasm "Invalid lir `~a'!" lir))))
 
 (define (emit-sasm-memory lir)
@@ -143,8 +147,22 @@
   (emit-sasm-memory lir)
   (sasm-memory-end)
 
+  (sasm-global-begin)
+  (top-level-for-each
+   (lambda (k v)
+     (match v
+       ((? object?) (emit-sasm v))
+       (($ insr-proc _ proc label _ arity _)
+        (global-labal-register! k label)
+        (emit-sasm (make-proc-object '() (symbol->string k) arity label)))
+       (else (throw 'laco-error gen-sasm "BUG: Invalid global `~a'" v)))))
+  (sasm-global-end)
+
   (sasm-program-begin)
-  (top-level-for-each (lambda (_ v) (emit-sasm v)))
+  (top-level-for-each
+   (lambda (_ v)
+     (when (or (insr-proc? v) (insr-label? v))
+       (emit-sasm v))))
   (emit-sasm lir)
   (sasm-program-end)
 
@@ -158,6 +176,10 @@
   (call-with-output-string sasm-output))
 
 (define (lir->sasm lir)
+  ;; TODO:
+  ;; 1. generate globals
+  ;; 2. compute globals' offset
+  ;; 3. create global table in LEF
   (call-with-input-string (lir->sasm-string lir) read))
 
 (define (codegen outfile sasm)

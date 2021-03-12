@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020,2021
+;;  Copyright (C) 2020-2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -86,7 +86,10 @@
             ordered-frees-add!
             get-ordered-frees
             fvar->lvar-fixed-offset
-            ordered-frees-fix!))
+            ordered-frees-fix!
+            global-labal-register!
+            global->label
+            global-index))
 
 (define (newsym sym) (gensym (symbol->string sym)))
 (define (new-label str) (symbol->string (gensym str)))
@@ -361,3 +364,9 @@
          (item (list-ref (queue-slots frees) index)))
     (list-set! (queue-slots frees) index
                `(,(car item) ,(cadr item) ,fixed-offset))))
+
+(define *globals* (new-queue))
+(define (global-labal-register! k v) (queue-in! *globals* (cons k v)))
+(define (global->label k) (assoc-ref (queue-slots *globals*) k))
+(define (global-index k)
+  (list-index (lambda (p) (eq? k (car p))) (queue-slots *globals*)))

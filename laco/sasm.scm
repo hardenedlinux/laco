@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020
+;;  Copyright (C) 2020-2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -64,6 +64,14 @@
         (indent-spaces 'out)
         (format port "~a(halt)~%" (indent-spaces))
         (format port "~a) ; Program end~%~%" (indent-spaces))
+        (indent-spaces 'out))
+       ('global-begin
+        (format port "~a(global~%" (indent-spaces))
+        (indent-spaces 'in))
+       ('global-end
+        (indent-spaces 'out)
+        (format port "~a(halt)~%" (indent-spaces))
+        (format port "~a) ; Global end~%~%" (indent-spaces))
         (indent-spaces 'out))
        ('memory-begin
         (format port "~a(memory~%" (indent-spaces))
@@ -213,6 +221,12 @@
     ((call) (sasm-emit `((call-free ,label ,offset ,keep?) . "")))
     (else (throw 'laco-error emit-free "Invalid mode `~a'!" mode))))
 
+(define-public (emit-global name)
+  (sasm-emit `((global ,name) . "")))
+
+(define-public (emit-global-call name)
+  (sasm-emit `((global-call ,name) . "")))
+
 (define-public (emit-local-assign name offset)
   (sasm-emit `((local-assign ,offset) . (format #f "~a" name))))
 
@@ -221,13 +235,19 @@
 
 ;; TODO: We should convert name to offset of global
 (define-public (emit-global-assign name)
-  (sasm-emit `((global-assign ,name) . (format #f "~a" name))))
+  (sasm-emit `((global-assign ,name) . "")))
 
 (define-public (sasm-program-begin)
   (sasm-emit 'prog-begin))
 
 (define-public (sasm-program-end)
   (sasm-emit 'prog-end))
+
+(define-public (sasm-global-begin)
+  (sasm-emit 'global-begin))
+
+(define-public (sasm-global-end)
+  (sasm-emit 'global-end))
 
 (define-public (sasm-memory-begin)
   (sasm-emit 'memory-begin))

@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020,2021
+;;  Copyright (C) 2020-2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -86,7 +86,7 @@
      ((and (>= i 0) (< i 16))
       (single-encode #b0100 i))
      ((and (>= i 16) (< i 32))
-      (single-encode #b0101 i))
+      (single-encode #b0101 (- i 16)))
      (else (throw 'laco-error call-local "Invalid offset `~a'!" i))))
   (cond
    (keep? (gen))
@@ -330,4 +330,33 @@
 
 (define-public (global-assign name)
   ;; (format #t "global-assign: ~a~%" 0)
-  (throw 'laco-error global-assign "Not implement yet!"))
+  (let ((i (global-index name)))
+    (cond
+     ((and (>= i 0) (< i 256))
+      (double-encode #b0011 i))
+     ((and (>= i 256) (< i 65536))
+      (let ((ii (- i 256)))
+        (triple-encode #b0100 (ash (logand #xff00 ii) -8) (logand #xff ii))))
+     (else (throw 'laco-error global-assign "Invalid offset `~a'!" i)))))
+
+(define-public (global name)
+  ;; (format #t "global: ~a~%" 0)
+  (let ((i (global-index name)))
+    (cond
+     ((and (>= i 0) (< i 256))
+      (double-encode #b0100 i))
+     ((and (>= i 256) (< i 65536))
+      (let ((ii (- i 256)))
+        (triple-encode #b0101 (ash (logand #xff00 ii) -8) (logand #xff ii))))
+     (else (throw 'laco-error global "Invalid offset `~a'!" i)))))
+
+(define-public (global-call name)
+  ;; (format #t "global-call: ~a~%" 0)
+  (let ((i (global-index name)))
+    (cond
+     ((and (>= i 0) (< i 256))
+      (double-encode #b0101 i))
+     ((and (>= i 256) (< i 65536))
+      (let ((ii (- i 256)))
+        (triple-encode #b0110 (ash (logand #xff00 ii) -8) (logand #xff ii))))
+     (else (throw 'laco-error global-call "Invalid offset `~a'!" i)))))
