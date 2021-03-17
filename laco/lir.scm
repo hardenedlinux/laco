@@ -279,7 +279,7 @@
     (($ insr-global _ _ label) label)
     (($ insr-global-call _ _ label) label)
     (($ insr-label _ _ label _) label)
-    (($ lambda/k ($ cps _ _ label _) _ _) label)
+    (($ lambda/k ($ cps _ _ label _) _ _) (id->string label))
     (else "unknown")))
 
 ;; list -> hash-table
@@ -430,35 +430,7 @@
                 ((push) (make-insr-global '() name label))
                 ((call) (make-insr-global-call '() name label))))))
       (else
-       (throw 'laco-error cps->lir "Missing global var `~a'!" name)))
-     #;
-     (let ((id-str (symbol->string name))) ; ;
-     (match (pk "global-ref" name (top-level-ref name)) ; ;
-     (($ insr-proc _ proc label _ arity _) ; ;
-     (make-insr-global name mode)       ;
-     (case mode                         ; ;
-     ((push) (make) (make-proc-object '() id-str arity label)) ; ;
-     ((call) (make-insr-proc-call '() proc label keep-ret-context?)) ; ;
-     (else                              ; ;
-     (throw 'laco-error cps->lir "gvar: proc has invalid mode `~a'!" ; ;
-     mode))))                           ; ;
-     (($ lambda/k ($ cps _ _ label attr) args _) ; ;
-     #;                                 ; ;
-     (when (not (is-recursive? name)) ; ; ;
-     (throw 'laco-error cps->lir   ;    ; ;
-     "BUG: Invalid global or wrong recursive! `~a', `~a'" ; ; ;
-     name (cps->expr (top-level-ref name)))) ; ;
-     (case mode                         ; ;
-     ((push) (make-proc-object '() id-str (length args) (id->string label))) ; ;
-     ((call) (make-insr-proc-call       ; ;
-     '() id-str (id->string label) keep-ret-context?)) ; ;
-     (else                              ; ;
-     (throw 'laco-error cps->lir "gvar: proc has invalid mode `~a'!" ; ;
-     mode))))                           ; ;
-     ((? object? obj) obj)              ; ;
-     ((? insr-label? label) label)      ; ;
-     (#f (throw 'laco-error cps->lir "Missing global var `~a'!" name)) ; ;
-     (else (throw 'laco-error cps->lir "Invalid global var `~a'!" name)))))
+       (throw 'laco-error cps->lir "Missing global var `~a'!" name))))
     ((? primitive? p)
      (case mode
        ((push) (make-prim-object '() p))
