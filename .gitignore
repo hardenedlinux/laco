@@ -14,3 +14,6 @@
 autom4te.cache
 Makefile
 scripts/laco
+pre-inst-env
+tests/*.trs
+

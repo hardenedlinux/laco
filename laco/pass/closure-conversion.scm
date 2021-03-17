@@ -66,19 +66,25 @@
 ;;    of it, this is called `known function'. We can pass all free-vars as arguments
 ;;    to it, so it's not a closure anymore.
 
-(define in-flatten? (make-parameter #f))
-
 (define* (cc expr #:optional (mode 'normal))
   (match expr
-    (($ app/k _ f (($ lambda/k ($ cps _ kont name attr) (param) body) args ...))
+    (($ app/k _ f (($ lambda/k ($ cps _ kont name attr) (k) body) args ...))
      (=> failed!)
-     (cond
-      ((assoc-ref attr 'binding)
-       (env-local-push! (current-env) param)
-       (let ((value (new-app/k (cc f) (map cc `(,prim:restore ,@args))
-                               #:attr '((keep-result? #t)))))
-         (make-seq/k (list kont name attr) `(,value ,(cc body)))))
-      (else (failed!))))
+     ;; Flatten args in application
+     (let* ((frees (fix-fv (free-vars expr #t)))
+            (env (new-env (id-name name) (list k) frees)))
+       (extend-env! (current-env) env)
+       (parameterize ((current-env env)
+                      (current-kont name))
+         (cond
+          ((assoc-ref attr 'binding)
+           ;;(clean-tail-call! expr)
+           (env-local-push! (current-env) k)
+           (let ((value (new-app/k (cc f) (map cc `(,prim:restore ,@args))
+                                   #:attr '((keep-result? #t)))))
+             #;(make-seq/k (list kont name attr) `(,value ,(cc body)))
+             (cc (cfs body (list k) (list value)))))
+          (else (failed!))))))
     (($ lambda/k ($ cps _ kont name attr) args body)
      (let* ((frees (fix-fv (free-vars expr #t)))
             (env (new-env (id-name name) args frees)))
@@ -190,7 +196,7 @@
             (name (id-name id)))
        (cond
         ((top-level-ref name) (new-gvar id)) ; check if it's global
-        ((not (toplevel? env)) ; check if it's local var
+        ((not (toplevel? env))               ; check if it's local var
          (cond
           ((bindings-index env id)
            => (lambda (offset)

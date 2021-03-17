@@ -1,6 +1,4 @@
-# -*- mode: org; coding: utf-8; -*-
+-*- mode: org; coding: utf-8; -*-
 
 #+TITLE: README for Laco
 
-* What is Laco?
-Laco is a portmanteau of "lambda" and "compiler" that implies the compiler uses lambdas heavily for optimizing.

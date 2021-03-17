@@ -142,7 +142,7 @@
              (id-name id) bindings)))))
 
 (define (env->args env)
-  #;(hash-map->list (lambda (k _) k) (env-bindings env))
+  ;;(hash-map->list (lambda (k _) k) (env-bindings env))
   (queue-slots (env-bindings env)))
 
 (define *closure-lookup-table* (make-hash-table))

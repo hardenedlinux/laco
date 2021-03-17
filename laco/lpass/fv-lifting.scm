@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020
+;;  Copyright (C) 2020-2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -55,8 +55,10 @@
     (($ insr-free _ label name mode offset keep?)
      (cond
       ((and (not (need-capture?)) (need-lift?))
-       (hash-remove! (insr-closure-frees (hash-ref *closures* label)) name)
-       (make-insr-local '() name mode offset keep?))
+       (let ((closure (hash-ref *closures* label)))
+         (when closure
+           (hash-remove! (insr-closure-frees closure) name))
+         (make-insr-local '() name mode offset keep?)))
       (else
        (when (not (string=? label (current-closure-name)))
          ;; Tag the captured free-var

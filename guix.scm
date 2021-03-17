@@ -69,7 +69,7 @@
                               "GUILE_LOAD_COMPILED_PATH"
                               (compiled-dir out version)
                               (compiled-dir "" version))))
-                        ,''("laco" "laco"))
+                        ,''("laco"))
                       #t))))))))
   (native-inputs
     `(("autoconf" ,autoconf)

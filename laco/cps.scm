@@ -111,6 +111,7 @@
             is-proper-tail-recursion?
             is-tail-call?
             is-escaped?
+            clean-tail-call!
 
             top-level->src
             cps->expr/g
@@ -630,6 +631,9 @@
 
 (define (is-tail-call? cexpr)
   (assoc-ref (cps-attr cexpr) 'tail-call))
+
+(define (clean-tail-call! cexpr)
+  (cps-attr-set! cexpr (assoc-remove! cexpr 'tail-call)))
 
 (define (is-escaped? cexpr)
   (assoc-ref (cps-attr cexpr) 'escape))

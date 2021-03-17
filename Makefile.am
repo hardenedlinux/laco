@@ -34,12 +34,39 @@ SUFFIXES = .scm .go
 .scm.go:
 	$(AM_V_GEN)$(top_builddir)/pre-inst-env $(GUILE_TOOLS) compile $(GUILE_WARNINGS) -o "$@" "$<"
 
-SOURCES = laco/assembler/sasm.scm \
+SOURCES = laco.scm \
+          laco/assembler/encode.go \
+          laco/assembler/sasm.go \
+          laco/assembler/sasm.scm \
           laco/assembler/encode.scm \
+          laco/lpass/closure-capture-fv.go \
+          laco/lpass/fv-lifting.go \
+          laco/lpass/reduce-labels.go \
+          laco/lpass/remove-unused-captures.go \
           laco/lpass/remove-unused-captures.scm \
           laco/lpass/reduce-labels.scm \
           laco/lpass/fv-lifting.scm \
           laco/lpass/closure-capture-fv.scm \
+          laco/pass/elre.go \
+          laco/pass/args-extend.go \
+          laco/pass/eta-func.go \
+          laco/pass/const-propagation.go \
+          laco/pass/delta-reduction.go \
+          laco/pass/fold-branch.go \
+          laco/pass/eta-cont.go \
+          laco/pass/escape-analysis.go \
+          laco/pass/fold-const.go \
+          laco/pass/func-inline.go \
+          laco/pass/lambda-lifting.go \
+          laco/pass/normalize.go \
+          laco/pass/primitive-conversion.go \
+          laco/pass/tco.go \
+          laco/pass/useless-constant.go \
+          laco/pass/useless-cont.go \
+          laco/pass/dce.go \
+          laco/pass/closure-conversion.go \
+          laco/pass/closure-conversion.scm \
+          laco/pass/dce.scm \
           laco/pass/useless-cont.scm \
           laco/pass/useless-constant.scm \
           laco/pass/tco.scm \
@@ -54,12 +81,28 @@ SOURCES = laco/assembler/sasm.scm \
           laco/pass/escape-analysis.scm \
           laco/pass/elre.scm \
           laco/pass/delta-reduction.scm \
-          laco/pass/dce.scm \
           laco/pass/const-propagation.scm \
-          laco/pass/closure-conversion.scm \
           laco/pass/args-extend.scm \
+          laco/records/procedural.go \
+          laco/records/syntactic.go \
           laco/records/syntactic.scm \
           laco/records/procedural.scm \
+          laco/env.go \
+          laco/lir.go \
+          laco/cps.go \
+          laco/compile.go \
+          laco/codegen.go \
+          laco/parser.go \
+          laco/object.go \
+          laco/ast.go \
+          laco/primitives.go \
+          laco/sasm.go \
+          laco/types.go \
+          laco/utils.go \
+          laco/pass.go \
+          laco/module.go \
+          laco/assembler.go \
+          laco/records.go \
           laco/utils.scm \
           laco/types.scm \
           laco/sasm.scm \
@@ -75,9 +118,9 @@ SOURCES = laco/assembler/sasm.scm \
           laco/compile.scm \
           laco/codegen.scm \
           laco/ast.scm \
-          laco/assembler.scm 
+          laco/assembler.scm
 
-TESTS = 
+TESTS = tests/test.scm
 
 TEST_EXTENSIONS = .scm
 SCM_LOG_DRIVER =                                \
@@ -93,22 +136,26 @@ AM_SCM_LOG_FLAGS = --no-auto-compile -L "$(top_srcdir)"
 
 AM_TESTS_ENVIRONMENT = abs_top_srcdir="$(abs_top_srcdir)"
 
-info_TEXINFOS = 
+info_TEXINFOS = doc/version.texi \
+                doc/laco.texi
 dvi: # Don't build dvi docs
 
-EXTRA_DIST += README \
+EXTRA_DIST += README.org \
+              README \
               HACKING \
               COPYING \
+              doc/laco.info \
+              doc/stamp-vti \
               NEWS \
               AUTHORS \
               ChangeLog \
               guix.scm \
               hall.scm \
               build-aux/texinfo.tex \
-              build-aux/test-driver.scm \
-              build-aux/missing \
               build-aux/mdate-sh \
+              build-aux/missing \
               build-aux/install-sh \
+              build-aux/test-driver.scm \
               configure.ac \
               Makefile.am \
               pre-inst-env.in \
