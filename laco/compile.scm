@@ -52,16 +52,30 @@
 (define (display-it x)
   (format #t "~a\n" x))
 
+;; If Laco was installed, then use %site-dir
+;; If not installed, try (car %load-path)
+(define (detect-site-path)
+  (define (check p) (file-exists? (format #f "~a/laco" p)))
+  (cond
+   ((check (car %load-path))
+    (car %load-path))
+   ((check (%site-dir))
+    (%site-dir))
+   (else
+    (throw 'laco-error
+           detect-site-path
+           "Can't find Laco modules, please install Laco or use pre-inst-env!"))))
+
 (define (init-optimizations)
   (process-use-modules
    (map (lambda (s) `((laco pass ,(string->symbol (file-basename s)))))
-        (scandir (format #f "~a/laco/pass" (%site-dir))
+        (scandir (format #f "~a/laco/pass" (detect-site-path))
                  (lambda (s) (string-match "\\.scm" s))))))
 
 (define (init-lir-optimizations)
   (process-use-modules
    (map (lambda (s) `((laco lpass ,(string->symbol (file-basename s)))))
-        (scandir (format #f "~a/laco/lpass" (%site-dir))
+        (scandir (format #f "~a/laco/lpass" (detect-site-path))
                  (lambda (s) (string-match "\\.scm" s))))))
 
 (define announce-head
