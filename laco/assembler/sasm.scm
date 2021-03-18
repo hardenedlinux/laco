@@ -295,7 +295,7 @@
 
 (define-public (push-symbol-object s)
   ;; (format #t "push-symbol-object: ~a~%" 0)
-  (let ((offset (car (intern-offset s))))
+  (let ((offset (intern-offset s)))
     (symbol-encode offset)))
 
 ;; --------- assignment ------------

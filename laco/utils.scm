@@ -295,19 +295,20 @@
      (else (throw 'laco-error label-back-index
                   "Invalid label `~a' for free var!" label)))))
 
-(define *intern-table* (make-hash-table))
+(define *intern-table* (new-queue))
 (define intern!
   (let ((count (new-counter)))
     (lambda (sym)
       (let ((offset (count 0))
             (size (1+ (string-length (symbol->string sym)))))
-        (hash-set! *intern-table* sym (cons offset size))))))
+        (count size)
+        (queue-in! *intern-table* (list sym offset size))))))
 (define (intern-offset sym)
-  (hash-ref *intern-table* sym))
+  (car (assoc-ref (queue-slots *intern-table*) sym)))
 (define (symbol-table-size)
-  (hash-fold (lambda (_ v p) (+ (cdr v) p)) 0 *intern-table*))
+  (fold (lambda (v p) (+ (cadr v) p)) 0 (queue-slots *intern-table*)))
 (define (gen-intern-symbol-table)
-  (let* ((cnt (hash-count (const #t) *intern-table*))
+  (let* ((cnt (queue-length *intern-table*))
          (size (symbol-table-size))
          (cnt-bv (make-bytevector 2))
          (size-bv (make-bytevector 2)))
@@ -323,11 +324,11 @@
      (list
       cnt-bv
       size-bv
-      (hash-map->list
-       (lambda (sym _)
-         (list (string->bytevector (symbol->string sym) "iso8859-1")
+      (map
+       (lambda (p)
+         (list (string->bytevector (symbol->string (car p)) "iso8859-1")
                #vu8(0)))
-       *intern-table*)))))
+       (queue-slots *intern-table*))))))
 
 (define *effect-vars* (make-hash-table))
 (define (effect-var-register! v)
