@@ -1,6 +1,7 @@
 
 
-bin_SCRIPTS = scripts/laco
+bin_SCRIPTS = scripts/laco \
+              scripts/laco
 
 # Handle substitution of fully-expanded Autoconf variables.
 do_subst = $(SED)					\
@@ -13,9 +14,9 @@ nodist_noinst_SCRIPTS = pre-inst-env
 
 GOBJECTS = $(SOURCES:%.scm=%.go)
 
-moddir=`$(GUILE) -c '(display (%site-dir))'`
-godir=`$(GUILE) -c '(display (%site-ccache-dir))'`
-ccachedir=`$(GUILE) -c '(display (%site-ccache-dir))'`
+moddir=$(prefix)/share/guile/site/$(GUILE_EFFECTIVE_VERSION)
+godir=$(libdir)/guile/$(GUILE_EFFECTIVE_VERSION)/site-ccache
+ccachedir=$(libdir)/guile/$(GUILE_EFFECTIVE_VERSION)/site-ccache
 
 nobase_mod_DATA = $(SOURCES) $(NOCOMP_SOURCES)
 nobase_go_DATA = $(GOBJECTS)
@@ -34,7 +35,19 @@ SUFFIXES = .scm .go
 .scm.go:
 	$(AM_V_GEN)$(top_builddir)/pre-inst-env $(GUILE_TOOLS) compile $(GUILE_WARNINGS) -o "$@" "$<"
 
-SOURCES = laco/pass/useless-cont.scm \
+SOURCES = laco/assembler/sasm.scm \
+          laco/assembler/encode.scm \
+          laco/assembler/sasm.go \
+          laco/assembler/encode.go \
+          laco/lpass/remove-unused-captures.scm \
+          laco/lpass/reduce-labels.scm \
+          laco/lpass/fv-lifting.scm \
+          laco/lpass/closure-capture-fv.scm \
+          laco/lpass/closure-capture-fv.go \
+          laco/lpass/fv-lifting.go \
+          laco/lpass/reduce-labels.go \
+          laco/lpass/remove-unused-captures.go \
+          laco/pass/useless-cont.scm \
           laco/pass/useless-constant.scm \
           laco/pass/tco.scm \
           laco/pass/primitive-conversion.scm \
@@ -52,19 +65,33 @@ SOURCES = laco/pass/useless-cont.scm \
           laco/pass/const-propagation.scm \
           laco/pass/closure-conversion.scm \
           laco/pass/args-extend.scm \
-          laco/assembler/sasm.scm \
-          laco/assembler/encode.scm \
-          laco/lpass/remove-unused-captures.scm \
-          laco/lpass/reduce-labels.scm \
-          laco/lpass/fv-lifting.scm \
-          laco/lpass/closure-capture-fv.scm \
-          laco/records/procedural.scm \
+          laco/pass/dce.go \
+          laco/pass/func-inline.go \
+          laco/pass/closure-conversion.go \
+          laco/pass/elre.go \
+          laco/pass/normalize.go \
+          laco/pass/tco.go \
+          laco/pass/lambda-lifting.go \
+          laco/pass/eta-func.go \
+          laco/pass/useless-constant.go \
+          laco/pass/delta-reduction.go \
+          laco/pass/useless-cont.go \
+          laco/pass/fold-const.go \
+          laco/pass/const-propagation.go \
+          laco/pass/args-extend.go \
+          laco/pass/eta-cont.go \
+          laco/pass/primitive-conversion.go \
+          laco/pass/escape-analysis.go \
+          laco/pass/fold-branch.go \
           laco/records/syntactic.scm \
-          laco/records.scm \
-          laco/primitives.scm \
+          laco/records/procedural.scm \
+          laco/records/syntactic.go \
+          laco/records/procedural.go \
           laco/utils.scm \
           laco/types.scm \
           laco/sasm.scm \
+          laco/records.scm \
+          laco/primitives.scm \
           laco/pass.scm \
           laco/parser.scm \
           laco/object.scm \
@@ -74,8 +101,24 @@ SOURCES = laco/pass/useless-cont.scm \
           laco/cps.scm \
           laco/compile.scm \
           laco/codegen.scm \
+          laco/ast.scm \
           laco/assembler.scm \
-          laco/ast.scm
+          laco/compile.go \
+          laco/module.go \
+          laco/assembler.go \
+          laco/utils.go \
+          laco/lir.go \
+          laco/cps.go \
+          laco/codegen.go \
+          laco/parser.go \
+          laco/sasm.go \
+          laco/object.go \
+          laco/primitives.go \
+          laco/ast.go \
+          laco/types.go \
+          laco/pass.go \
+          laco/env.go \
+          laco/records.go
 
 TESTS = 
 
@@ -105,9 +148,13 @@ EXTRA_DIST += README \
               guix.scm \
               hall.scm \
               build-aux/texinfo.tex \
+              build-aux/test-driver.scm \
               build-aux/missing \
               build-aux/mdate-sh \
               build-aux/install-sh \
+              configure.ac \
+              Makefile.am \
+              pre-inst-env.in \
               build-aux/test-driver.scm \
               $(TESTS)
 

@@ -1,8 +1,8 @@
 
 dnl -*- Autoconf -*-
 
-AC_INIT(laco, 0.0.1)
-AC_SUBST(HVERSION, "\"0.0.1\"")
+AC_INIT(laco, 0.1.0)
+AC_SUBST(HVERSION, "\"0.1.0\"")
 AC_SUBST(AUTHOR, "\"Mu Lei known as NalaGinrut\"")
 AC_SUBST(COPYRIGHT, "'(2021)")
 AC_SUBST(LICENSE, gpl3+)
@@ -20,15 +20,15 @@ GUILE_PKG([3.0 2.2 2.0])
 GUILE_PROGS
 GUILE_SITE_DIR
 if test "x$GUILD" = "x"; then
-AC_MSG_ERROR(['guild' binary not found; please check your guile-2.x installation.])
+   AC_MSG_ERROR(['guild' binary not found; please check your guile-2.x installation.])
 fi
 
 dnl Hall auto-generated guile-module dependencies
 
 
 dnl Installation directories for .scm and .go files.
-guilemoduledir=`guile -c '(display (%site-dir))'`
-guileobjectdir=`guile -c '(display (%site-ccache-dir))'`
+guilemoduledir="${datarootdir}/guile/site/$GUILE_EFFECTIVE_VERSION"
+guileobjectdir="${libdir}/guile/$GUILE_EFFECTIVE_VERSION/site-ccache"
 AC_SUBST([guilemoduledir])
 AC_SUBST([guileobjectdir])
 

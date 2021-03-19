@@ -12,8 +12,8 @@
 
 (package
   (name "laco")
-  (version "0.0.1")
-  (source "./laco-0.0.1.tar.gz")
+  (version "0.1.0")
+  (source "./laco-0.1.0.tar.gz")
   (build-system gnu-build-system)
   (arguments
     `(#:modules
@@ -69,7 +69,7 @@
                               "GUILE_LOAD_COMPILED_PATH"
                               (compiled-dir out version)
                               (compiled-dir "" version))))
-                        ,''("laco"))
+                        ,''("laco" "laco"))
                       #t))))))))
   (native-inputs
     `(("autoconf" ,autoconf)
