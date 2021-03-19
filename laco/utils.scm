@@ -306,7 +306,7 @@
 (define (intern-offset sym)
   (car (assoc-ref (queue-slots *intern-table*) sym)))
 (define (symbol-table-size)
-  (fold (lambda (v p) (+ (cadr v) p)) 0 (queue-slots *intern-table*)))
+  (fold (lambda (v p) (+ (caddr v) p)) 0 (queue-slots *intern-table*)))
 (define (gen-intern-symbol-table)
   (let* ((cnt (queue-length *intern-table*))
          (size (symbol-table-size))
