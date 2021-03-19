@@ -36,16 +36,10 @@ SUFFIXES = .scm .go
 
 SOURCES = laco/assembler/sasm.scm \
           laco/assembler/encode.scm \
-          laco/assembler/sasm.go \
-          laco/assembler/encode.go \
           laco/lpass/remove-unused-captures.scm \
           laco/lpass/reduce-labels.scm \
           laco/lpass/fv-lifting.scm \
           laco/lpass/closure-capture-fv.scm \
-          laco/lpass/closure-capture-fv.go \
-          laco/lpass/fv-lifting.go \
-          laco/lpass/reduce-labels.go \
-          laco/lpass/remove-unused-captures.go \
           laco/pass/useless-cont.scm \
           laco/pass/useless-constant.scm \
           laco/pass/tco.scm \
@@ -64,28 +58,8 @@ SOURCES = laco/assembler/sasm.scm \
           laco/pass/const-propagation.scm \
           laco/pass/closure-conversion.scm \
           laco/pass/args-extend.scm \
-          laco/pass/dce.go \
-          laco/pass/func-inline.go \
-          laco/pass/closure-conversion.go \
-          laco/pass/elre.go \
-          laco/pass/normalize.go \
-          laco/pass/tco.go \
-          laco/pass/lambda-lifting.go \
-          laco/pass/eta-func.go \
-          laco/pass/useless-constant.go \
-          laco/pass/delta-reduction.go \
-          laco/pass/useless-cont.go \
-          laco/pass/fold-const.go \
-          laco/pass/const-propagation.go \
-          laco/pass/args-extend.go \
-          laco/pass/eta-cont.go \
-          laco/pass/primitive-conversion.go \
-          laco/pass/escape-analysis.go \
-          laco/pass/fold-branch.go \
           laco/records/syntactic.scm \
           laco/records/procedural.scm \
-          laco/records/syntactic.go \
-          laco/records/procedural.go \
           laco/utils.scm \
           laco/types.scm \
           laco/sasm.scm \
@@ -101,23 +75,7 @@ SOURCES = laco/assembler/sasm.scm \
           laco/compile.scm \
           laco/codegen.scm \
           laco/ast.scm \
-          laco/assembler.scm \
-          laco/compile.go \
-          laco/module.go \
-          laco/assembler.go \
-          laco/utils.go \
-          laco/lir.go \
-          laco/cps.go \
-          laco/codegen.go \
-          laco/parser.go \
-          laco/sasm.go \
-          laco/object.go \
-          laco/primitives.go \
-          laco/ast.go \
-          laco/types.go \
-          laco/pass.go \
-          laco/env.go \
-          laco/records.go
+          laco/assembler.scm 
 
 TESTS = 
 
