@@ -101,6 +101,6 @@
    ((not (eq? (current-kont) 'global))
     (let ((funcs (top-level->body-list))
           (fv (free-vars expr)))
-      (for-each top-level-delete! (insec funcs fv))
+      (for-each top-level-delete! (diff funcs fv))
       expr))
    (else expr)))
