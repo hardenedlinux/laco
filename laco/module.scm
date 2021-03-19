@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020
+;;  Copyright (C) 2020-2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -44,6 +44,19 @@
 (define (mod-is-empty? mod)
   (equal? '(begin) (mod-exprs mod)))
 
+;; FIXME: We put the default module contents in this naive way. We will handle them
+;;       well when we implement module import/export.
+(define defaults
+  '(
+    (define (enable-ble-debug)
+      (display "\r\nAT+AUTO+++=Y\r\n"))
+
+    ;; FIXME: It should be (define* (newline #:optional port) ...). We'll fix it
+    ;;        when we have define*.
+    (define (newline)
+      (display "\n"))
+    ))
+
 ;; If mod-path is #f, then it's the main script
 (define* (read-as-mod filename #:optional (mod-path '()))
   (define (read-all-exprs)
@@ -55,6 +68,6 @@
           (close port)
           ;; TOD: Change `begin' to `module'
           ;; skip <eof>
-          `(begin ,@(reverse! ret)))
+          `(begin ,@defaults ,@(reverse! ret)))
          (else (lp (cons e ret)))))))
   (make-mod filename mod-path (read-all-exprs) (new-env (string->symbol filename))))
