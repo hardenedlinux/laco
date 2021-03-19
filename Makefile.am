@@ -1,7 +1,6 @@
 
 
-bin_SCRIPTS = scripts/laco \
-              scripts/laco
+bin_SCRIPTS = scripts/laco
 
 # Handle substitution of fully-expanded Autoconf variables.
 do_subst = $(SED)					\
