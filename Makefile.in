@@ -496,9 +496,7 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-bin_SCRIPTS = scripts/laco \
-              scripts/laco
-
+bin_SCRIPTS = scripts/laco
 
 # Handle substitution of fully-expanded Autoconf variables.
 do_subst = $(SED)					\
