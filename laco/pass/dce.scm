@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020
+;;  Copyright (C) 2020-2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -101,6 +101,6 @@
    ((not (eq? (current-kont) 'global))
     (let ((funcs (top-level->body-list))
           (fv (free-vars expr)))
-      (for-each top-level-delete! (diff funcs fv))
+      (for-each top-level-delete! (lset-difference eq? funcs (map id-name fv)))
       expr))
    (else expr)))
