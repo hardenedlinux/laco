@@ -1,0 +1,22 @@
+image: debian:sid-slim
+
+before_script:
+  - apt-get -qq update
+  - apt-get -qq -y install texinfo guile-3.0 guile-3.0-dev build-essential automake git autoconf libtool 
+  - git clone --depth 1  https://gitlab.com/lambdachip/lambdachip-linux.git
+  - cd lambdachip-linux
+  - git clone --depth 1  https://gitlab.com/lambdachip/lambdachip.git
+  - make
+  - export LAMBDACHIP_VM_PATH=$(pwd)
+  - cd .. 
+  - ./configure
+  - make -j 5
+
+test:
+  stage: test
+  script:
+   - make check
+  only:
+    - master
+stages:
+  - test
