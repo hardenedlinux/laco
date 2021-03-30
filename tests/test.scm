@@ -27,7 +27,8 @@
 
 (test-begin "test-suite")
 
-(check "Fibonacci" "fibonacci")
+(check "Factorial" "factorial")
 (check "Nested calling" "nested-call")
+(check "Simple sequence printing" "simple-seq-print")
 
 (test-end "test-suite")
