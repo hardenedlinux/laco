@@ -137,8 +137,12 @@ Options:
   (init-optimizations)
   (parameterize ((current-kont 'global))
     (top-level-for-each
+     ;; NOTE: We scan all free-vars in globals before any optimizing to make sure
+     ;;       no any free-var will be eliminated in dead-function-elimination.
+     (lambda (_ e)
+       (for-each set-fv-in-globals! (map id-name (free-vars e)))))
+    (top-level-for-each
      (lambda (f e)
-       (for-each set-fv-in-globals! (map id-name (free-vars e)))
        (parameterize ((current-def f))
          ;; Prevent unecessary lifting and inline for global functions
          (top-level-set! f (do-optimize e))))))
