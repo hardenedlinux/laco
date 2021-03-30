@@ -15,6 +15,7 @@
 ;;  along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (laco pass dce)
+  #:use-module (laco utils)
   #:use-module (laco env)
   #:use-module (laco types)
   #:use-module (laco cps)
@@ -101,6 +102,9 @@
    ((not (eq? (current-kont) 'global))
     (let ((funcs (top-level->body-list))
           (fv (free-vars expr)))
-      (for-each top-level-delete! (lset-difference eq? funcs (map id-name fv)))
+      (for-each (lambda (k)
+                  (when (not (appears-in-globals k))
+                    (top-level-delete! k)))
+                (lset-difference eq? funcs (map id-name fv)))
       expr))
    (else expr)))

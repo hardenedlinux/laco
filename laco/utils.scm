@@ -89,7 +89,9 @@
             ordered-frees-fix!
             global-labal-register!
             global->label
-            global-index))
+            global-index
+            set-fv-in-globals!
+            appears-in-globals))
 
 (define (newsym sym) (gensym (symbol->string sym)))
 (define (new-label str) (symbol->string (gensym str)))
@@ -371,3 +373,7 @@
 (define (global->label k) (assoc-ref (queue-slots *globals*) k))
 (define (global-index k)
   (list-index (lambda (p) (eq? k (car p))) (queue-slots *globals*)))
+
+(define *fv-in-globals* (make-hash-table))
+(define (set-fv-in-globals! k) (hash-set! *fv-in-globals* k #t))
+(define (appears-in-globals k) (hash-ref *fv-in-globals* k))
