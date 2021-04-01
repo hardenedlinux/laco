@@ -1,0 +1,11 @@
+; rational-division
+(define (fun x y)
+    (/ x y))
+(display (fun 31999 32000))
+(display "\n")
+(display (fun 31999 -32000))
+(display "\n")
+(display (fun -31999 32000))
+(display "\n")
+(display (fun -31999 -32000))
+(display "\n")
