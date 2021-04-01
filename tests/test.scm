@@ -27,6 +27,7 @@
 
 (test-begin "test-suite")
 
+(check "Add" "add")
 (check "Factorial" "factorial")
 (check "Nested calling" "nested-call")
 (check "Simple sequence printing" "simple-seq-print")
