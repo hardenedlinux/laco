@@ -116,7 +116,7 @@
     eq? ; 16 + 8
     equal? ; 16 + 9
     usleep ; 16 + 10
-    gpio-config! ; 16 + 11
+    device-configure! ; 16 + 11
     gpio-set! ; 16 + 12
     gpio-toggle! ; 16 + 13
     get-board-id ; 16 + 14
@@ -136,7 +136,7 @@
                 (primitive-name p)))))
 
 (define *inapplicable-primitive*
-  '(halt return display restore usleep gpio-config! gpio-set! gpio-toggle! get-board-id))
+  '(halt return display restore usleep device-configure! gpio-set! gpio-toggle! get-board-id))
 
 (define (applicable-primitive? p)
   (not (memq (primitive-name p) *inapplicable-primitive* )))
@@ -244,9 +244,9 @@
   (lambda _
     (throw 'laco-error 'prim:usleep "BUG: usleep shouldn't be called in compile time!")))
 
-(define-primitive (gpio-config!)
+(define-primitive (device-configure!)
   (lambda _
-    (throw 'laco-error 'prim:gpio-config! "BUG: gpio-config! shouldn't be called in compile time!")))
+    (throw 'laco-error 'prim:device-configure! "BUG: device-configure! shouldn't be called in compile time!")))
 
 (define-primitive (gpio-set!)
   (lambda _
