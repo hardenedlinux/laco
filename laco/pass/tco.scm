@@ -34,7 +34,7 @@
              (tail (car (list-tail exprs len))))
         `(,@(map tco (list-head exprs len))
           ,(match tail
-             (($ app/k ($ cps _ kont _ _) _ (k _ ...))
+             (($ app/k ($ cps _ kont _ _) f (k _ ...))
               (=> failed!)
               (cond
                ((and tail-body? (not (kont-eq? k prim:return)) (kont-eq? kont k))
@@ -83,9 +83,13 @@
        ;; 2. k is current-kont
        ;; 3. (f k args ...) -> tail-call or tail-rec
        ;; 4. (f (lambda ... g) ...) -> g is in closure, so g is not a tail-call
-       (if (eq? (current-def) (cps->name f))
-           (tag-proper-tail-recursion! expr)
-           (cps-property-set! expr 'tail-call #t)))
+       ;; NOTE: If f is not recursive, then we don't tag it for TCO to not create
+       ;;       a new stack frame, since the callee can't compute correct local-var
+       ;;       offset because the information of the callee is unknown to caller.
+       ;;       Fortunately, we can rely on function inlining to achive the same
+       ;;       optimizing to avoid a stack frame.
+       (when (eq? (current-def) (cps->name f))
+         (tag-proper-tail-recursion! expr)))
       ((and tail-body? (kont-eq? kont f))
        ;; (pk "case-2" (cps->expr expr))
        ;; CASE (k args ...) -> tail-call
