@@ -128,7 +128,7 @@
     bv))
 
 (define (integer-obj-encode data)
-  (when (or (< data (- (1- (expt 2 31)))) (> data (1- (expt 2 31))))
+  (when (or (< data (- (expt 2 31))) (> data (1- (expt 2 31))))
     (throw 'laco-error integer-obj-encode
            "Invalid integer object `~a', should be 32bit!" data))
   (let ((bv (make-bytevector 6 0)))
