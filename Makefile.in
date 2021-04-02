@@ -531,36 +531,12 @@ EXTRA_DIST = $(SOURCES) $(NOCOMP_SOURCES) README.org README HACKING \
 GUILE_WARNINGS = -Wunbound-variable -Warity-mismatch -Wformat
 SUFFIXES = .scm .go
 SOURCES = laco.scm \
-          laco/assembler/encode.go \
-          laco/assembler/sasm.go \
           laco/assembler/sasm.scm \
           laco/assembler/encode.scm \
-          laco/lpass/closure-capture-fv.go \
-          laco/lpass/fv-lifting.go \
-          laco/lpass/reduce-labels.go \
-          laco/lpass/remove-unused-captures.go \
           laco/lpass/remove-unused-captures.scm \
           laco/lpass/reduce-labels.scm \
           laco/lpass/fv-lifting.scm \
           laco/lpass/closure-capture-fv.scm \
-          laco/pass/elre.go \
-          laco/pass/args-extend.go \
-          laco/pass/eta-func.go \
-          laco/pass/const-propagation.go \
-          laco/pass/delta-reduction.go \
-          laco/pass/fold-branch.go \
-          laco/pass/eta-cont.go \
-          laco/pass/escape-analysis.go \
-          laco/pass/fold-const.go \
-          laco/pass/func-inline.go \
-          laco/pass/lambda-lifting.go \
-          laco/pass/normalize.go \
-          laco/pass/primitive-conversion.go \
-          laco/pass/tco.go \
-          laco/pass/useless-constant.go \
-          laco/pass/useless-cont.go \
-          laco/pass/dce.go \
-          laco/pass/closure-conversion.go \
           laco/pass/closure-conversion.scm \
           laco/pass/dce.scm \
           laco/pass/useless-cont.scm \
@@ -579,26 +555,8 @@ SOURCES = laco.scm \
           laco/pass/delta-reduction.scm \
           laco/pass/const-propagation.scm \
           laco/pass/args-extend.scm \
-          laco/records/procedural.go \
-          laco/records/syntactic.go \
           laco/records/syntactic.scm \
           laco/records/procedural.scm \
-          laco/env.go \
-          laco/lir.go \
-          laco/cps.go \
-          laco/compile.go \
-          laco/codegen.go \
-          laco/parser.go \
-          laco/object.go \
-          laco/ast.go \
-          laco/primitives.go \
-          laco/sasm.go \
-          laco/types.go \
-          laco/utils.go \
-          laco/pass.go \
-          laco/module.go \
-          laco/assembler.go \
-          laco/records.go \
           laco/utils.scm \
           laco/types.scm \
           laco/sasm.scm \
