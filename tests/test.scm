@@ -33,5 +33,6 @@
 (check "Factorial" "factorial")
 (check "Nested calling" "nested-call")
 (check "Simple sequence printing" "simple-seq-print")
+(check "GCD" "gcd")
 
 (test-end "test-suite")
