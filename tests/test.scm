@@ -34,5 +34,6 @@
 (check "Nested calling" "nested-call")
 (check "Simple sequence printing" "simple-seq-print")
 (check "GCD" "gcd")
+(check "Symbol list" "symbol-list")
 
 (test-end "test-suite")

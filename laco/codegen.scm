@@ -151,9 +151,11 @@
   (top-level-for-each
    (lambda (k v)
      (match v
-       ((? object?) (emit-sasm v))
+       ((? object?)
+        (global-label-register! k "object")
+        (emit-sasm v))
        (($ insr-proc _ proc label _ arity _)
-        (global-labal-register! k label)
+        (global-label-register! k label)
         (emit-sasm (make-proc-object '() (symbol->string k) arity label)))
        (else (throw 'laco-error gen-sasm "BUG: Invalid global `~a'" v)))))
   (sasm-global-end)

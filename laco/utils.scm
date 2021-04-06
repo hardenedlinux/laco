@@ -87,7 +87,7 @@
             get-ordered-frees
             fvar->lvar-fixed-offset
             ordered-frees-fix!
-            global-labal-register!
+            global-label-register!
             global->label
             global-index
             set-fv-in-globals!
@@ -369,7 +369,7 @@
                `(,(car item) ,(cadr item) ,fixed-offset))))
 
 (define *globals* (new-queue))
-(define (global-labal-register! k v) (queue-in! *globals* (cons k v)))
+(define (global-label-register! k v) (queue-in! *globals* (cons k v)))
 (define (global->label k) (assoc-ref (queue-slots *globals*) k))
 (define (global-index k)
   (list-index (lambda (p) (eq? k (car p))) (queue-slots *globals*)))

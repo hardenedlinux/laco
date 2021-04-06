@@ -340,6 +340,7 @@
      (else (throw 'laco-error global-assign "Invalid offset `~a'!" i)))))
 
 (define-public (global name)
+  (pk "global name" name)
   ;; (format #t "global: ~a~%" 0)
   (let ((i (global-index name)))
     (cond
