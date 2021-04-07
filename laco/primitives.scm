@@ -127,6 +127,7 @@
     read-string ; 16 + 19
     read-line ; 16 + 20
     list->string ; 16 + 21
+    i2c-read-byte! ; 16 + 12
     ))
 
 (define (print-primitives)
@@ -144,7 +145,7 @@
 
 (define *inapplicable-primitive*
   '(halt return display restore usleep device-configure! gpio-set! gpio-toggle!
-         get-board-id read-char read-string read-line))
+         get-board-id read-char read-string read-line i2c-read-byte!))
 
 (define (applicable-primitive? p)
   (not (memq (primitive-name p) *inapplicable-primitive*)))
@@ -291,3 +292,7 @@
 (define-primitive (list->string)
   (lambda _
     (throw 'laco-error 'prim:list->string "BUG: list->string shouldn't be called in compile time!")))
+
+(define-primitive (i2c-read-byte!)
+  (lambda _
+    (throw 'laco-error 'prim:get-board-id "BUG: i2c-read-byte! shouldn't be called in compile time!")))
