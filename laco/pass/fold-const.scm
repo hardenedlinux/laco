@@ -23,10 +23,11 @@
 
 ;; FIXME: We have to tweak fold-const when we have side-effect analysis.
 ;; TODO: If we have supported assignment, then the modified variable has to change
-;;       its fold value, or even can't be folded
+;;       its fold value, or even can't be folded.
+;; TODO: Fold global instant.
 
-;; 1. (if 1 2 3) -k-> (if 1 2 3)
-;; 2. (if 1 2 (+ 3 4)) -k-> (letcont ((k (return (+ 4 3)))) (if 1 2 k))
+;; 1. (if 1 2 3)   k->   (if 1 2 3)
+;; 2. (if 1 2 (+ 3 4))  k->  (letcont ((k (return (+ 4 3)))) (if 1 2 k))
 (define (fc expr)
   (match expr
     (($ letval/k ($ bind-special-form/k _ v e body))
