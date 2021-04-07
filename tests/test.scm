@@ -35,5 +35,7 @@
 (check "Simple sequence printing" "simple-seq-print")
 (check "GCD" "gcd")
 (check "Symbol list" "symbol-list")
+(check "Fold branch 1" "fold-branch-1")
+(check "Fold branch 2" "fold-branch-2")
 
 (test-end "test-suite")
