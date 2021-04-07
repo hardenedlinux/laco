@@ -37,5 +37,6 @@
 (check "Symbol list" "symbol-list")
 (check "Fold branch 1" "fold-branch-1")
 (check "Fold branch 2" "fold-branch-2")
+(check "Branch 1" "branch-1")
 
 (test-end "test-suite")
