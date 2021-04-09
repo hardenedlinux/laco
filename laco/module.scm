@@ -48,7 +48,15 @@
 ;;       well when we implement module import/export.
 (define defaults
   '(
-    (define (enable-ble-debug)
+    (define (ble-reset!)
+      ;; cut down power of BLE module for 50ms
+      (gpio-set! 'dev_gpio_ble_disable 1)
+      (usleep 50000)
+      (gpio-set! 'dev_gpio_ble_disable 0))
+    (define (ble-enable!)
+      (ble-reset!)
+      ;; FR8016 firmware need to have 87.5ms to 93.75ms before receive AT command
+      (usleep 100000)
       (display "\r\nAT+AUTO+++=Y\r\n"))
 
     ;; FIXME: It should be (define* (newline #:optional port) ...). We'll fix it
