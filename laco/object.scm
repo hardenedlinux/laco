@@ -44,6 +44,10 @@
             string-object?
             make-string-object
 
+            keyword-object
+            keyword-object?
+            make-keyword-object
+
             proc-object
             proc-object?
             make-proc-object
@@ -105,6 +109,10 @@
 (define-typed-record string-object (parent object)
   (fields
    (value string?)))
+
+(define-typed-record keyword-object (parent object)
+  (fields
+   (value keyword?)))
 
 (define-typed-record proc-object (parent object)
   (fields

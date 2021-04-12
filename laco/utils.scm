@@ -91,7 +91,8 @@
             global->label
             global-index
             set-fv-in-globals!
-            appears-in-globals))
+            appears-in-globals
+            keyword->string))
 
 (define (newsym sym) (gensym (symbol->string sym)))
 (define (new-label str) (symbol->string (gensym str)))
@@ -389,3 +390,6 @@
 (define *fv-in-globals* (make-hash-table))
 (define (set-fv-in-globals! k) (hash-set! *fv-in-globals* k #t))
 (define (appears-in-globals k) (hash-ref *fv-in-globals* k))
+
+(define (keyword->string k)
+  (symbol->string (keyword->symbol k)))

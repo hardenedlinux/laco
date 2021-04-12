@@ -260,6 +260,9 @@
 (define-public (push-string-object s)
   (string-obj-encode s))
 
+(define-public (push-keyword-object s)
+  (keyword-obj-encode s))
+
 (define-public (push-list-object size)
   (collection-obj-encode 7 size))
 

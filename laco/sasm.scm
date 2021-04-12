@@ -93,6 +93,8 @@
                 descp))
        ((('push-string-object s) . descp)
         (format port "~a(push-string-object ~s) ; ~a~%" (indent-spaces) s descp))
+       ((('push-keyword-object k) . descp)
+        (format port "~a(push-keyword-object ~a) ; ~a~%" (indent-spaces) k descp))
        ((('push-symbol-object s) . descp)
         (format port "~a(push-symbol-object ~a) ; ~a~%" (indent-spaces) s descp))
        ((('free label offset) . descp)
@@ -148,6 +150,9 @@
 
 (define-public (emit-string-object s)
   (sasm-emit `((push-string-object ,s) . "")))
+
+(define-public (emit-keyword-object s)
+  (sasm-emit `((push-keyword-object ,s) . "")))
 
 (define-public (emit-symbol-object s)
   (sasm-emit `((push-symbol-object ,s) . "")))

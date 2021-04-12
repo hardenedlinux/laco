@@ -88,6 +88,8 @@
      (emit-complex-object c))
     (($ string-object _ s)
      (emit-string-object s))
+    (($ keyword-object _ s)
+     (emit-keyword-object s))
     (($ symbol-object _ s)
      (emit-symbol-object s))
     (($ boolean-object _ b)

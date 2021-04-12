@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020
+;;  Copyright (C) 2020-2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -39,6 +39,7 @@
             rational-obj-encode
             complex-obj-encode
             string-obj-encode
+            keyword-obj-encode
             boolean-obj-encode
             symbol-encode
             prim-obj-encode
@@ -242,6 +243,21 @@
     (label-counter (+ 2 (string-length str) 1))
     (list bv sbv #vu8(0))))
 
+;; NOTE: We use string to encode keyword, but it's better to use symbol-like keyword
+(define (keyword-obj-encode k)
+  (when (not (keyword? k))
+    (throw 'laco-error keyword-obj-encode
+           "Invalid object `~a', should be a keyword!" k))
+  (let* ((bv (make-bytevector 2 0))
+         (str (keyword->string k))
+         ;; NOTE: We don't support UTF-8 for performance
+         (sbv (string->bytevector str "iso8859-1")))
+    (bytevector-u8-set! bv 0 #b11100010)
+    (bytevector-u8-set! bv 1 2)
+    ;; encoding length = header + type + string + '\0'
+    (label-counter (+ 2 (string-length str) 1))
+    (list bv sbv #vu8(0))))
+
 (define (collection-obj-encode type size)
   (when (or (< size 0) (>= size (expt 2 16)))
     (throw 'laco-error collection-obj-encode
@@ -265,16 +281,6 @@
 (define (symbol-encode offset)
   (when (or (< offset 0) (> offset (expt 2 16)))
     (throw 'laco-error symbol-encode
-           "Invalid offset in symbol table `~a'!" offset))
-  (let ((bv (make-bytevector 3 0)))
-    (bytevector-u8-set! bv 0 #b11100110)
-    (bytevector-u16-set! bv 1 offset 'big)
-    (label-counter 3)
-    bv))
-
-(define (keyword-encode offset)
-  (when (or (< offset 0) (> offset (expt 2 16)))
-    (throw 'laco-error keyword-encode
            "Invalid offset in symbol table `~a'!" offset))
   (let ((bv (make-bytevector 3 0)))
     (bytevector-u8-set! bv 0 #b11100110)
