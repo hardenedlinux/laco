@@ -608,6 +608,7 @@
 ;; cps,id,prim -> symbol
 (define (cps->name cexpr)
   (match cexpr
+    ('global 'global)
     ((? cps? c) (id-name (cps-name c)))
     ((? id? id) (id-name id))
     ((? primitive? p) (primitive-name p))
@@ -615,6 +616,7 @@
 
 (define (cps->name-string cexpr)
   (match cexpr
+    ('global "global")
     ((? cps? c) (id->string (cps-name cexpr)))
     ((? id? id) (symbol->string (id-name id)))
     (($ primitive _ name _ _ _) (symbol->string name))
