@@ -66,7 +66,11 @@
 ;;    of it, this is called `known function'. We can pass all free-vars as arguments
 ;;    to it, so it's not a closure anymore.
 
-(define* (cc expr #:optional (mode 'normal))
+(define *env-table* (make-hash-table))
+(define (env-ref name) (hash-ref *env-table* name 'global))
+(define (env-set! name e) (hash-set! *env-table* name e))
+
+(define* (cc expr #:optional (mode 'normal) #:key (finish? #f))
   (match expr
     (($ app/k _ f (($ lambda/k ($ cps _ kont name attr) (k) body) args ...))
      (=> failed!)
@@ -76,6 +80,7 @@
        (extend-env! (current-env) env)
        (parameterize ((current-env env)
                       (current-kont name))
+         (env-set! (id-name name) env)
          (cond
           ((assoc-ref attr 'binding)
            ;;(clean-tail-call! expr)
@@ -92,6 +97,7 @@
        (closure-set! (id-name name) env)
        (parameterize ((current-env env)
                       (current-kont name))
+         (env-set! (id-name name) env)
          (case mode
            ((normal)
             (make-lambda/k (list kont name attr) args (cc body)))
@@ -131,6 +137,7 @@
                     (current-env))))
        (env-local-push! env fname)
        (parameterize ((current-env env))
+         (env-set! (id-name name) env)
          (make-letfun/k (list kont name attr)
                         fname
                         (cc func)
@@ -153,6 +160,7 @@
          (extend-env! (current-env) env)
          (closure-set! (id-name name) env))
        (parameterize ((current-env env))
+         (env-set! (id-name name) env)
          ;; TODO:
          ;; 1. Don't inline directly
          ;; 2. Push the args to locals
@@ -165,6 +173,12 @@
                     var
                     (cc value)
                     (cc body)))
+    (($ app/k _ ($ lambda/k _ args body) es)
+     (cond
+      ((is-effect-var? (id-name (car args)))
+       (env-local-push! (current-env) (car args))
+       expr)
+      (else (cc (cfs body args es)))))
     (($ app/k _ ($ lambda/k _ args ($ seq/k ($ cps _ kont name attr) exprs)) es)
      (cond
       ((is-effect-var? (id-name (car args)))
@@ -189,6 +203,10 @@
      (assign/k-var-set! expr (cc v))
      (assign/k-expr-set! expr (cc e))
      expr)
+    (else expr)))
+
+(define (var-conversion expr)
+  (match expr
     ((? id? id)
      (let* ((env (current-env))
             (current-kont-label (cps->name-string (current-kont)))
@@ -196,19 +214,57 @@
             (name (id-name id)))
        (cond
         ((top-level-ref name) (new-gvar id)) ; check if it's global
-        ((not (toplevel? env))               ; check if it's local var
+        ((not (toplevel? env))         ; check if it's local var
          (cond
           ((bindings-index env id)
            => (lambda (offset)
                 (new-lvar id offset)))
-          ((and (not (eq? current-kont-label 'global)) ; check if it's free var
+          ((and (not (string=? current-kont-label "global"))
+                ;; check if it's free var
                 (is-free-var? env id)
                 (frees-index env id))
            values => (lambda (scope index)
                        (new-fvar id (env->name-string scope) index)))
-          (else (throw 'laco-error cc "Undefined local variable `~a'!" name))))
-        (else (throw 'laco-error cc "Undefined global variable `~a' in `~a'!"
+          (else (throw 'laco-error cc
+                       "Undefined local variable `~a'!" name))))
+        (else (throw 'laco-error cc
+                     "Undefined global variable `~a' in `~a'!"
                      name current-kont-label)))))
+    (($ closure/k _ env body)
+     (parameterize ((current-env (env-ref (cps->name expr)))
+                    (current-kont (cps-kont expr)))
+       (closure/k-body-set! expr (var-conversion body)))
+     expr)
+    (($ app/k _ f args)
+     (app/k-func-set! expr (var-conversion f))
+     (app/k-args-set! expr (map var-conversion args))
+     expr)
+    ((? bind-special-form/k?)
+     (bind-special-form/k-value-set!
+      expr (var-conversion (bind-special-form/k-value expr)))
+     (bind-special-form/k-body-set!
+      expr (var-conversion (bind-special-form/k-body expr)))
+     expr)
+    (($ seq/k _ exprs)
+     (seq/k-exprs-set! expr (map var-conversion exprs))
+     expr)
+    (($ branch/k _ cnd b1 b2)
+     (branch/k-cnd-set! expr (var-conversion cnd))
+     (branch/k-tbranch-set! expr (var-conversion b1))
+     (branch/k-fbranch-set! expr (var-conversion b2))
+     expr)
+    (($ lambda/k _ _ body)
+     (parameterize ((current-env (env-ref (cps->name expr)))
+                    (current-kont (cps-kont expr)))
+       (lambda/k-body-set! expr (var-conversion body)))
+     expr)
+    (($ collection/k _ _ _ _ value)
+     (collection/k-value-set! expr (map var-conversion value))
+     expr)
+    (($ assign/k _ v e)
+     (assign/k-expr-set! expr (var-conversion e))
+     expr)
+    ((? id?) expr)
     (else expr)))
 
-(define-pass closure-conversion expr (cc expr))
+(define-pass closure-conversion expr (var-conversion (cc expr)))
