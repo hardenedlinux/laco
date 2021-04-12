@@ -81,6 +81,7 @@
    (else
     (cond
      ((symbol? x) 'symbol)
+     ((keyword? x) 'keyword)
      ((char? x) 'char)
      ((integer? x) 'integer)
      ((complex? x) 'complex)
@@ -151,7 +152,8 @@
       (throw 'laco-error integer-check "`~a' is not an integer!" x)))
 
 (define *immediates-pred*
-  (list integer? string? char? boolean? pair? list? vector? symbol? real? number? complex? rational?))
+  (list keyword? integer? string? char? boolean? pair? list? vector? symbol?
+        real? number? complex? rational?))
 
 (define (is-immediate? x)
   (any (lambda (c) (c x)) *immediates-pred*))

@@ -271,3 +271,13 @@
     (bytevector-u16-set! bv 1 offset 'big)
     (label-counter 3)
     bv))
+
+(define (keyword-encode offset)
+  (when (or (< offset 0) (> offset (expt 2 16)))
+    (throw 'laco-error keyword-encode
+           "Invalid offset in symbol table `~a'!" offset))
+  (let ((bv (make-bytevector 3 0)))
+    (bytevector-u8-set! bv 0 #b11100110)
+    (bytevector-u16-set! bv 1 offset 'big)
+    (label-counter 3)
+    bv))

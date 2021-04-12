@@ -388,7 +388,7 @@
 
 (define* (comp-cps expr #:optional (cont prim:return))
   (match expr
-    (($ closure ($ ast _ body) params _ _)
+    (($ closure ($ ast _ body) params _ _ _)
      (let* ((fname (new-id "#func-"))
             (fk (new-id "#kont-"))
             (nv (map new-id params))
@@ -435,7 +435,7 @@
 (define* (ast->cps expr #:optional (cont prim:return))
   (match expr
     ;; FIXME: distinct value and function for the convenient of fun-inline.
-    (($ closure ($ ast _ body) params _ _)
+    (($ closure ($ ast _ body) params _ _ _)
      (let* ((fname (new-id "#func-"))
             (fk (new-id "#kont-"))
             (nv (map new-id params))

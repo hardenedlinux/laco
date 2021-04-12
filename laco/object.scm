@@ -136,6 +136,10 @@
   (fields
    (value rational?)))
 
+(define-typed-record keyword-object (parent object)
+  (fields
+   (value keyword?)))
+
 ;; constant -> object
 (define (create-constant-object c)
   (let ((val (constant-val c)))
@@ -150,6 +154,11 @@
       ('symbol
        (intern! val)
        (make-symbol-object '() val))
+      ('keyword
+       ;; NOTE: We don't make keyword unique, since the keyword is usually used in
+       ;;       define*, and it'll be eliminated in compile time. We rarely use
+       ;;       keyword in other cases.
+       (make-keyword-object '() val))
       ('boolean (make-boolean-object '() val))
       (else (throw 'laco-error create-constant-object "Invalid type `~a'!"
                    (constant-type c))))))
@@ -164,6 +173,7 @@
    ((rational-object? o) (rational-object-value o))
    ((string-object? o) (string-object-value o))
    ((symbol-object? o) (symbol-object-value o))
+   ((keyword-object? o) (keyword-object-value o))
    ((boolean-object? o) (boolean-object-value o))
    ((prim-object? o) (prim-object-prim o))
    (else (throw 'laco-error object->value "Invalid type `~a'!" o))))

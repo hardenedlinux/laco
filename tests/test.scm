@@ -38,5 +38,8 @@
 (check "Fold branch 1" "fold-branch-1")
 (check "Fold branch 2" "fold-branch-2")
 (check "Branch 1" "branch-1")
+(check "define* keys" "define-star-keys")
+(check "define* optionals" "define-star-opts")
+(check "define* keys and -opts" "define-star-keys-opts")
 
 (test-end "test-suite")

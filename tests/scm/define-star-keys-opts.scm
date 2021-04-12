@@ -1,0 +1,10 @@
+(define* (test x #:optional (c 123) (d 321) #:key (y 2) (z 3))
+  (display "c=") (display c) (newline)
+  (display "d=") (display d) (newline)
+  (display "x=") (display x) (newline)
+  (display "y=") (display y) (newline)
+  (display "z=") (display z) (newline))
+
+(test 1) (newline)
+(test 'x 'c #:y 'y) (newline)
+(test 'x 'c 'd #:y 'y #:z 'z)

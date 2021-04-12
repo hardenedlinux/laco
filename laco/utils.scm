@@ -97,18 +97,30 @@
 (define (new-label str) (symbol->string (gensym str)))
 
 (define (extract-ids pattern)
-  (define (sym-list? x)
+  (define (symbol-list? x)
     (and (list? x)
          (every symbol? x)))
   (match pattern
     ((? symbol?) (list pattern)) ; (lambda args ...)
-    ((? sym-list?) pattern) ; (lambda (a b c) ...)
+    ((? symbol-list?) pattern) ; (lambda (a b c) ...)
     (((? symbol? a) . b) `(,a ,@(extract-ids b))) ; (lambda (a b . c) ...)
+    (((? keyword? a) rest ...) '())
     (() '()) ; (lambda () ...)
     (else (throw 'laco-error "lambda: parameter must be an identifier!" pattern))))
 
 (define (extract-keys pattern)
-  #f)
+  (let lp ((next pattern) (keys '()) (opts '()) (mode 'normal))
+    (cond
+     ((null? next) (values keys (reverse opts)))
+     ((eq? (car next) #:key)
+      (lp (cdr next) keys opts 'key))
+     ((eq? (car next) #:optional)
+      (lp (cdr next) keys opts 'opt))
+     ((eq? mode 'key)
+      (lp (cdr next) (cons (car next) keys) opts mode))
+     ((eq? mode 'opt)
+      (lp (cdr next) keys (cons (car next) opts) mode))
+     (else (lp (cdr next) keys opts mode)))))
 
 (define (%q-remove-with-key! q key)
   (assoc-remove! (car q) key)

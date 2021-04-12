@@ -38,7 +38,8 @@
             call-op call-args
 
             closure make-closure closure?
-            closure-params closure-has-opt?
+            closure-params closure-keys closure-opts
+            closure-nargs
 
             seq make-seq seq?
 
@@ -68,7 +69,7 @@
 ;; calling a function, ast is a list: (func args ...)
 ;; we don't distinct prim call in AST
 (define-record-type call (parent ast) (fields op args))
-(define-record-type closure (parent ast) (fields params keys opt))  ; closure
+(define-record-type closure (parent ast) (fields params keys opts nargs)) ; closure
 (define-record-type seq (parent ast))              ; sequence
 (define-record-type macro (parent ast) (fields expander))
 (define-record-type collection (parent ast) (fields type size))
@@ -88,7 +89,6 @@
 (define (macro-expander m)
   #t)
 
-
 (define* (ast->src node #:optional (hide-begin? #t))
   (match node
     (($ constant _ val type) (unless (eq? 'unspecified type) val))
@@ -102,7 +102,16 @@
        ((c b1 b2) `(if ,(ast->src c) ,(ast->src b1 #f) ,(ast->src b2 #f)))
        (else (throw 'laco-error "I don't know what's wrong dude!!!" subx))))
     (($ call _ op args) `(,(ast->src op) ,@(map ast->src args)))
-    (($ closure ($ ast _ subx) params _) `(lambda ,(map ast->src params) ,(ast->src subx)))
+    (($ closure ($ ast _ subx) params keys opts _)
+     (define (ids-filter p o k)
+       (filter (lambda (v) (not (or (assoc-ref o v) (assoc-ref k v)))) p))
+     (let ((o (map (lambda (e) (list (car e) (ast->src (cadr e)))) opts))
+           (k (map (lambda (e) (list (car e) (ast->src (cadr e)))) keys)))
+       `(,(if (or (not (null? o)) (not (null? k))) 'lambda* 'lambda)
+         (,@(map ast->src (ids-filter params o k))
+          ,@(if (null? o) o '(#:optional)) ,@o
+          ,@(if (null? k) k '(#:key)) ,@k)
+         ,(ast->src subx))))
     (($ seq ($ ast _ subx))
      (cond
       ((zero? (length subx))

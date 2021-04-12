@@ -32,6 +32,76 @@
           cond and or case let let* letrec begin do define delay
           ,@(@@ (laco primitives) *prim-table*)))
 
+(define *opt-defs* (make-hash-table))
+(define (opt-def! func def) (hash-set! *opt-defs* func def))
+(define (opt-def-ref func) (hash-ref *opt-defs* func))
+(define (opt-def-getter func getter var)
+  (let ((def (opt-def-ref func)))
+    (and def
+         (let ((subx (ast-subx def)))
+           (or (closure? subx)
+               (throw 'laco-error opt-def-getter
+                      "BUG: var `~a', `~a' is not closure!" func subx))
+           (and=> (assoc-ref (getter subx) var) car)))))
+(define (key-bind func var) (opt-def-getter func closure-keys var))
+(define (opt-bind func var) (opt-def-getter func closure-opts var))
+(define (def-attr-getter func getter)
+  (let ((def (opt-def-ref func)))
+    (and def
+         (let ((subx (ast-subx def)))
+           (or (closure? subx)
+               (throw 'laco-error def-attr-getter
+                      "BUG: var `~a', `~a' is not closure!" func))
+           (getter subx)))))
+(define (opts-of-def func) (def-attr-getter func closure-opts))
+(define (keys-of-def func) (def-attr-getter func closure-keys))
+(define (ids-of-def func) (def-attr-getter func closure-params))
+(define (nargs-of-def func) (def-attr-getter func closure-nargs))
+(define (cook-opt-args func args)
+  (define (verify-kargs func ks)
+    (let ((keys (keys-of-def func)))
+      (for-each (lambda (x)
+                  (when (not (assoc-ref keys (car x)))
+                    (throw 'laco-error cook-opt-args
+                           "Invalid keywork in function `~a'!" (car x))))
+                ks)))
+  (define (extract-opt-args func args)
+    (let lp ((next args) (ret '()) (keys '()))
+      (match next
+        (()
+         (let* ((r (reverse ret))
+                (nargs (nargs-of-def func))
+                (ol (map cadr (opts-of-def func)))
+                (el (list-head r nargs))
+                (opts (cond
+                       ((> (length r) nargs)
+                        (list-tail ol (- (length r) nargs)))
+                       (else ol))))
+           (values
+            r
+            opts
+            keys)))
+        (((? keyword? k) e rest ...)
+         (lp rest ret (cons (list (keyword->symbol k) e) keys)))
+        ((e rest ...)
+         (lp rest (cons e ret) keys))
+        (else (throw 'laco-error extract-opt-args
+                     "Invalid pattern `~a`!" next)))))
+  (let-values (((el opts ks) (extract-opt-args func args)))
+    (let ((keys (map (lambda (x)
+                       (or (and=> (assoc-ref ks (car x)) car)
+                           (cadr x)))
+                     (keys-of-def func))))
+      (verify-kargs func ks)
+      (let lp ((next el) (ret '()))
+        (match next
+          (() `(,@(reverse ret) ,@opts ,@keys))
+          ((e rest ...)
+           (lp rest (cons e ret)))
+          (else
+           (throw 'laco-error cook-opt-args "BUG: Wrong patterns `~a' in `a'!"
+                  next func)))))))
+
 (define* (_quasiquote obj #:optional (is-ref? #f))
   (match obj
     (() '())
@@ -81,13 +151,17 @@
          *laco/unspecified*)
         (else
          (match expr
-           (('define (? symbol? var) val)
-            (make-def (parse-it val #:body-begin? #t) var))
-           (('define ((? symbol? var) args ...) body ...)
+           (((or 'define 'define*) ((? symbol? var) args ...) body ...)
             (if (null? body)
                 (throw 'laco-error parse-it
                        "No expressions in body in form `~a'" expr)
-                (make-def (parse-it `(,head ,args ,@body) #:body-begin? #t) var)))
+                (let ((def (make-def (parse-it `(,head ,args ,@body)
+                                               #:body-begin? #t) var)))
+                  (when (eq? head 'lambda*)
+                    (hash-set! *opt-defs* var def))
+                  def)))
+           (('define (? symbol? var) val)
+            (make-def (parse-it val #:body-begin? #t) var))
            ((_ ((? symbol var) (? args-with-keys args)) body ...)
             (when (eq? head 'define)
               (throw 'laco-error parse-it
@@ -140,15 +214,14 @@
             (has-opt? (or (pair? pattern) (symbol? pattern))))
        (make-closure (parse-it `(begin ,body ,@body*)
                                #:pos 'closure-level #:body-begin? #t)
-                     ids #f has-opt?)))
+                     ids '() '() (length ids))))
     (('lambda* pattern body body* ...)
-     (throw 'laco-error parse-it "Sorry but lambda* is not prepared yet!")
-     (let* ((ids (extract-ids pattern))
-            (keys (extract-keys pattern))
-            (has-opt? (or (pair? pattern) (symbol? pattern))))
-       (make-closure (parse-it `(begin ,body ,@body*)
-                               #:pos 'closure-level #:body-begin? #t)
-                     ids keys has-opt?)))
+     (let ((ids (extract-ids pattern)))
+       (let-values (((keys opts) (extract-keys pattern)))
+         (make-closure (parse-it `(begin ,body ,@body*)
+                                 #:pos 'closure-level #:body-begin? #t)
+                       (append ids (map car opts) (map car keys))
+                       keys opts (length ids)))))
     (('begin body ...)
      (cond
       ((and body-begin? (eq? pos 'closure-level))
@@ -248,8 +321,13 @@
        (cond
         ((not f) (throw 'laco-error parse-it "PROC `~a': unbound variable: " op))
         ((macro? f) ((macro-expander f) args))
+        ((opt-def-ref (ref-var f))
+         (let ((cooked-args (cook-opt-args (ref-var f) args)))
+           (make-call #f f
+                      (map (lambda (e) (parse-it e #:use 'value)) cooked-args))))
         (else
-         (make-call #f f (map (lambda (e) (parse-it e #:use 'value)) args))))))
+         (make-call #f f
+                    (map (lambda (e) (parse-it e #:use 'value)) args))))))
     ((? symbol? k) (make-ref #f k))
     ;; NOTE: immediate check has to be the last one!!!
     ((? is-immediate? i) (gen-constant i))
