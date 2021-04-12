@@ -12,7 +12,7 @@
 
 (package
   (name "laco")
-  (version "0.2.0")
+  (version "0.3.0")
   (source "./laco-0.2.0.tar.gz")
   (build-system gnu-build-system)
   (arguments

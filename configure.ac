@@ -1,7 +1,7 @@
 
 dnl -*- Autoconf -*-
 
-AC_INIT(laco, 0.2.0)
+AC_INIT(laco, 0.3.0)
 AC_SUBST(HVERSION, "\"0.2.0\"")
 AC_SUBST(AUTHOR, "\"Mu Lei known as NalaGinrut\"")
 AC_SUBST(COPYRIGHT, "'(2021)")
