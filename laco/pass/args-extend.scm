@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020
+;;  Copyright (C) 2020-2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -26,14 +26,6 @@
 ;; extend optional args:
 ;; (define fun (lambda (e . args) ...))
 ;; (fun 1 2 3) => (fun 1 '(2 3))
-;;
-;; extend keyword bound arguments:
-;; TODO:
-;; (define fun (lambda* (x #:keys (y 1)) ...))
-;; case-1:
-;; (fun 1 #:y 2) => rebind y
-;; case-2:
-;; (fun 1) => y is unspecified, use default value 1
 
 (define (ae expr)
   (match expr
