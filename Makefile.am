@@ -35,55 +35,56 @@ SUFFIXES = .scm .go
 	$(AM_V_GEN)$(top_builddir)/pre-inst-env $(GUILE_TOOLS) compile $(GUILE_WARNINGS) -o "$@" "$<"
 
 SOURCES = laco.scm \
-          laco/assembler/sasm.scm \
-          laco/assembler/encode.scm \
-          laco/lpass/remove-unused-captures.scm \
-          laco/lpass/reduce-labels.scm \
-          laco/lpass/fv-lifting.scm \
-          laco/lpass/closure-capture-fv.scm \
-          laco/pass/closure-conversion.scm \
-          laco/pass/dce.scm \
-          laco/pass/useless-cont.scm \
-          laco/pass/useless-constant.scm \
-          laco/pass/tco.scm \
-          laco/pass/primitive-conversion.scm \
-          laco/pass/normalize.scm \
-          laco/pass/lambda-lifting.scm \
-          laco/pass/func-inline.scm \
-          laco/pass/fold-const.scm \
-          laco/pass/fold-branch.scm \
-          laco/pass/eta-func.scm \
-          laco/pass/eta-cont.scm \
-          laco/pass/escape-analysis.scm \
-          laco/pass/elre.scm \
-          laco/pass/delta-reduction.scm \
-          laco/pass/const-propagation.scm \
-          laco/pass/args-extend.scm \
-          laco/records/syntactic.scm \
-          laco/records/procedural.scm \
-          laco/utils.scm \
-          laco/types.scm \
-          laco/sasm.scm \
-          laco/records.scm \
-          laco/primitives.scm \
-          laco/pass.scm \
-          laco/parser.scm \
-          laco/object.scm \
-          laco/module.scm \
-          laco/lir.scm \
-          laco/env.scm \
-          laco/cps.scm \
-          laco/compile.scm \
-          laco/codegen.scm \
-          laco/ast.scm \
-          laco/assembler.scm
+	  laco/assembler/sasm.scm \
+	  laco/assembler/encode.scm \
+	  laco/lpass/remove-unused-captures.scm \
+	  laco/lpass/reduce-labels.scm \
+	  laco/lpass/fv-lifting.scm \
+	  laco/lpass/closure-capture-fv.scm \
+	  laco/pass/closure-conversion.scm \
+	  laco/pass/dce.scm \
+	  laco/pass/effect-analysis.scm \
+	  laco/pass/useless-cont.scm \
+	  laco/pass/useless-constant.scm \
+	  laco/pass/tco.scm \
+	  laco/pass/primitive-conversion.scm \
+	  laco/pass/normalize.scm \
+	  laco/pass/lambda-lifting.scm \
+	  laco/pass/func-inline.scm \
+	  laco/pass/fold-const.scm \
+	  laco/pass/fold-branch.scm \
+	  laco/pass/eta-func.scm \
+	  laco/pass/eta-cont.scm \
+	  laco/pass/escape-analysis.scm \
+	  laco/pass/elre.scm \
+	  laco/pass/delta-reduction.scm \
+	  laco/pass/const-propagation.scm \
+	  laco/pass/args-extend.scm \
+	  laco/records/syntactic.scm \
+	  laco/records/procedural.scm \
+	  laco/utils.scm \
+	  laco/types.scm \
+	  laco/sasm.scm \
+	  laco/records.scm \
+	  laco/primitives.scm \
+	  laco/pass.scm \
+	  laco/parser.scm \
+	  laco/object.scm \
+	  laco/module.scm \
+	  laco/lir.scm \
+	  laco/env.scm \
+	  laco/cps.scm \
+	  laco/compile.scm \
+	  laco/codegen.scm \
+	  laco/ast.scm \
+	  laco/assembler.scm
 
 TESTS = tests/test.scm
 
 TEST_EXTENSIONS = .scm
-SCM_LOG_DRIVER =                                \
-  $(top_builddir)/pre-inst-env                  \
-  $(GUILE) --no-auto-compile -e main            \
+SCM_LOG_DRIVER =				\
+  $(top_builddir)/pre-inst-env			\
+  $(GUILE) --no-auto-compile -e main		\
       $(top_srcdir)/build-aux/test-driver.scm
 
 # Tell 'build-aux/test-driver.scm' to display only source file names,
@@ -95,30 +96,30 @@ AM_SCM_LOG_FLAGS = --no-auto-compile -L "$(top_srcdir)"
 AM_TESTS_ENVIRONMENT = abs_top_srcdir="$(abs_top_srcdir)"
 
 info_TEXINFOS = doc/version.texi \
-                doc/laco.texi
+		doc/laco.texi
 dvi: # Don't build dvi docs
 
 EXTRA_DIST += README.org \
-              README \
-              HACKING \
-              COPYING \
-              doc/laco.info \
-              doc/stamp-vti \
-              NEWS \
-              AUTHORS \
-              ChangeLog \
-              guix.scm \
-              hall.scm \
-              build-aux/texinfo.tex \
-              build-aux/mdate-sh \
-              build-aux/missing \
-              build-aux/install-sh \
-              build-aux/test-driver.scm \
-              configure.ac \
-              Makefile.am \
-              pre-inst-env.in \
-              build-aux/test-driver.scm \
-              $(TESTS)
+	      README \
+	      HACKING \
+	      COPYING \
+	      doc/laco.info \
+	      doc/stamp-vti \
+	      NEWS \
+	      AUTHORS \
+	      ChangeLog \
+	      guix.scm \
+	      hall.scm \
+	      build-aux/texinfo.tex \
+	      build-aux/mdate-sh \
+	      build-aux/missing \
+	      build-aux/install-sh \
+	      build-aux/test-driver.scm \
+	      configure.ac \
+	      Makefile.am \
+	      pre-inst-env.in \
+	      build-aux/test-driver.scm \
+	      $(TESTS)
 
 ACLOCAL_AMFLAGS = -I m4
 
