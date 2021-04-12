@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020
+;;  Copyright (C) 2020-2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -40,15 +40,17 @@
               vl)
     ht))
 
-(define (is-inlineable? attr)
+(define (is-inlineable? attr body)
+  ;; TODO: Check the effected vars in body
   (or (assoc-ref attr 'branch)))
 
 ;; NOTE: It is also called beta-contract, which means inlining the function that
 ;;       appears only once.
 ;; unfortunately, we don't have env in this direct CPS implementation, so it's
 ;; too hard to trace back the definition of the function.
-;; FIXME: trace back after closure-conversion
 ;; NOTE: Must be applied after alpha-renaming.
+;; FIXME: trace back after closure-conversion.
+;; FIXME: Inline should occur in app.
 (define* (func-inline expr #:optional (refs (make-ref-table expr)))
   (define (inlineable-local-func? f) (= 2 (hash-ref refs f 0)))
   (match expr
@@ -57,13 +59,13 @@
      ;; * Don't worry about the free-vars inside body, they'll be well handled in
      ;;   closure-conversion.
      (=> failed!)
-     (if (is-inlineable? attr)
+     (if (is-inlineable? attr body)
          body
          (failed!)))
     (($ lambda/k ($ cps _ _ _ attr) _ body)
      ;; For the case that generates redundant lambdas.
      (=> failed!)
-     (if (is-inlineable? attr)
+     (if (is-inlineable? attr body)
          (func-inline body)
          (failed!)))
     (($ letcont/k ($ bind-special-form/k _ jname jcont

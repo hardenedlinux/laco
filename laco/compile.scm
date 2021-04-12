@@ -114,6 +114,7 @@ Options:
      cexpr
      normalize
      useless-constant
+     effect-analysis
      dead-function-elimination
      fold-constant
      (constant-propagation 2)

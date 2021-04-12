@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020-2021
+;;  Copyright (C) 2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -14,54 +14,49 @@
 ;;  You should have received a copy of the GNU General Public License
 ;;  along with this program. If not, see <http://www.gnu.org/licenses/>.
 
-(define-module (laco pass fold-const)
+(define-module (laco pass effect-analysis)
   #:use-module (laco cps)
   #:use-module (laco types)
   #:use-module (laco utils)
   #:use-module (laco pass)
-  #:use-module (laco pass normalize)
   #:use-module (ice-9 match))
 
-;; NOTE: If we have supported assignment, then the modified variable has to change
-;;       its fold value, or even can't be folded.
-;; TODO: Fold global instant.
+;; NOTE:
+;; 1. Tag all variables that was operated by functions had side-effects
 
-;; 1. (if 1 2 3)   k->   (if 1 2 3)
-;; 2. (if 1 2 (+ 3 4))  k->  (letcont ((k (return (+ 4 3)))) (if 1 2 k))
-(define (fc expr)
+(define *effect-funcs*
+  '(set! list-set! vector-set! set-car! set-cdr! string-set!))
+(define (proc-has-effect? v) (memq v *effect-funcs*))
+
+(define (ea expr)
   (match expr
-    (($ letval/k ($ bind-special-form/k _ v e body))
-     (=> failed!)
-     (cond
-      ((is-effect-var? (id-name v))
-       (failed!))
-      (else
-       (fc (cfs (fc body) (list v) (list (fc e)))))))
     (($ app/k _ f args)
-     (app/k-func-set! expr (fc f))
-     (app/k-args-set! expr (map fc args))
+     (when (and (proc-has-effect? (id-name f)) (id? (car args)))
+       (effect-var-register! (id-name (car args))))
+     (app/k-func-set! expr (ea f))
+     (app/k-args-set! expr (map ea args))
      expr)
     ((? bind-special-form/k?)
-     (bind-special-form/k-value-set! expr (fc (bind-special-form/k-value expr)))
-     (bind-special-form/k-body-set! expr (fc (bind-special-form/k-body expr)))
+     (bind-special-form/k-value-set! expr (ea (bind-special-form/k-value expr)))
+     (bind-special-form/k-body-set! expr (ea (bind-special-form/k-body expr)))
      expr)
     (($ seq/k _ exprs)
-     (seq/k-exprs-set! expr (map fc exprs))
+     (seq/k-exprs-set! expr (map ea exprs))
      expr)
     (($ branch/k _ cnd b1 b2)
-     (branch/k-cnd-set! expr (fc cnd))
-     (branch/k-tbranch-set! expr (fc b1))
-     (branch/k-fbranch-set! expr (fc b2))
+     (branch/k-cnd-set! expr (ea cnd))
+     (branch/k-tbranch-set! expr (ea b1))
+     (branch/k-fbranch-set! expr (ea b2))
      expr)
     (($ lambda/k _ _ body)
-     (lambda/k-body-set! expr (fc body))
+     (lambda/k-body-set! expr (ea body))
      expr)
     (($ collection/k _ _ _ _ value)
-     (collection/k-value-set! expr (map fc value))
+     (collection/k-value-set! expr (map ea value))
      expr)
     (($ assign/k _ v e)
-     (assign/k-expr-set! expr (fc e))
+     (assign/k-expr-set! expr (ea e))
      expr)
     (else expr)))
 
-(define-pass fold-constant expr (fc expr))
+(define-pass effect-analysis expr (ea expr))
