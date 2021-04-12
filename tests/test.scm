@@ -42,5 +42,7 @@
 (check "define* optionals" "define-star-opts")
 (check "define* keys and -opts" "define-star-keys-opts")
 (check "Constant keyword printing" "keyword-print")
+(check "let test 1" "let-1")
+(check "let* test 1" "let-star-1")
 
 (test-end "test-suite")
