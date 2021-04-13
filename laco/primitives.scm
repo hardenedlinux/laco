@@ -121,6 +121,8 @@
     gpio-toggle! ; 16 + 13
     get-board-id ; 16 + 14
     cons ; 16 + 15
+    car ; 16 + 16
+    cdr ; 16 + 17
     ))
 
 (define (print-primitives)
@@ -264,3 +266,11 @@
 (define-primitive (cons)
   (lambda (x y)
     (gen-constant (cons x y))))
+
+(define-primitive (car)
+  (lambda (o)
+    (gen-constant (car o))))
+
+(define-primitive (cdr)
+  (lambda (o)
+    (gen-constant (cdr o))))

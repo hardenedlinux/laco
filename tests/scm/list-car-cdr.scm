@@ -1,0 +1,5 @@
+(display (car (list 1 2 3)))
+(newline)
+(display (cdr (list 1 2 3)))
+(newline)
+(display (cdr (list 1)))
