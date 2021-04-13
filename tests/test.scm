@@ -44,5 +44,6 @@
 (check "Constant keyword printing" "keyword-print")
 (check "let test 1" "let-1")
 (check "let* test 1" "let-star-1")
+(check "pair print" "pair-print")
 
 (test-end "test-suite")

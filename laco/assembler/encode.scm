@@ -32,7 +32,6 @@
             quadruple-encode
             primitive-encode/basic
             primitive-encode/extend
-            special-encode
             collection-obj-encode
             integer-obj-encode
             real-obj-encode
@@ -43,6 +42,7 @@
             boolean-obj-encode
             symbol-encode
             prim-obj-encode
+            pair-obj-encode
             proc-obj-encode))
 
 (define label-counter (new-counter))
@@ -276,6 +276,13 @@
   (let ((bv (make-bytevector 1 0)))
     (bytevector-u8-set! bv 0 (logior (ash #b1110 4) value))
     (label-counter 1)
+    bv))
+
+(define (pair-obj-encode)
+  (let ((bv (make-bytevector 2 0)))
+    (bytevector-u8-set! bv 0 #b11100010)
+    (bytevector-u8-set! bv 1 3)
+    (label-counter 2)
     bv))
 
 (define (symbol-encode offset)

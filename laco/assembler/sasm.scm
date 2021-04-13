@@ -292,6 +292,10 @@
   ;; (format #t "push-boolean-false: ~a~%" 1)
   (boolean-obj-encode 0))
 
+(define-public (push-pair-object)
+  ;; (format #t "push-pair-object: ~a~%" 6)
+  (pair-obj-encode))
+
 (define-public (push-boolean-true)
   ;; (format #t "push-boolean-true: ~a~%" 1)
   (boolean-obj-encode 1))

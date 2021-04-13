@@ -139,6 +139,10 @@
 (define-public (emit-integer-object i)
   (sasm-emit `((push-integer-object ,i) . "")))
 
+(define-public (emit-pair-object)
+  (sasm-emit
+   `((push-pair-object) . "")))
+
 (define-public (emit-real-object r)
   (sasm-emit `((push-real-object ,r) . "")))
 

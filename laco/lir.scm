@@ -497,6 +497,8 @@
     (($ prim-object _ p) `(primitive ,(primitive-name p)))
     (($ proc-object _ name arity entry) `(proc ,name ,arity ,entry))
     (($ list-object _ size value) `(list ,@(map lir->expr value)))
+    (($ vector-object _ size value) `(vector ,@(map lir->expr value)))
+    (($ pair-object _ _ vals) `(pair ,@(map lir->expr vals)))
     (else (throw 'laco-error lir->expr "Invalid lir `~a'!" lexpr))))
 
 (define (lir->expr/g lexpr)

@@ -313,9 +313,10 @@
     (('quasiquote q)
      (let ((lst (map parse-it (_quasiquote q))))
        (list-comprehension->ast lst)))
+    (('cons x y) (make-collection (map parse-it (list x y)) 'pair 2))
     (('list e ...) (make-collection (map parse-it (_quasiquote e))
                                     'list (length e)))
-    (('vector e ...) (make-collection e 'vector (vector-length e)))
+    (('vector e ...) (make-collection (map parse-it e) 'vector (vector-length e)))
     ((op args ...)
      (let ((f (parse-it op #:use 'value #:op? #t)))
        (cond

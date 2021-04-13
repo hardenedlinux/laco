@@ -40,6 +40,10 @@
             char-object?
             make-char-object
 
+            pair-object
+            pair-object?
+            make-pair-object
+
             string-object
             string-object?
             make-string-object
@@ -89,6 +93,12 @@
 (define-typed-record integer-object (parent object)
   (fields
    (value integer?)))
+
+;; We use list to hold pair elements, and it'll be converted to pair in codegen
+(define-typed-record pair-object (parent object)
+  (fields
+   (size positive?)
+   (value list?)))
 
 (define-typed-record list-object (parent object)
   (fields
@@ -175,6 +185,7 @@
   (cond
    ((integer-object? o) (integer-object-value o))
    ((list-object? o) (list-object-value o))
+   ((pair-object? o) (pair-object-value o))
    ((char-object? o) (char-object-value o))
    ((real-object? o) (real-object-value o))
    ((complex-object? o) (complex-object-value o))
@@ -189,6 +200,7 @@
 ;; collection -> object
 (define (create-collection-object type size val)
   (match type
+    ('pair (make-pair-object '() size val))
     ('list (make-list-object '() size val))
     ('vector (make-vector-object '() size val))
     (else (throw 'laco-error create-collection-object "Invalid type `~a'!" type))))

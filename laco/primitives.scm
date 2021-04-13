@@ -120,6 +120,7 @@
     gpio-set! ; 16 + 12
     gpio-toggle! ; 16 + 13
     get-board-id ; 16 + 14
+    cons ; 16 + 15
     ))
 
 (define (print-primitives)
@@ -259,3 +260,7 @@
 (define-primitive (get-board-id)
   (lambda _
     (throw 'laco-error 'prim:get-board-id "BUG: get-board-id shouldn't be called in compile time!")))
+
+(define-primitive (cons)
+  (lambda (x y)
+    (gen-constant (cons x y))))
