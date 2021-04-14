@@ -123,6 +123,9 @@
     cons ; 16 + 15
     car ; 16 + 16
     cdr ; 16 + 17
+    read-char ; 16 + 18
+    read-string ; 16 + 19
+    list->string ; 16 + 20
     ))
 
 (define (print-primitives)
@@ -139,10 +142,11 @@
                 (primitive-name p)))))
 
 (define *inapplicable-primitive*
-  '(halt return display restore usleep device-configure! gpio-set! gpio-toggle! get-board-id))
+  '(halt return display restore usleep device-configure! gpio-set! gpio-toggle!
+         get-board-id read-char read-string))
 
 (define (applicable-primitive? p)
-  (not (memq (primitive-name p) *inapplicable-primitive* )))
+  (not (memq (primitive-name p) *inapplicable-primitive*)))
 
 ;; halt can associate with primitive `halt', its activity is TOS.
 (define-primitive (pop)
@@ -274,3 +278,15 @@
 (define-primitive (cdr)
   (lambda (o)
     (gen-constant (cdr o))))
+
+(define-primitive (read-char)
+  (lambda _
+    (throw 'laco-error 'prim:read-char "BUG: read-char shouldn't be called in compile time!")))
+
+(define-primitive (read-string)
+  (lambda _
+    (throw 'laco-error 'prim:string "BUG: read-string shouldn't be called in compile time!")))
+
+(define-primitive (list->string)
+  (lambda _
+    (throw 'laco-error 'prim:list->string "BUG: list->string shouldn't be called in compile time!")))
