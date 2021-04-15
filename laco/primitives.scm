@@ -125,7 +125,8 @@
     cdr ; 16 + 17
     read-char ; 16 + 18
     read-string ; 16 + 19
-    list->string ; 16 + 20
+    read-line ; 16 + 20
+    list->string ; 16 + 21
     ))
 
 (define (print-primitives)
