@@ -304,7 +304,7 @@
                        ,(car rest) (lambda () (and ,@(cdr rest))))))))))
     (('quote s)
      (match s
-       ((or (? string?) (? number?) (? symbol?))
+       ((or (? string?) (? number?) (? symbol?) (? char?))
         (gen-constant s))
        ((? list?) (parse-it `(list ,@s)))
        (else (throw 'laco-error parse-it "quote: haven't support `~a'!" s))))

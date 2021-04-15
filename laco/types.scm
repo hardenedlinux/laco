@@ -91,19 +91,17 @@
      ((pair? x) 'pair)
      ((list? x) 'list)
      ((vector? x) 'vector)
+     ((char? x) 'char)
      ((unspecified? x) 'unspecified)
      (else (throw 'laco-error 'detect-literal-type "Invalid literal type!" x))))))
 
 (define *laco/unspecified* (make-constant 'unspecified 'unspecified))
-(define *laco/chars* (list->vector
-                      (map (lambda (i) (make-constant (integer->char i) 'char))
-                           (iota 128))))
+
 (define *laco/true* (make-constant #t 'boolean))
 (define *laco/false* (make-constant #f 'boolean))
 
 (define *global-constant-type*
   `((unspecified . ,(lambda (_) *laco/unspecified*))
-    (char . ,(lambda (c) (vector-ref *laco/chars* (char->integer c))))
     (boolean . ,(lambda (b) (if b *laco/true* *laco/false*)))))
 
 (define (global-constant-type? t)
@@ -127,7 +125,7 @@
 ;; NOTE: not all constant are immediate, e.g, strings are constant
 ;;       but not immediate.
 (define *immediate-type-nodes*
-  '(integer char boolean pair list string vector))
+  '(integer char boolean pair list string vector char))
 (define (is-immediate-node? x)
   (and (constant? x)
        (memq (constant-type x) *immediate-type-nodes*)))

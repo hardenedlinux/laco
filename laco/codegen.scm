@@ -90,6 +90,8 @@
      (emit-string-object s))
     (($ keyword-object _ s)
      (emit-keyword-object s))
+    (($ char-object _ c)
+     (emit-char-object c))
     (($ symbol-object _ s)
      (emit-symbol-object s))
     (($ boolean-object _ b)

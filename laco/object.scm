@@ -111,10 +111,9 @@
    (size positive?)
    (value list?)))
 
-;; We store char as small integer
 (define-typed-record char-object (parent object)
   (fields
-   (value integer?)))
+   (value char?)))
 
 (define-typed-record string-object (parent object)
   (fields
@@ -164,7 +163,7 @@
     (match (constant-type c)
       ('integer (make-integer-object '() val))
       ('list (make-list-object '() val))
-      ('char (make-integer-object '() val))
+      ('char (make-char-object '() val))
       ('real (make-real-object '() val))
       ('complex (make-complex-object '() val))
       ('rational (make-rational-object '() val))

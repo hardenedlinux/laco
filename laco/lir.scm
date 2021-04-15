@@ -492,6 +492,7 @@
     (($ complex-object _ value) `(complex ,value))
     (($ string-object _ value) `(string ,value))
     (($ keyword-object _ value) `(keyword ,value))
+    (($ char-object _ value) `(char ,value))
     (($ symbol-object _ value) `(symbol ,value))
     (($ boolean-object _ value) `(boolean ,(if value 'true 'false)))
     (($ prim-object _ p) `(primitive ,(primitive-name p)))

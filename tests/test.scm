@@ -48,5 +48,6 @@
 (check "pair car cdr" "pair-car-cdr")
 (check "list append" "list-append")
 (check "list car cdr" "list-car-cdr")
+(check "char print" "char-print")
 
 (test-end "test-suite")

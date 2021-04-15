@@ -39,6 +39,7 @@
             complex-obj-encode
             string-obj-encode
             keyword-obj-encode
+            char-obj-encode
             boolean-obj-encode
             symbol-encode
             prim-obj-encode
@@ -276,6 +277,13 @@
   (let ((bv (make-bytevector 1 0)))
     (bytevector-u8-set! bv 0 (logior (ash #b1110 4) value))
     (label-counter 1)
+    bv))
+
+(define (char-obj-encode ci)
+  (let ((bv (make-bytevector 2 0)))
+    (bytevector-u8-set! bv 0 #b11100011)
+    (bytevector-u8-set! bv 1 ci)
+    (label-counter 2)
     bv))
 
 (define (pair-obj-encode)

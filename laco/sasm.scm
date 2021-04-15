@@ -97,6 +97,8 @@
         (format port "~a(push-keyword-object ~a) ; ~a~%" (indent-spaces) k descp))
        ((('push-symbol-object s) . descp)
         (format port "~a(push-symbol-object ~a) ; ~a~%" (indent-spaces) s descp))
+       ((('push-char-object s) . descp)
+        (format port "~a(push-char-object #\\~a) ; ~a~%" (indent-spaces) s descp))
        ((('free label offset) . descp)
         (format port "~a(free ~a ~a) ; ~a~%" (indent-spaces) (drop-hash label)
                 offset descp))
@@ -155,6 +157,9 @@
 (define-public (emit-string-object s)
   (sasm-emit `((push-string-object ,s) . "")))
 
+(define-public (emit-char-object c)
+  (sasm-emit `((push-char-object ,c) . "")))
+
 (define-public (emit-keyword-object s)
   (sasm-emit `((push-keyword-object ,s) . "")))
 
@@ -175,12 +180,6 @@
   (if b
       (sasm-true)
       (sasm-false)))
-
-(define-public (emit-char c)
-  (if (char? c)
-      (sasm-emit
-       `((push-char-const ,(char->integer c)) . ,(format #f "Char `~a'" c)))
-      (throw 'laco-error emit-char "Invalid char value!" c)))
 
 (define-public (emit-closure mode arity frame-size entry-label)
   (sasm-emit `((closure ,mode ,arity ,frame-size ,entry-label)

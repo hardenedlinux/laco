@@ -263,6 +263,11 @@
 (define-public (push-keyword-object s)
   (keyword-obj-encode s))
 
+(define-public (push-char-object c)
+  (when (not (char? c))
+    (throw 'laco-error push-char-object "Invalid char `~a'!" c))
+  (char-obj-encode (char->integer c)))
+
 (define-public (push-list-object size)
   (collection-obj-encode 7 size))
 
