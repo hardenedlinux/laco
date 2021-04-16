@@ -144,7 +144,7 @@
 
 (define *inapplicable-primitive*
   '(halt return display restore usleep device-configure! gpio-set! gpio-toggle!
-         get-board-id read-char read-string))
+         get-board-id read-char read-string read-line))
 
 (define (applicable-primitive? p)
   (not (memq (primitive-name p) *inapplicable-primitive*)))
