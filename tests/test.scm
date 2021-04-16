@@ -51,5 +51,6 @@
 (check "char print" "char-print")
 (check "list->string" "list_to_string")
 (check "Lambda Lifting 1" "lambda-lifting-1")
+(check "Lambda Lifting 2" "lambda-lifting-2")
 
 (test-end "test-suite")

@@ -192,13 +192,16 @@
       (else
        (cc (cfs (lambda/k-body (app/k-func expr)) args es)))))
     (($ app/k ($ cps _ kont name attr) f args)
-     (make-app/k (list kont name attr)
-                 (cc f)
-                 (map (lambda (e) (cc e (if (and (primitive? f)
-                                                 (lambda/k? e))
-                                            'closure-in-pcall
-                                            'closure)))
-                      args)))
+     (let ((new-attr (if (kont-eq? kont f)
+                         (assoc-set! attr 'keep-result? #t)
+                         attr)))
+       (make-app/k (list kont name new-attr)
+                   (cc f)
+                   (map (lambda (e) (cc e (if (and (primitive? f)
+                                                   (lambda/k? e))
+                                              'closure-in-pcall
+                                              'closure)))
+                        args))))
     (($ assign/k _ v e)
      (assign/k-var-set! expr (cc v))
      (assign/k-expr-set! expr (cc e))
