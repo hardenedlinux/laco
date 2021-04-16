@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020
+;;  Copyright (C) 2020-2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -68,6 +68,7 @@
          ;; If the closure capture nothing, then lift it as a global function
          (let ((cname (new-id "#lifted-")))
            (top-level-set! (id-name cname) helper-proc)
+           (set-fv-in-globals! (id-name cname))
            (new-gvar cname)))
         (else
          (closure/k-body-set! expr (ll body))

@@ -50,5 +50,6 @@
 (check "list car cdr" "list-car-cdr")
 (check "char print" "char-print")
 (check "list->string" "list_to_string")
+(check "Lambda Lifting 1" "lambda-lifting-1")
 
 (test-end "test-suite")
