@@ -49,5 +49,6 @@
 (check "list append" "list-append")
 (check "list car cdr" "list-car-cdr")
 (check "char print" "char-print")
+(check "list->string" "list_to_string")
 
 (test-end "test-suite")
