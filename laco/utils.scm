@@ -92,6 +92,7 @@
             global-index
             set-fv-in-globals!
             appears-in-globals
+            remove-fvs!
             keyword->string))
 
 (define (newsym sym) (gensym (symbol->string sym)))
@@ -388,8 +389,17 @@
   (list-index (lambda (p) (eq? k (car p))) (queue-slots *globals*)))
 
 (define *fv-in-globals* (make-hash-table))
-(define (set-fv-in-globals! k) (hash-set! *fv-in-globals* k #t))
-(define (appears-in-globals k) (hash-ref *fv-in-globals* k))
+(define (set-fv-in-globals! k)
+  (hash-set! *fv-in-globals* k (1+ (hash-ref *fv-in-globals* k 0))))
+(define (appears-in-globals k)
+  (hash-ref *fv-in-globals* k))
+(define (remove-fvs! fvs)
+  (for-each (lambda (fv)
+              (let ((cnt (hash-ref *fv-in-globals* fv)))
+                (if (= cnt 1)
+                    (hash-remove! *fv-in-globals* fv)
+                    (hash-set! *fv-in-globals* fv (1- cnt)))))
+            fvs))
 
 (define (keyword->string k)
   (symbol->string (keyword->symbol k)))

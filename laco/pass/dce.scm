@@ -104,6 +104,7 @@
           (fv (free-vars expr)))
       (for-each (lambda (k)
                   (when (not (appears-in-globals k))
+                    (remove-fvs! (map id-name (free-vars (top-level-ref k))))
                     (top-level-delete! k)))
                 (lset-difference eq? funcs (map id-name fv)))
       expr))
