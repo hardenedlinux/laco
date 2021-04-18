@@ -291,7 +291,7 @@
               frees (iota len))
     ht))
 
-(define* (cps->lir expr #:key (cur-def #f) (mode 'push) (keep-ret-context? #f))
+(define* (cps->lir expr #:key (cur-def #f) (mode 'push) (keep-ret-context? #t))
   (match expr
     (($ lambda/k ($ cps _ kont name attr) args body)
      (let ((env (closure-ref (id-name name)))

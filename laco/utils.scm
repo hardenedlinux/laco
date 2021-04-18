@@ -305,7 +305,7 @@
 ;;       so we can use label to indicate the stack frame.
 (define (label-back-index label)
   (let ((ll (queue-slots *label-queue*)))
-    ;; (pk "ll" ll label)
+    (pk "ll" ll label)
     (cond
      ((list-index (lambda (x) (eq? x label)) ll) => identity)
      (else (throw 'laco-error label-back-index

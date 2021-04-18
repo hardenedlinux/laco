@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020
+;;  Copyright (C) 2020-2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -57,7 +57,8 @@
        (lambda/k-body-set! expr (tco e tail?))
        expr))
     (($ seq/k _ exprs)
-     (seq/k-exprs-set! expr (tag-tail-call! exprs))
+     (seq/k-exprs-set! expr (map tco exprs))
+     ;;(seq/k-exprs-set! expr (tag-tail-call! exprs))
      expr)
     (($ app/k ($ cps _ kont _ _) f (($ seq/k _ exprs)))
      (=> failed!)
@@ -93,7 +94,11 @@
       ((and tail-body? (kont-eq? kont f))
        ;; (pk "case-2" (cps->expr expr))
        ;; CASE (k args ...) -> tail-call
-       (cps-property-set! expr 'tail-call #t)))
+       ;; TODO: There're only limited cases that can set tail-call.
+       ;;       1. No any locals
+       ;;       2. In tail body
+       ;;(cps-property-set! expr 'tail-call #t)
+       #t))
      (app/k-func-set! expr (tco f))
      (app/k-args-set! expr (map tco args))
      expr)

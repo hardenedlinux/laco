@@ -38,6 +38,7 @@
 (check "Fold branch 1" "fold-branch-1")
 (check "Fold branch 2" "fold-branch-2")
 (check "Branch 1" "branch-1")
+(check "Branch 2" "branch-2")
 (check "define* keys" "define-star-keys")
 (check "define* optionals" "define-star-opts")
 (check "define* keys and -opts" "define-star-keys-opts")
@@ -52,5 +53,7 @@
 (check "list->string" "list_to_string")
 (check "Lambda Lifting 1" "lambda-lifting-1")
 (check "Lambda Lifting 2" "lambda-lifting-2")
+(check "Closure 1" "closure-1")
+(check "Global expression 1" "global-expr-1")
 
 (test-end "test-suite")

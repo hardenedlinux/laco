@@ -47,9 +47,9 @@
 
 (define-public (label name)
   (label-register! name)
-  ;;(pk "label" name)
-  (when (is-normal-call? name)
-    (label-in! name))
+  (label-in! name)
+  ;; (when (is-normal-call? name)
+  ;;   (label-in! name))
   #vu8())
 
 (define-public (label-end name)

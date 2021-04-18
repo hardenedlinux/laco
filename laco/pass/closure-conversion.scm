@@ -100,7 +100,9 @@
          (env-set! (id-name name) env)
          (case mode
            ((normal)
-            (make-lambda/k (list kont name attr) args (cc body)))
+            (if (is-escaped? expr)
+                (make-closure/k (list kont name attr) env (cc body 'closure))
+                (make-lambda/k (list kont name attr) args (cc body))))
            ((closure closure-in-pcall)
             ;; NOTE:
             ;; 1. Counting frame size for each closure env in lir

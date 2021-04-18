@@ -555,9 +555,6 @@
      (let ((x (new-id "#const-"))
            (cst (new-constant/k c)))
        (new-letval/k x cst (new-app/k cont x #:kont cont) #:kont cont)))
-    ;; TODO: Add more:
-    ;; set!
-    ;; collection-set! collection-ref
     (else (throw 'laco-error 'ast->cps "Wrong expr: " expr))))
 
 (define* (cps->expr cpse)
@@ -571,7 +568,7 @@
     (($ lambda/k _ args body)
      `(lambda (,@(map cps->expr args)) ,(cps->expr body)))
     (($ closure/k _ env body)
-     `(lambda (,@(map id-name (env->args env))) ,(cps->expr body)))
+     `(closure (lambda (,@(map id-name (env->args env))) ,(cps->expr body))))
     (($ branch/k _ cnd b1 b2)
      `(if ,(cps->expr cnd) ,(cps->expr b1) ,(cps->expr b2)))
     (($ collection/k _ var type size value)

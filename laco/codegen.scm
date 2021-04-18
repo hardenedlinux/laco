@@ -54,6 +54,18 @@
        (else (throw 'laco-error gen-closure-frame "Invalid item `~a'!" x))))
    (get-ordered-frees closure-label)))
 
+(define init-hook-seq (new-queue))
+(define (gen-init-hook)
+  (for-each (lambda (s)
+              (match s
+                ((k proc label exprs)
+                 (sasm-label-begin proc label)
+                 (for-each emit-sasm exprs)
+                 (emit-global-assign k)
+                 (sasm-label-end proc label))
+                (else (throw 'laco-error gen-init-hook "Invalid pattern `~a'!" s))))
+            (queue->list init-hook-seq)))
+
 ;; lir -> unspecified
 (define (emit-sasm lir)
   (match lir
@@ -70,6 +82,8 @@
      (sasm-label-end #f label))
     (($ insr-proc _ proc label _ _ lexprs)
      (sasm-label-begin proc label)
+     (when (string=? label "#____principio")
+       (gen-init-hook))
      (map emit-sasm lexprs)
      (sasm-label-end proc label))
     (($ insr-prelude _ proc label mode arity)
@@ -164,6 +178,10 @@
        (($ insr-proc _ proc label _ arity _)
         (global-label-register! k label)
         (emit-sasm (make-proc-object '() (symbol->string k) arity label)))
+       (($ insr-label _ proc label exprs)
+        (global-label-register! k label)
+        (emit-integer-object 0)
+        (queue-in! init-hook-seq (list k proc label exprs)))
        (else (throw 'laco-error gen-sasm "BUG: Invalid global `~a'" v)))))
   (sasm-global-end)
 
