@@ -60,9 +60,9 @@
 
     (define (ble-reset!)
       ;; cut down power of BLE module for 50ms
-      (gpio-set! 'dev_gpio_ble_disable 1)
+      (gpio-set! 'dev_gpio_ble_disable #t)
       (usleep 50000)
-      (gpio-set! 'dev_gpio_ble_disable 0))
+      (gpio-set! 'dev_gpio_ble_disable #f))
     (define (ble-enable!)
       (ble-reset!)
       ;; FR8016 firmware need to have 87.5ms to 93.75ms before receive AT command
