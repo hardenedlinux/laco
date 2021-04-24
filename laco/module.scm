@@ -48,16 +48,6 @@
 ;;       well when we implement module import/export.
 (define defaults
   '(
-    (define MMA8451_DEFAULT_ADDRESS 29) ; 0x1D
-    (define MMA8451_REG_WHOAMI 13) ; 0x0D
-    (define MMA8451_REG_CTRL_REG1 42) ; 0x2A
-    (define MMA8451_DEFAULT_ADDRESS 29) ; 0x1D
-    (define MMA8451_REG_WHOAMI 13) ; 0x0D
-    (define MMA8451_REG_CTRL_REG1 42) ; 0x2a
-    (define MMA8451_DEFAULT_ADDRESS 29) ; 0x1D
-    (define MMA8451_REG_WHOAMI 13) ; 0x0D
-    (define MMA8451_REG_CTRL_REG1 42) ; 0x2A
-
     (define (ble-reset!)
       ;; cut down power of BLE module for 50ms
       (gpio-set! 'dev_gpio_ble_disable #t)
