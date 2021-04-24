@@ -15,6 +15,7 @@
 ;;  along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (laco pass tco)
+  #:use-module (laco utils)
   #:use-module (laco types)
   #:use-module (laco env)
   #:use-module (laco cps)
@@ -37,7 +38,9 @@
              (($ app/k ($ cps _ kont _ _) f (k _ ...))
               (=> failed!)
               (cond
-               ((and tail-body? (not (kont-eq? k prim:return)) (kont-eq? kont k))
+               ((and tail-body?
+                     (not (kont-eq? k prim:return)) (kont-eq? kont k)
+                     (not (is-ptc? (cps->name f))))
                 (cps-property-set! tail 'tail-call #t)
                 (tco tail #t))
                (else (failed!))))
@@ -52,18 +55,23 @@
                               (cps->expr (lambda/k-body expr))))))
             (tail? (kont-eq? (cps-kont expr) k2)))
        ;; CASE: (lambda (k args ...) (k ...)) -> tail-call
-       (when tail?
+       (when (and tail? (not (is-ptc? (cps->name e))))
          (cps-property-set! e 'tail-call #t))
        (lambda/k-body-set! expr (tco e tail?))
        expr))
     (($ seq/k _ exprs)
-     (seq/k-exprs-set! expr (map tco exprs))
-     ;;(seq/k-exprs-set! expr (tag-tail-call! exprs))
+     (if tail-body?
+         (seq/k-exprs-set! expr (tag-tail-call! exprs))
+         (seq/k-exprs-set! expr (map tco exprs)))
      expr)
     (($ app/k ($ cps _ kont _ _) f (($ seq/k _ exprs)))
      (=> failed!)
      (when (null? exprs)
        (throw 'laco-error tco "BUG: empty seq/k!"))
+     (when (and tail-body?
+                (eq? (current-def) (cps->name f))
+                (not (is-ptc? (cps->name f))))
+       (cps-property-set! expr 'tail-call #t))
      (let ((tail (car (list-tail exprs (1- (length exprs))))))
        (match tail
          (($ app/k _ _ (k _ ...))
@@ -75,10 +83,13 @@
          (else (failed!)))))
     (($ app/k ($ cps _ kont _ _) f args)
      (cond
+      ((and tail-body? (eq? (current-def) (cps->name f)))
+       ;; CASE:
+       ;; (let lp (...)
+       ;;   (lp args ...))
+       (ptc-register! (cps->name f))
+       (tag-proper-tail-recursion! expr))
       ((and (current-def) tail-body? (kont-eq? (car args) kont))
-       ;; (pk "case-1" (cps->expr expr))
-       ;; (pk "current-def" (current-def))
-       ;; (pk "cps->name" (cps->name f))
        ;; CASE:
        ;; 1. tail-body
        ;; 2. k is current-kont
@@ -90,6 +101,7 @@
        ;;       Fortunately, we can rely on function inlining to achive the same
        ;;       optimizing to avoid a stack frame.
        (when (eq? (current-def) (cps->name f))
+         (ptc-register! (cps->name f))
          (tag-proper-tail-recursion! expr)))
       ((and tail-body? (kont-eq? kont f))
        ;; (pk "case-2" (cps->expr expr))
@@ -113,6 +125,13 @@
      expr)
     (($ lambda/k _ _ body)
      (cond
+      ((closure-was-named-let? expr)
+       => (lambda (def)
+            (let ((renamed-def (after-rename def)))
+              (parameterize ((current-def renamed-def))
+                ;;(pk "000000000000000" def renamed-def)
+                ;;(read)
+                (lambda/k-body-set! expr (tco body #t))))))
       ((and (seq/k? body) (not (null? (seq/k-exprs body))))
        (let* ((el (reverse (seq/k-exprs body)))
               (tail (car el))

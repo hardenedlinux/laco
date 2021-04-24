@@ -71,6 +71,7 @@
 (define (env-set! name e) (hash-set! *env-table* name e))
 
 (define* (cc expr #:optional (mode 'normal) #:key (finish? #f))
+  ;;(pk "cc" (cps->expr expr))
   (match expr
     (($ app/k _ f (($ lambda/k ($ cps _ kont name attr) (k) body) args ...))
      (=> failed!)
@@ -145,7 +146,7 @@
                         (cc func)
                         (cc body)))))
     (($ letcont/k ($ bind-special-form/k ($ cps _ kont name attr) jname jcont body))
-     ;; 1. In closure-conversion, we eliminate all letcont/k, the bindings must be
+     ;; 1. In closure-conversion, we eliminate all letcont/k, the bindings will be
      ;;    merged into the current-env.
      ;; 2. For non-escaping situation, we perform inline to eliminate letcont/k.
      ;;    For escaping, we will convert the escaped closure to closure/k.
@@ -155,42 +156,39 @@
      ;;    assignment an instruction.
      ;; 4. Although we can set bindings to global, and it's safe because of
      ;;    alpha-renaming, however, it can't be recycled by GC when the scope ends.
-     (let ((env (if (toplevel? (current-env))
-                    (new-env (id-name name) '() (fix-fv (free-vars expr)))
-                    (current-env))))
-       (when (toplevel? (current-env))
-         (extend-env! (current-env) env)
-         (closure-set! (id-name name) env))
-       (parameterize ((current-env env))
-         (env-set! (id-name name) env)
-         ;; TODO:
-         ;; 1. Don't inline directly
-         ;; 2. Push the args to locals
-         (cc (cfs body
-                  (list jname)
-                  (list jcont))))))
+     (cc (cfs body
+              (list jname)
+              (list jcont))))
     (($ letval/k ($ bind-special-form/k ($ cps _ kont name attr) var value body))
      (env-local-push! (current-env) var)
      (make-letval/k (list kont name attr)
                     var
                     (cc value)
                     (cc body)))
-    (($ app/k _ ($ lambda/k _ args body) es)
+    (($ app/k _ ($ lambda/k ($ cps _ kont name attr) args body) es)
      (cond
       ((is-effect-var? (id-name (car args)))
-       (env-local-push! (current-env) (car args))
-       expr)
+       (let ((env (if (toplevel? (current-env))
+                      (new-env (id-name name) '() (fix-fv (free-vars body)))
+                      (current-env))))
+         (extend-env! (current-env) env)
+         (env-local-push! env (car args))
+         (parameterize ((current-env env))
+           (cc (make-seq/k (list kont name (assoc-set! attr 'env env))
+                           (append es (list body)))))))
       (else (cc (cfs body args es)))))
     (($ app/k _ ($ lambda/k _ args ($ seq/k ($ cps _ kont name attr) exprs)) es)
      (cond
       ((is-effect-var? (id-name (car args)))
-       (env-local-push! (current-env) (car args))
-       (make-seq/k
-        (list kont name attr)
-        ;; TODO: Seperate args and locals, and when we push locals,
-        ;;       we have to fix the vm->sp.
-        `(,(new-local (car args) (cc (car es)))
-          ,@(map cc exprs))))
+       (let ((env (new-env (id-name name) '() (fix-fv (free-vars expr)))))
+         (env-local-push! env (car args))
+         (parameterize ((current-env env))
+           (make-seq/k
+            (list kont name attr)
+            ;; TODO: Seperate args and locals, and when we push locals,
+            ;;       we have to fix the vm->sp.
+            `(,(new-local (car args) (cc (car es)))
+              ,@(map cc exprs))))))
       (else
        (cc (cfs (lambda/k-body (app/k-func expr)) args es)))))
     (($ app/k ($ cps _ kont name attr) f args)
@@ -219,7 +217,7 @@
             (name (id-name id)))
        (cond
         ((top-level-ref name) (new-gvar id)) ; check if it's global
-        ((not (toplevel? env))         ; check if it's local var
+        ((not (toplevel? env)) ; check if it's local var
          (cond
           ((bindings-index env id)
            => (lambda (offset)
@@ -250,8 +248,14 @@
      (bind-special-form/k-body-set!
       expr (var-conversion (bind-special-form/k-body expr)))
      expr)
-    (($ seq/k _ exprs)
-     (seq/k-exprs-set! expr (map var-conversion exprs))
+    (($ seq/k ($ cps _ _ _ attr) exprs)
+     (cond
+      ((assoc-ref attr 'env)
+       => (lambda (env)
+            (parameterize ((current-env env))
+              (scoped-label! (cps->name-string expr))
+              (seq/k-exprs-set! expr (map var-conversion exprs)))))
+      (else (seq/k-exprs-set! expr (map var-conversion exprs))))
      expr)
     (($ branch/k _ cnd b1 b2)
      (branch/k-cnd-set! expr (var-conversion cnd))
@@ -267,6 +271,7 @@
      (collection/k-value-set! expr (map var-conversion value))
      expr)
     (($ assign/k _ v e)
+     (assign/k-var-set! expr (var-conversion v))
      (assign/k-expr-set! expr (var-conversion e))
      expr)
     ((? id?) expr)

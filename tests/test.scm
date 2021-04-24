@@ -35,6 +35,8 @@
 (check "Simple sequence printing" "simple-seq-print")
 (check "GCD" "gcd")
 (check "Symbol list" "symbol-list")
+(check "Integer list" "int-list")
+(check "Variables in list" "var-list")
 (check "Fold branch 1" "fold-branch-1")
 (check "Fold branch 2" "fold-branch-2")
 (check "Branch 1" "branch-1")
@@ -55,5 +57,7 @@
 (check "Lambda Lifting 2" "lambda-lifting-2")
 (check "Closure 1" "closure-1")
 (check "Global expression 1" "global-expr-1")
+(check "Named Let Loop" "named-let-loop")
+(check "Named Let Loop in Function" "named-let-loop-in-func")
 
 (test-end "test-suite")

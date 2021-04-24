@@ -127,6 +127,20 @@
                  (make-call #f (make-ref #f 'append) (list ll e)))))
           (else (lp (cdr next) (cons (car next) ret)))))))
 
+(define (extract-all-local-defs body)
+  (let lp ((next body) (defs '()) (fixed-body '()))
+    (match next
+      (()
+       (values (reverse defs) fixed-body))
+      ((('define v e) rest ...)
+       (lp rest (cons (list v e) defs) fixed-body))
+      ((('begin e ...) rest ...)
+       (pk e rest)
+       (lp (append e rest) defs fixed-body))
+      (else (lp (cdr next) defs `(,@fixed-body ,(car next)))))))
+
+(define current-def (make-parameter #f))
+
 ;; NOTE: we don't support forward-reference, although I'm willing to...
 (define* (parse-it expr #:key (pos 'toplevel) (body-begin? #f) (use 'test) (op? #f))
   (match expr
@@ -209,19 +223,22 @@
           (parse-it `(if ,tst
                          (begin ,@rhs)
                          (cond ,@rest)))))))
-    (('lambda pattern body body* ...)
-     (let* ((ids (extract-ids pattern))
-            (has-opt? (or (pair? pattern) (symbol? pattern))))
-       (make-closure (parse-it `(begin ,body ,@body*)
-                               #:pos 'closure-level #:body-begin? #t)
-                     ids '() '() (length ids))))
+    (('lambda pattern body ...)
+     (let-values (((kvs fb) (extract-all-local-defs body)))
+       (let* ((ids (extract-ids pattern))
+              (has-opt? (or (pair? pattern) (symbol? pattern))))
+         (make-closure (parse-it (if (null? kvs)
+                                     `(begin ,@fb)
+                                     `(letrec* ,kvs (begin ,@fb)))
+                                 #:pos 'closure-level #:body-begin? #t)
+                       ids '() '() (length ids) (current-def)))))
     (('lambda* pattern body body* ...)
      (let ((ids (extract-ids pattern)))
        (let-values (((keys opts) (extract-keys pattern)))
          (make-closure (parse-it `(begin ,body ,@body*)
                                  #:pos 'closure-level #:body-begin? #t)
                        (append ids (map car opts) (map car keys))
-                       keys opts (length ids)))))
+                       keys opts (length ids) (current-def)))))
     (('begin body ...)
      (cond
       ((and body-begin? (eq? pos 'closure-level))
@@ -237,8 +254,8 @@
                          `(begin ,@rest) defs)
                    #:pos 'closure-level #:body-begin? #f)))
       (else
-       ;; definition is in begin expr, but not in closure-toplevel, so the
-       ;; definition is top level definition.
+       ;; If the definition is in begin expr, but not in closure-toplevel, this
+       ;; definition is the top level definition.
        (let lp((next body) (p #t) (ret '()))
          (cond
           ((null? next)
@@ -252,26 +269,31 @@
               (lp (cdr next) p (cons (parse-it (car next) #:body-begin? p) ret)))
              (else (lp (cdr next) #f
                        (cons (parse-it (car next) #:body-begin? #f) ret))))))))))
-    (('letrec ((ks vs) ...) body ...)
+    (((or 'letrec 'letrec*) ((ks vs) ...) body ...)
      (letrec ((dispatch
                (lambda (kk vv)
                  (cond
                   ((and (null? kk) (null? vv)) `(begin ,@body))
-                  (else `(let ((,(car kk) #f))
-                           ;; NOTE: make sure id is defined before val
-                           (set! ,(car kk) ,(car vv))
-                           ,(dispatch (cdr kk) (cdr vv))))))))
+                  (else
+                   `(let ((,(car kk) #f))
+                      ;; NOTE: make sure id is defined before val
+                      (set! ,(car kk) ,(car vv))
+                      ,(dispatch (cdr kk) (cdr vv))))))))
        (parse-it (dispatch ks vs))))
     (('let ((ks vs) ...) body ...) ; common let
      ;; NOTE: All bindings become single binding here by our CPS design
-     (fold (lambda (k v p) (make-binding p (parse-it k) (parse-it v)))
-           (parse-it `(begin ,@body)) ks vs))
+     (let-values (((kvs fb) (extract-all-local-defs body)))
+       (fold (lambda (k v p) (make-binding p (parse-it k) (parse-it v)))
+             (parse-it (if (null? kvs)
+                           `(begin ,@fb)
+                           `(letrec* ,kvs (begin ,@fb)))) ks vs)))
     (('let id ((ks vs) ...) body ...) ; named let
-     (parse-it `(letrec ((,id (lambda ,@ks ,@body))) (,id ,@vs))))
-    (('let () body ...)
-     (parse-it `(begin ,@body)))
-    (('let* () body ...)
-     (parse-it `(let () ,@body)))
+     (let-values (((kvs fb) (extract-all-local-defs body)))
+       (parameterize ((current-def id))
+         (parse-it `(letrec ((,id (lambda ,@ks ,(if (null? kvs)
+                                                    `(begin ,@fb)
+                                                    `(letrec* ,kvs (begin ,@fb))))))
+                      (,id ,@vs))))))
     (('let* ((ks vs) ...) body ...)
      (letrec ((dispatch
                (lambda (kk vv)
@@ -306,7 +328,7 @@
      (match s
        ((or (? string?) (? number?) (? symbol?) (? char?))
         (gen-constant s))
-       ((? list?) (parse-it `(list ,@s)))
+       ((? list?) (parse-it `(list ,@(map _quasiquote s))))
        (else (throw 'laco-error parse-it "quote: haven't support `~a'!" s))))
     (('unquote k) (parse-it k))
     (('unquote-splicing s) `(unquote-splicing ,(parse-it s)))
@@ -314,7 +336,7 @@
      (let ((lst (map parse-it (_quasiquote q))))
        (list-comprehension->ast lst)))
     (('cons x y) (make-collection (map parse-it (list x y)) 'pair 2))
-    (('list e ...) (make-collection (map parse-it (_quasiquote e))
+    (('list e ...) (make-collection (map parse-it e)
                                     'list (length e)))
     (('vector e ...) (make-collection (map parse-it e) 'vector (vector-length e)))
     ((op args ...)

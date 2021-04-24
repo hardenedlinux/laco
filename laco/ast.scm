@@ -69,7 +69,8 @@
 ;; calling a function, ast is a list: (func args ...)
 ;; we don't distinct prim call in AST
 (define-record-type call (parent ast) (fields op args))
-(define-record-type closure (parent ast) (fields params keys opts nargs)) ; closure
+(define-record-type closure (parent ast)
+                    (fields params keys opts nargs def)) ; closure
 (define-record-type seq (parent ast))              ; sequence
 (define-record-type macro (parent ast) (fields expander))
 (define-record-type collection (parent ast) (fields type size))
@@ -102,7 +103,7 @@
        ((c b1 b2) `(if ,(ast->src c) ,(ast->src b1 #f) ,(ast->src b2 #f)))
        (else (throw 'laco-error "I don't know what's wrong dude!!!" subx))))
     (($ call _ op args) `(,(ast->src op) ,@(map ast->src args)))
-    (($ closure ($ ast _ subx) params keys opts _)
+    (($ closure ($ ast _ subx) params keys opts _ _)
      (define (ids-filter p o k)
        (filter (lambda (v) (not (or (assoc-ref o v) (assoc-ref k v)))) p))
      (let ((o (map (lambda (e) (list (car e) (ast->src (cadr e)))) opts))
@@ -120,5 +121,5 @@
       (hide-begin? (map ast->src subx))
       (else `(begin ,@(map ast->src subx)))))
     (($ binding ($ ast _ body) var value)
-     `(let ((,(ast->src var) ,(ast->src value))) ,(ast->src body)))
+     `(let ((,(ast->src var) ,(ast->src value))) ,(ast->src body #f)))
     (else node)))

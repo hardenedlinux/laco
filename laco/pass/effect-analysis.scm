@@ -19,7 +19,9 @@
   #:use-module (laco types)
   #:use-module (laco utils)
   #:use-module (laco pass)
-  #:use-module (ice-9 match))
+  #:use-module (ice-9 match)
+  #:use-module (srfi srfi-1)
+  #:export (body-has-effect?))
 
 ;; NOTE:
 ;; 1. Tag all variables that was operated by functions had side-effects
@@ -27,6 +29,13 @@
 (define *effect-funcs*
   '(set! list-set! vector-set! set-car! set-cdr! string-set!))
 (define (proc-has-effect? v) (memq v *effect-funcs*))
+
+(define (all-effect-vars lst)
+  (filter-map (lambda (v) (and (is-effect-var? v) v)) lst))
+
+(define (body-has-effect? expr)
+  (and=> (assoc-ref (cps-attr expr) 'effect-vars)
+         (compose not null?)))
 
 (define (ea expr)
   (match expr
@@ -49,8 +58,12 @@
      (branch/k-fbranch-set! expr (ea b2))
      expr)
     (($ lambda/k _ _ body)
-     (lambda/k-body-set! expr (ea body))
-     expr)
+     (let ((checked-body (ea body))
+           (all-vars (map id-name (all-ref-vars body))))
+       (pk "all-effect-vars" (all-effect-vars all-vars))
+       (cps-property-set! expr 'effect-vars (all-effect-vars all-vars))
+       (lambda/k-body-set! expr checked-body)
+       expr))
     (($ collection/k _ _ _ _ value)
      (collection/k-value-set! expr (map ea value))
      expr)

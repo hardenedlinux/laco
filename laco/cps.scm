@@ -111,6 +111,7 @@
             is-proper-tail-recursion?
             is-tail-call?
             is-escaped?
+            closure-was-named-let?
             clean-tail-call!
 
             top-level->src
@@ -348,6 +349,7 @@
      ((new->index eid)
       => (lambda (i) (list-ref new i)))
      (else eid)))
+  (for-each (lambda (o n) (renamed-keep! o (id-name n))) old new)
   (match expr
     (($ lambda/k _ fargs body)
      (cond
@@ -357,7 +359,7 @@
       ;; new binding, don't apply rename more deeply
       (else expr)))
     (($ assign/k _ v e)
-     (when (is-effect-var? (id-name v))
+     (when (and (not (null? old)) (is-effect-var? (id-name v)))
        (let ((i (new->index v)))
          (effect-var-register! (id-name (list-ref new i)))))
      (assign/k-var-set! expr (alpha-renaming v old new))
@@ -388,13 +390,17 @@
 
 (define* (comp-cps expr #:optional (cont prim:return))
   (match expr
-    (($ closure ($ ast _ body) params _ _ _)
+    (($ closure ($ ast _ body) params _ _ _ sym)
+     (renamed-register! sym)
      (let* ((fname (new-id "#func-"))
             (fk (new-id "#kont-"))
             (nv (map new-id params))
+            (attr (cond
+                   (sym => (lambda (nv) `((def . ,sym))))
+                   (else '())))
             (fun (new-lambda/k `(,fk ,@nv)
                                (alpha-renaming (ast->cps body fk) params nv)
-                               #:name fk #:kont fk)))
+                               #:name fk #:kont fk #:attr attr)))
        (new-letfun/k fname fun (new-app/k cont fname #:kont cont) #:kont cont)))
     (($ binding ($ ast _ body) ($ ref _ var) value)
      (let* ((jname (new-id "#jcont-"))
@@ -435,13 +441,17 @@
 (define* (ast->cps expr #:optional (cont prim:return))
   (match expr
     ;; FIXME: distinct value and function for the convenient of fun-inline.
-    (($ closure ($ ast _ body) params _ _ _)
+    (($ closure ($ ast _ body) params _ _ _ sym)
+     (renamed-register! sym)
      (let* ((fname (new-id "#func-"))
             (fk (new-id "#kont-"))
             (nv (map new-id params))
+            (attr (cond
+                   (sym => (lambda (nv) `((def . ,sym))))
+                   (else '())))
             (fun (new-lambda/k `(,fk ,@nv)
                                (alpha-renaming (ast->cps body fk) params nv)
-                               #:name fk #:kont fk)))
+                               #:name fk #:kont fk #:attr attr)))
        (new-letfun/k fname fun (new-app/k cont fname #:kont cont) #:kont cont)))
     (($ def ($ ast _ body) var)
      ;; NOTE: The local function definition should be converted to let-binding
@@ -470,7 +480,9 @@
                     (alpha-renaming (ast->cps body cont) (list var) (list nv))
                     #:kont cont)))
        (new-letcont/k jname jcont
-                      (alpha-renaming (ast->cps value jname) (list ov) (list nv))
+                      (alpha-renaming (ast->cps value jname)
+                                      (list (id-name ov))
+                                      (list nv))
                       #:kont cont)))
     (($ branch ($ ast _ (cnd b1 b2)))
      (let* ((kname (new-id "#kcont-"))
@@ -495,10 +507,10 @@
             (ev (new-id "#assign-val-"))
             (k (new-lambda/k
                 (list ev)
-                (new-app/k cont (new-assign/k vid ev))
+                (new-app/k cont (new-assign/k vid (comp-cps ev)))
                 #:name (new-id "#assign-") #:kont cont)))
        (effect-var-register! (id-name vid))
-       (ast->cps e k)))
+       (comp-cps e k)))
     (($ collection ($ ast _ vals) type size)
      (let ((cname (new-id "#c-"))
            (ex (map (lambda (_) (new-id "#e-")) vals)))
@@ -636,6 +648,9 @@
 
 (define (is-escaped? cexpr)
   (assoc-ref (cps-attr cexpr) 'escape))
+
+(define (closure-was-named-let? cexpr)
+  (assoc-ref (cps-attr cexpr) 'def))
 
 (define (top-level->src)
   (top-level->body-list (lambda (v e) `(define ,v ,(cps->expr e)))))

@@ -47,13 +47,16 @@
 
 (define-public (label name)
   (label-register! name)
-  (label-in! name)
-  ;; (when (is-normal-call? name)
-  ;;   (label-in! name))
+  ;;(label-in! name)
+  (when (not (is-pure-label? name))
+    ;;(is-normal-call? name)
+    ;;(pk "not pure lable" name) (read)
+    (label-in! name))
   #vu8())
 
 (define-public (label-end name)
-  (when (is-normal-call? name)
+  (when (not (is-pure-label? name))
+    ;;(is-normal-call? name)
     (label-out!))
   #vu8())
 
@@ -115,6 +118,7 @@
     ;; (format #t "call-free: 2~%")
     (let ((frame (make-bytevector 1 0))
           (f (label-back-index label)))
+      ;;(pk "call-free" f) (read)
       (when (and (< i 0) (>= i 64))
         (throw 'laco-error free "Invalid free offset `~a'" i))
       (when (and (< f 0) (>= i 64))

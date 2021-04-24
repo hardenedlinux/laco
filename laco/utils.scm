@@ -93,7 +93,16 @@
             set-fv-in-globals!
             appears-in-globals
             remove-fvs!
-            keyword->string))
+            keyword->string
+            pure-label!
+            is-pure-label?
+            after-rename
+            renamed-register!
+            renamed-keep!
+            scoped-label!
+            is-scoped-label?
+            is-ptc?
+            ptc-register!))
 
 (define (newsym sym) (gensym (symbol->string sym)))
 (define (new-label str) (symbol->string (gensym str)))
@@ -403,3 +412,29 @@
 
 (define (keyword->string k)
   (symbol->string (keyword->symbol k)))
+
+;; NOTE: scoped label is the label that has environment, for example:
+;;       (let () ...)
+(define *scoped-labels* (make-hash-table))
+(define (scoped-label! label) (hash-set! *scoped-labels* label #t))
+(define (is-scoped-label? label) (hash-ref *scoped-labels* label))
+
+;; NOTE: pure label is the label that has no environment, for example:
+;;       (begin ...)
+(define *pure-labels* (make-hash-table))
+(define (pure-label! label)
+  ;;(pk "pure-label!" label)
+  (hash-set! *pure-labels* (string->symbol (drop-hash label)) #t))
+(define (is-pure-label? label) (hash-ref *pure-labels* label))
+
+(define *renamed-vars* (make-hash-table))
+(define (after-rename sym) (hash-ref *renamed-vars* sym))
+(define (renamed-register! sym) (hash-set! *renamed-vars* sym 'named-let))
+(define (renamed-keep! old new)
+  (when (eq? 'named-let (hash-ref *renamed-vars* old))
+    ;; (pk "renamed-keep!" old new read)
+    (hash-set! *renamed-vars* old new)))
+
+(define *ptc-table* (make-hash-table))
+(define (is-ptc? name) (hash-ref *ptc-table* name))
+(define (ptc-register! name) (hash-set! *ptc-table* name #t))

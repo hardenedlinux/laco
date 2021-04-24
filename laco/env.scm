@@ -72,6 +72,7 @@
   (make-toplevel 'global #f #f #f (make-hash-table)))
 
 (define* (new-env name #:optional (params '()) (frees '()))
+  ;;(pk "new-env" name (map id-name params) (map id-name frees)) (read)
   (let ((bindings (list->queue params))
         (frees (list->queue frees)))
     (make-env name #f bindings frees)))
@@ -105,8 +106,10 @@
   (slot-index (ref env) (lambda (x) (id-eq? x id))))
 
 (define (bindings-index env k)
-  ;;(pk "bindings" (map (lambda (x) ((if (id? x) id-name primitive-name) x)) (car (env-bindings env))) (id-name k))
-  (id-index env env-bindings k))
+  ;; (pk "env name" (env-name env))
+  ;; (pk "bindings" (map (lambda (x) ((if (id? x) id-name primitive-name) x)) (car (env-bindings env))) (id-name k))
+  ;; (read)
+  (id-name k) (id-index env env-bindings k))
 
 (define (is-free-var? env k)
   ;;(pk "frees" (map (lambda (x) ((if (id? x) id-name primitive-name) x)) (car (env-frees env))) (id-name k))

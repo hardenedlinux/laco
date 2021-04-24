@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020
+;;  Copyright (C) 2020-2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -15,6 +15,7 @@
 ;;  along with this program. If not, see <http://www.gnu.org/licenses/>.
 
 (define-module (laco lpass reduce-labels)
+  #:use-module (laco utils)
   #:use-module (laco types)
   #:use-module (laco lir)
   #:use-module (laco pass)
@@ -58,11 +59,20 @@
                 ,@rest)))
      (rl lexpr))
     (($ insr-proc _ _ label _ _ (($ insr-label _ _ label2 lexprs2) rest ...))
-     (insr-proc-body-set!
-      lexpr
-      (map rl `(,@(map (lambda (e) (rename-label! e label2 label)) lexprs2)
-                ,@rest)))
-     (rl lexpr))
+     (cond
+      ((or (string=? label "#____principio") (is-scoped-label? label2))
+       ;; NOTE: Don't reduce the first label in `principio', since we may need to
+       ;;       fetch vars in the env of `principio'.
+       (insr-proc-body-set!
+        lexpr
+        (map rl (insr-proc-body lexpr)))
+       lexpr)
+      (else
+       (insr-proc-body-set!
+        lexpr
+        (map rl `(,@(map (lambda (e) (rename-label! e label2 label)) lexprs2)
+                  ,@rest)))
+       (rl lexpr))))
     (($ insr-label _ _ label lexprs)
      (insr-label-body-set! lexpr (map rl lexprs))
      lexpr)

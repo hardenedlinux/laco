@@ -23,6 +23,7 @@
   #:use-module (laco pass)
   #:use-module (laco pass normalize)
   #:use-module (laco pass closure-conversion)
+  #:use-module (laco pass effect-analysis)
   #:use-module (srfi srfi-1)
   #:use-module (ice-9 match))
 
@@ -92,13 +93,18 @@
     ((kont-eq? kont k)
     (elre b))
     (else (failed!))))
-    (($ app/k ($ cps _ kont name _) ($ lambda/k _ args1 body) args2)
+    (($ app/k ($ cps _ kont name _) ($ lambda/k ($ cps _ _ _ attr) args1 body) args2)
      ;; case-5: ((lambda params body) args) -> body[params/args]
-     (when (not (= (length args1) (length args2)))
+     (=> failed!)
+     (pk "attr" attr)
+     (cond
+      ((not (= (length args1) (length args2)))
        (throw 'laco-error elre "Arguments list isn't equal in lambda apply"))
-     ;; NOTE:
-     ;; 1. We eliminate lambda/k, so free-vars have to tweak.
-     (elre (cfs body args1 (map elre args2))))
+      ((body-has-effect? (app/k-func expr))
+       (failed!))
+      ;; NOTE:
+      ;; 1. We eliminate lambda/k, so free-vars have to tweak.
+      (else (elre (cfs body args1 (map elre args2))))))
     (($ app/k ($ cps _ kont _ _) f args)
      ;; case-6: (pcall (lambda (k args) ... (k expr)))
      ;;         -> (pcall (lambda (args) ... expr))
