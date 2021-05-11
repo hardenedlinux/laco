@@ -131,8 +131,9 @@
     i2c-write-byte! ; 16 + 23
     null? ; 16 + 24
     pair? ; 16 + 25
-    i2c-read-list! ; 16 + 26
-    i2c-write-list! ; 16 + 27
+    spi-transceive! ; 16 + 26
+    i2c-read-list! ; 16 + 27
+    i2c-write-list! ; 16 + 28
     ))
 
 (define (print-primitives)
@@ -151,7 +152,7 @@
 (define *inapplicable-primitive*
   '(halt return display restore usleep device-configure! gpio-set! gpio-toggle!
          get-board-id read-char read-string read-line i2c-read-byte! i2c-write-byte!
-         null? pair? i2c-read-list! i2c-write-list!))
+         null? pair? spi-transceive! i2c-read-list! i2c-write-list!))
 
 (define (applicable-primitive? p)
   (not (memq (primitive-name p) *inapplicable-primitive*)))
@@ -314,6 +315,11 @@
 (define-primitive (pair?)
   (lambda _
     (throw 'laco-error 'prim:get-board-id "BUG: pair? shouldn't be called in compile time!")))
+
+(define-primitive (spi-transceive!)
+  (lambda _
+    (throw 'laco-error 'prim:get-board-id "BUG: spi-transceive! shouldn't be called in compile time!")))
+
 (define-primitive (i2c-read-list!)
   (lambda _
     (throw 'laco-error 'prim:get-board-id "BUG: i2c-read-list! shouldn't be called in compile time!")))
