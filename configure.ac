@@ -1,7 +1,7 @@
 
 dnl -*- Autoconf -*-
 
-AC_INIT(laco, 0.3.0)
+AC_INIT(laco, 0.3.1)
 AC_SUBST(HVERSION, "\"0.2.0\"")
 AC_SUBST(AUTHOR, "\"Mu Lei known as NalaGinrut\"")
 AC_SUBST(COPYRIGHT, "'(2021)")
@@ -20,7 +20,7 @@ GUILE_PKG([3.0 2.2 2.0])
 GUILE_PROGS
 GUILE_SITE_DIR
 if test "x$GUILD" = "x"; then
-   AC_MSG_ERROR(['guild' binary not found; please check your guile-2.x installation.])
+AC_MSG_ERROR(['guild' binary not found; please check your guile-2.x installation.])
 fi
 
 dnl Hall auto-generated guile-module dependencies
