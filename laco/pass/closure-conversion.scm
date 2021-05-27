@@ -167,7 +167,8 @@
                     (cc body)))
     (($ app/k _ ($ lambda/k ($ cps _ kont name attr) args body) es)
      (cond
-      ((null? args) body)
+      ((null? args)
+       (cc (make-seq/k (list kont name attr) (append es (list body)))))
       ((is-effect-var? (id-name (car args)))
        (let ((env (if (toplevel? (current-env))
                       (new-env (id-name name) '() (fix-fv (free-vars body)))
