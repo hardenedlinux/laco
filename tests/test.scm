@@ -47,6 +47,7 @@
 (check "Constant keyword printing" "keyword-print")
 (check "let test 1" "let-1")
 (check "let* test 1" "let-star-1")
+(check "let* test 2" "let-star-optimized-out")
 (check "pair print" "pair-print")
 (check "pair car cdr" "pair-car-cdr")
 (check "list append" "list-append")
