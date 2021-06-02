@@ -157,8 +157,8 @@
 (define (rational-obj-encode data)
   (let ((bv (make-bytevector 6 0))
         (type (if (positive? data) 14 15))
-        (n (numerator data))
-        (d (denominator data)))
+        (n (abs (numerator data)))
+        (d (abs (denominator data))))
     (when (or (< n (- (1- (expt 2 15)))) (> data (1- (expt 2 15))))
       (throw 'laco-error rational-obj-encode
              "Rational number has invalid numerator object `~a', should be 16bit!"
