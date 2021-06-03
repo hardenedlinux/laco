@@ -323,11 +323,16 @@
 (define *intern-table* (new-queue))
 (define intern!
   (let ((count (new-counter)))
+    (define (exists? sym)
+      (any (lambda (s) (eq? (car s) sym)) (queue-slots *intern-table*)))
     (lambda (sym)
-      (let ((offset (count 0))
-            (size (1+ (string-length (symbol->string sym)))))
-        (count size)
-        (queue-in! *intern-table* (list sym offset size))))))
+      (cond
+       ((exists? sym) #t)
+       (else
+        (let ((offset (count 0))
+              (size (1+ (string-length (symbol->string sym)))))
+          (count size)
+          (queue-in! *intern-table* (list sym offset size))))))))
 (define (intern-offset sym)
   (car (assoc-ref (queue-slots *intern-table*) sym)))
 (define (symbol-table-size)
@@ -349,11 +354,11 @@
      (list
       cnt-bv
       size-bv
-      (map
-       (lambda (p)
-         (list (string->bytevector (symbol->string (car p)) "iso8859-1")
-               #vu8(0)))
-       (queue-slots *intern-table*))))))
+      (pk "symtab"(map
+                   (lambda (p)
+                     (list (string->bytevector (symbol->string (car p)) "iso8859-1")
+                           #vu8(0)))
+                   (queue-slots *intern-table*)))))))
 
 (define *effect-vars* (make-hash-table))
 (define (effect-var-register! v)
