@@ -58,6 +58,7 @@
 (check "Lambda Lifting 1" "lambda-lifting-1")
 (check "Lambda Lifting 2" "lambda-lifting-2")
 (check "Closure 1" "closure-1")
+(check "Closure 2" "closure-2")
 (check "Global expression 1" "global-expr-1")
 (check "Named Let Loop" "named-let-loop")
 (check "Named Let Loop in Function" "named-let-loop-in-func")

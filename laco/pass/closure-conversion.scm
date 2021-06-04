@@ -156,6 +156,7 @@
      ;;    assignment an instruction.
      ;; 4. Although we can set bindings to global, and it's safe because of
      ;;    alpha-renaming, however, it can't be recycled by GC when the scope ends.
+     ;; 5. Don't create env here.
      (cc (cfs body
               (list jname)
               (list jcont))))

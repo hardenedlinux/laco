@@ -1,0 +1,3 @@
+before test
+l = (test-function1)
+after test

@@ -354,11 +354,11 @@
      (list
       cnt-bv
       size-bv
-      (pk "symtab"(map
-                   (lambda (p)
-                     (list (string->bytevector (symbol->string (car p)) "iso8859-1")
-                           #vu8(0)))
-                   (queue-slots *intern-table*)))))))
+      (map
+       (lambda (p)
+         (list (string->bytevector (symbol->string (car p)) "iso8859-1")
+               #vu8(0)))
+       (queue-slots *intern-table*))))))
 
 (define *effect-vars* (make-hash-table))
 (define (effect-var-register! v)
