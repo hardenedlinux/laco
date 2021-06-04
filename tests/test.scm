@@ -29,6 +29,7 @@
 
 (check "Add" "add")
 (check "Rational Division" "rational-division")
+(check "Rational 1" "rational-1")
 (check "Fibonacci Sequence" "fibonacci")
 (check "Factorial" "factorial")
 (check "Nested calling" "nested-call")
