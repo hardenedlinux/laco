@@ -24,10 +24,8 @@
              "lpass"
              ((compiled-scheme-file "closure-capture-fv")
               (compiled-scheme-file "fv-lifting")
-              (compiled-scheme-file "reduce-labels")
               (compiled-scheme-file "remove-unused-captures")
               (scheme-file "remove-unused-captures")
-              (scheme-file "reduce-labels")
               (scheme-file "fv-lifting")
               (scheme-file "closure-capture-fv")))
             (directory

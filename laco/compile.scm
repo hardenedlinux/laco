@@ -153,7 +153,6 @@ Options:
   (define (do-optimize lexpr)
     (run-pass
      lexpr
-     reduce-labels
      free-vars-lifting
      remove-unused-captures
      closure-capture-free-vars))

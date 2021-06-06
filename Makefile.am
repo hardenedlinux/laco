@@ -38,7 +38,6 @@ SOURCES = laco.scm \
 	  laco/assembler/sasm.scm \
 	  laco/assembler/encode.scm \
 	  laco/lpass/remove-unused-captures.scm \
-	  laco/lpass/reduce-labels.scm \
 	  laco/lpass/fv-lifting.scm \
 	  laco/lpass/closure-capture-fv.scm \
 	  laco/pass/closure-conversion.scm \
