@@ -157,9 +157,26 @@
      ;; 4. Although we can set bindings to global, and it's safe because of
      ;;    alpha-renaming, however, it can't be recycled by GC when the scope ends.
      ;; 5. Don't create env here.
-     (cc (cfs body
-              (list jname)
-              (list jcont))))
+     (match expr
+       (($ letcont/k ($ bind-special-form/k _ jname
+                        ($ lambda/k _ (jargs) jbody)
+                        ($ app/k _ _ ((? constant/k? arg)))))
+        ;; For local let bindings
+        (=> failed!)
+        (cond
+         ((toplevel? (current-env))
+          (failed!))
+         (else
+          (let ((local (new-id "#local-")))
+            (env-local-push! (current-env) local)
+            (cc (make-seq/k
+                 (list kont name attr)
+                 (list
+                  arg
+                  (cfs jbody
+                       (list jargs)
+                       (list local)))))))))
+       (else (cc (cfs body (list jname) (list jcont))))))
     (($ letval/k ($ bind-special-form/k ($ cps _ kont name attr) var value body))
      (env-local-push! (current-env) var)
      (make-letval/k (list kont name attr)
@@ -231,9 +248,9 @@
                 (frees-index env id))
            values => (lambda (scope index)
                        (new-fvar id (env->name-string scope) index)))
-          (else (throw 'laco-error cc
+          (else (throw 'laco-error var-conversion
                        "Undefined local variable `~a'!" name))))
-        (else (throw 'laco-error cc
+        (else (throw 'laco-error var-conversion
                      "Undefined global variable `~a' in `~a'!"
                      name current-kont-label)))))
     (($ closure/k _ env body)
