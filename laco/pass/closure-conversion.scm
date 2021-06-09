@@ -157,10 +157,43 @@
      ;; 4. Although we can set bindings to global, and it's safe because of
      ;;    alpha-renaming, however, it can't be recycled by GC when the scope ends.
      ;; 5. Don't create env here.
+
+     ;; cases:
+     ;; 1. let-binding:
+     ;;    (letcont/k ((j (lambda (x) jbody)))
+     ;;      (j const-or-nonfunc))
+     ;;    ==> (begin
+     ;;          const-or-nonfunc as new-local
+     ;;          jbody[k/new-local])
+     ;;   NOTE: For function binding, we have letfun/k
+     ;;   E.g: (let ((x (list-ref '(1 2 3) 0)))
+     ;;          (display x))
+     ;;        ==> (letcont/k ((j (lambda (x0) (display x0))))
+     ;;              (j (list-ref '(1 2 3) 0)))
+     ;;        ==> (begin
+     ;;              (list-ref '(1 2 3) 0) as local-0
+     ;;              (display local-0))
+     ;;   NOTE: This conversion is necessary for appplicable-order before CFS.
+     ;;
+     ;; 2. let-binding evaluated value of a func
+     ;;    (letcont/k ((j (lambda (x0) jbody)))
+     ;;      (func[k] j))
+     ;;   E.g: (let ((x (func)))
+     ;;         (display x))
+     ;;        ==> (letcont/k ((j (lambda (x0) (display x0))))
+     ;;              (func[k] j))
+     ;;   NOTE: func[k] means CPS-converted func
+     ;;
+     ;; 3. common CPS
+     ;;    (letcont/k ((j (lambda (k) jbody))) (_ j))
+
      (match expr
        (($ letcont/k ($ bind-special-form/k _ jname
                         ($ lambda/k _ (jargs) jbody)
-                        ($ app/k _ _ ((? constant/k? arg)))))
+                        ($ app/k _ _ ((? (lambda (v)
+                                           (and (not (id-eq? v jname))
+                                                (not (lambda/k? v))))
+                                         arg)))))
         ;; For local let bindings
         (=> failed!)
         (cond
@@ -169,13 +202,16 @@
          (else
           (let ((local (new-id "#local-")))
             (env-local-push! (current-env) local)
-            (cc (make-seq/k
-                 (list kont name attr)
-                 (list
-                  arg
-                  (cfs jbody
-                       (list jargs)
-                       (list local)))))))))
+            (cc
+             (make-seq/k
+              (list kont name attr)
+              (list
+               arg
+               ;;,@(if (id? arg) '() (list arg))
+               ;;(cfs arg (list jname) (list prim:return))
+               (cfs jbody
+                    (list jargs)
+                    (list local)))))))))
        (else (cc (cfs body (list jname) (list jcont))))))
     (($ letval/k ($ bind-special-form/k ($ cps _ kont name attr) var value body))
      (env-local-push! (current-env) var)
