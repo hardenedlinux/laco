@@ -291,6 +291,13 @@
               frees (iota len))
     ht))
 
+(define (count-real-args env)
+  (length
+   (filter-map
+    (lambda (v)
+      (not (string-contains (id->string v) "local-")))
+    (queue-slots (env-bindings env)))))
+
 (define* (cps->lir expr #:key (cur-def #f) (mode 'push) (keep-ret-context? #t))
   (match expr
     (($ lambda/k ($ cps _ kont name attr) args body)
@@ -313,7 +320,7 @@
      (let* ((mode (if (is-escaped? expr) 'heap 'stack))
             (locals (env-bindings env))
             (frees (frees->lookup-table (queue-slots (env-frees env))))
-            (arity (queue-length (env-bindings env))))
+            (arity (count-real-args env)))
        (make-insr-closure '()
                           (id->string name)
                           arity
