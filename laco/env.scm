@@ -115,15 +115,14 @@
   (env-prev-set! new prev))
 
 (define (id-index env ref id)
-  (when (not (env? env))
-    (throw 'laco-error id-index "`~a' is invalid env for ~a!" env ref))
-  (slot-index (ref env) (lambda (x) (id-eq? x id))))
+  (and (env? env)
+       (slot-index (ref env) (lambda (x) (id-eq? x id)))))
 
 (define (bindings-index env k)
   ;; (pk "env name" (env-name env))
   ;; (pk "bindings" (map (lambda (x) ((if (id? x) id-name primitive-name) x)) (car (env-bindings env))) (id-name k))
   ;; (read)
-  (id-name k) (id-index env env-bindings k))
+  (id-index env env-bindings k))
 
 (define (is-free-var? env k)
   ;;(pk "frees" (map (lambda (x) ((if (id? x) id-name primitive-name) x)) (car (env-frees env))) (id-name k))

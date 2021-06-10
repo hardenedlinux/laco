@@ -203,22 +203,28 @@
               (tmpvar (if (toplevel? (current-env))
                           (new-id "#global-tmp-")
                           (new-id "#local-tmp-"))))
-          (when (not (toplevel? (current-env)))
+          (cond
+           ((toplevel? (current-env))
+            (top-level-set! (id-name tmpvar) (cc arg))
+            (cc (cfs jbody
+                     (list jargs)
+                     (list tmpvar))))
+           (else
             (env-local-push! (current-env) tmpvar)
             (when def
               ;; If the current-def was registered as a named-let var, then update
               ;; its local name
               (renamed-update! (after-rename def) (id-name tmpvar))
-              (set! def (after-rename def))))
-          (parameterize ((current-def def))
-            (cc
-             (make-seq/k
-              (list kont name attr)
-              (list
-               arg
-               (cfs jbody
-                    (list jargs)
-                    (list tmpvar))))))))
+              (set! def (after-rename def)))
+            (parameterize ((current-def def))
+              (cc
+               (make-seq/k
+                (list kont name attr)
+                (list
+                 arg
+                 (cfs jbody
+                      (list jargs)
+                      (list tmpvar))))))))))
        (else (cc (cfs body (list jname) (list jcont))))))
     (($ letval/k ($ bind-special-form/k ($ cps _ kont name attr) var value body))
      (env-local-push! (current-env) var)
@@ -289,7 +295,6 @@
             (current-kont-label (cps->name-string (current-kont)))
             ;; FIXME: deal with it when current-kont is 'global
             (name (id-name id)))
-       (pk "vc kont" (current-kont) (id-name (current-kont)) current-kont-label) (read)
        (cond
         ((top-level-ref name) (new-gvar id)) ; check if it's global
         ((not (toplevel? env)) ; check if it's local var
