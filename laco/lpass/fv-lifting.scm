@@ -88,6 +88,10 @@
     (($ list-object _ _ value)
      (list-object-value-set! lexpr (map fvl value))
      lexpr)
+    (($ insr-assign _ v e)
+     (insr-assign-var-set! lexpr (fvl v))
+     (insr-assign-expr-set! lexpr (fvl e))
+     lexpr)
     (else lexpr)))
 
 (define-pass free-vars-lifting lexpr (fvl lexpr))

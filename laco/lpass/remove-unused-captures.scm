@@ -55,6 +55,10 @@
     (($ list-object _ _ value)
      (list-object-value-set! lexpr (map ruc value))
      lexpr)
+    (($ insr-assign _ v e)
+     (insr-assign-var-set! lexpr (ruc v))
+     (insr-assign-expr-set! lexpr (ruc e))
+     lexpr)
     (else lexpr)))
 
 (define-pass remove-unused-captures lexpr (ruc lexpr))

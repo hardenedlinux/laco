@@ -57,6 +57,10 @@
                     (current-frees frees))
        (insr-closure-body-set! lexpr (map fix-local-offset body)))
      lexpr)
+    (($ insr-assign _ v e)
+     (insr-assign-var-set! lexpr (fix-local-offset v))
+     (insr-assign-expr-set! lexpr (fix-local-offset e))
+     lexpr)
     (($ insr-label _ _ _ exprs)
      (insr-label-body-set! lexpr (map fix-local-offset exprs))
      lexpr)
@@ -91,6 +95,10 @@
        (hash-set! *closures* label lexpr)
        (insr-closure-body-set! lexpr (map ccfv body)))
      lexpr)
+    (($ insr-assign _ v e)
+     (insr-assign-var-set! lexpr (ccfv v))
+     (insr-assign-expr-set! lexpr (ccfv e))
+     lexpr)
     (($ insr-label _ _ _ exprs)
      (insr-label-body-set! lexpr (map ccfv exprs))
      lexpr)
@@ -124,13 +132,13 @@
                  ;; We use a list to wrap (offset) to distinct the regular local-var
                  ;; and the free-var converted local-var, this is somehow an ugly
                  ;; approach, it's better to find a better way in the future.
-                 (make-insr-local '() name mode
-                                  (list
-                                   (fvar->lvar-fixed-offset
-                                    (current-closure)
-                                    (lambda (item)
-                                      (eq? (car item) name))))
-                                  keep?)))
+                 (pk "local"(make-insr-local '() name mode
+                                             (list
+                                              (fvar->lvar-fixed-offset
+                                               (current-closure)
+                                               (lambda (item)
+                                                 (eq? (car item) name))))
+                                             keep?))))
               (else (throw 'laco-error 'closure-capture-fv
                            "Invalid pattern `~a' in ~a!" pattern name)))))
       (else lexpr)))
