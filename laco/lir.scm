@@ -287,7 +287,8 @@
   (let ((ht (make-hash-table))
         (len (length frees)))
     (for-each (lambda (x i)
-                (hash-set! ht (id-name x) i))
+                (when (not (is-named-let? (id-name x)))
+                  (hash-set! ht (id-name x) i)))
               frees (iota len))
     ht))
 
