@@ -25,7 +25,7 @@
                                  bytevector-u16-set!))
   #:export (newsym
             new-label
-            is-tmp-local-var?
+            is-tmp-var?
             extract-ids
             extract-keys
             new-stack
@@ -112,8 +112,9 @@
 (define (newsym sym) (gensym (symbol->string sym)))
 (define (new-label str) (symbol->string (gensym str)))
 
-(define (is-tmp-local-var? sym)
-  (string-contains (symbol->string sym) "local-"))
+(define (is-tmp-var? sym)
+  (or (string-contains (symbol->string sym) "local-tmp-")
+      (string-contains (symbol->string sym) "global-tmp-")))
 
 (define (extract-ids pattern)
   (define (symbol-list? x)

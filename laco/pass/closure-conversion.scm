@@ -198,28 +198,27 @@
                                            (and (not (id-eq? v jname))
                                                 (not (lambda/k? v))))
                                          arg)))))
-        ;; For local let bindings
-        (=> failed!)
-        (cond
-         ((toplevel? (current-env))
-          (failed!))
-         (else
-          (let ((local (new-id "#local-"))
-                (def (current-def)))
-            (env-local-push! (current-env) local)
+        ;; For let bindings
+        (let ((def (current-def))
+              (tmpvar (if (toplevel? (current-env))
+                          (new-id "#global-tmp-")
+                          (new-id "#local-tmp-"))))
+          (when (not (toplevel? (current-env)))
+            (env-local-push! (current-env) tmpvar)
             (when def
               ;; If the current-def was registered as a named-let var, then update
               ;; its local name
-              (renamed-update! (after-rename def) (id-name local)))
-            (parameterize ((current-def (after-rename def)))
-              (cc
-               (make-seq/k
-                (list kont name attr)
-                (list
-                 arg
-                 (cfs jbody
-                      (list jargs)
-                      (list local))))))))))
+              (renamed-update! (after-rename def) (id-name tmpvar))
+              (set! def (after-rename def))))
+          (parameterize ((current-def def))
+            (cc
+             (make-seq/k
+              (list kont name attr)
+              (list
+               arg
+               (cfs jbody
+                    (list jargs)
+                    (list tmpvar))))))))
        (else (cc (cfs body (list jname) (list jcont))))))
     (($ letval/k ($ bind-special-form/k ($ cps _ kont name attr) var value body))
      (env-local-push! (current-env) var)
@@ -262,7 +261,7 @@
            (def (after-rename (current-def))))
        (when (and def
                   (eq? def (id-name f))
-                  (is-tmp-local-var? (id-name f)))
+                  (is-tmp-var? (id-name f)))
          ;; If these conditions are met, then it's a recursive named-let call:
          ;; 1. The var is inside a closure
          ;; 2. The var is equal to the current-def
@@ -290,6 +289,7 @@
             (current-kont-label (cps->name-string (current-kont)))
             ;; FIXME: deal with it when current-kont is 'global
             (name (id-name id)))
+       (pk "vc kont" (current-kont) (id-name (current-kont)) current-kont-label) (read)
        (cond
         ((top-level-ref name) (new-gvar id)) ; check if it's global
         ((not (toplevel? env)) ; check if it's local var
@@ -311,6 +311,8 @@
     (($ closure/k _ env body)
      (parameterize ((current-env (env-ref (cps->name expr)))
                     (current-kont (cps-kont expr)))
+       ;; (pk "current-name" (id-name (cps-name expr))) (read)
+       ;; (pk "current-kont" (id-name (current-kont))) (read)
        (closure/k-body-set! expr (var-conversion body)))
      expr)
     (($ app/k _ f args)
@@ -340,6 +342,8 @@
     (($ lambda/k _ _ body)
      (parameterize ((current-env (env-ref (cps->name expr)))
                     (current-kont (cps-kont expr)))
+       ;; (pk "111current-name" (id-name (cps-name expr))) (read)
+       ;; (pk "111current-kont" (id-name (current-kont))) (read)
        (lambda/k-body-set! expr (var-conversion body)))
      expr)
     (($ collection/k _ _ _ _ value)
