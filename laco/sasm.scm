@@ -236,10 +236,10 @@
   (sasm-emit `((global-call ,name) . "")))
 
 (define-public (emit-local-assign name offset)
-  (sasm-emit `((local-assign ,offset) . (format #f "~a" name))))
+  (sasm-emit `((local-assign ,offset) . ,(format #f "~a" name))))
 
 (define-public (emit-free-assign label name offset)
-  (sasm-emit `((free-assign ,label ,offset) . (format #f "~a" name))))
+  (sasm-emit `((free-assign ,label ,offset) . ,(format #f "~a" name))))
 
 ;; TODO: We should convert name to offset of global
 (define-public (emit-global-assign name)

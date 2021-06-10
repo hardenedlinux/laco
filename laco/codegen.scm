@@ -141,7 +141,7 @@
     (($ insr-assign _ var value)
      (emit-sasm value)
      (match var
-       (($ insr-local _ _ name offset _)
+       (($ insr-local _ name _ offset _)
         (emit-local-assign name offset))
        (($ insr-free _ label name _ offset _)
         (emit-free-assign label name offset))
