@@ -71,7 +71,6 @@
 (define (env-set! name e) (hash-set! *env-table* name e))
 
 (define* (cc expr #:optional (mode 'normal) #:key (finish? #f))
-  ;;(pk "cc" (cps->expr expr))
   (match expr
     (($ app/k _ f (($ lambda/k ($ cps _ kont name attr) (k) body) args ...))
      (=> failed!)
@@ -128,7 +127,6 @@
      (let ((env (if (toplevel? (current-env))
                     (new-env (id-name name) '() (fix-fv (free-vars expr)))
                     (current-env))))
-       (env-local-push! env var)
        (make-collection/k (list kont name attr)
                           var type size
                           (map cc value))))
@@ -185,7 +183,7 @@
      ;;   NOTE: func[k] means CPS-converted func
      ;;
      ;; 3. common CPS
-     ;;    (letcont/k ((j (lambda (k) jbody))) (_ j))
+     ;;    (letcont/k ((j (lambda (k) jbody))) (_ j args))
 
      (match expr
        (($ letcont/k ($ bind-special-form/k _ jname
@@ -207,8 +205,6 @@
               (list kont name attr)
               (list
                arg
-               ;;,@(if (id? arg) '() (list arg))
-               ;;(cfs arg (list jname) (list prim:return))
                (cfs jbody
                     (list jargs)
                     (list local)))))))))
