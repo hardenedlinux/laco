@@ -305,25 +305,23 @@
                       ,(dispatch (cdr kk) (cdr vv))))))))
        (parse-it (dispatch ks vs))))
     (('or rest ...)
-     (let ((tmpvar (gensym "or.tmp.var-")))
-       (cond
-        ((null? rest) (gen-constant 'false))
-        ((null? (cdr rest)) (parse-it (car rest)))
-        (else
-         (let ((b1 (tmpvar))
-               (b2 (tmpvar)))
-           (parse-it `((lambda (,b1 ,b2) (if ,b1 ,b1 (,b2)))
-                       ,(car rest) (lambda () (or ,@(cdr rest))))))))))
+     (cond
+      ((null? rest) (gen-constant 'false))
+      ((null? (cdr rest)) (parse-it (car rest)))
+      (else
+       (let ((b1 (gensym "or-"))
+             (b2 (gensym "or-")))
+         (parse-it `((lambda (,b1 ,b2) (if ,b1 ,b1 (,b2)))
+                     ,(car rest) (lambda () (or ,@(cdr rest)))))))))
     (('and rest ...)
-     (let ((tmpvar (gensym "and.tmp.var-")))
-       (cond
-        ((null? rest) (gen-constant #t))
-        ((null? (cdr rest)) (parse-it (car rest)))
-        (else
-         (let ((b1 (tmpvar))
-               (b2 (tmpvar)))
-           (parse-it `((lambda (,b1 ,b2) (if ,b1 (,b2) ,b1))
-                       ,(car rest) (lambda () (and ,@(cdr rest))))))))))
+     (cond
+      ((null? rest) (gen-constant #t))
+      ((null? (cdr rest)) (parse-it (car rest)))
+      (else
+       (let ((b1 (gensym "and-"))
+             (b2 (gensym "and-")))
+         (parse-it `((lambda (,b1 ,b2) (if ,b1 (,b2) ,b1))
+                     ,(car rest) (lambda () (and ,@(cdr rest)))))))))
     (('quote s)
      (match s
        ((or (? string?) (? number?) (? symbol?) (? char?))
