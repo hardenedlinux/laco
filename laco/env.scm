@@ -22,6 +22,8 @@
   #:export (env
             env?
             env-name env->name-string
+            env-remove-fvar!
+            env-remove-lvar!
             env-bindings env-bindings-set!
             env-prev env-prev-set!
             env-frees env-frees-set!
@@ -79,6 +81,18 @@
 
 (define (env->name-string env)
   (symbol->string (env-name env)))
+
+(define (env-remove-var! env var getter setter)
+  (let ((vl (queue-slots (getter env))))
+    (setter
+     env
+     (list->queue (filter (lambda (v) (not (id-eq? v var))) vl)))))
+
+(define (env-remove-fvar! env fv)
+  (env-remove-var! env fv env-frees env-frees-set!))
+
+(define (env-remove-lvar! env lv)
+  (env-remove-var! env lv env-bindings env-bindings-set!))
 
 (define *top-level* (new-toplevel))
 
