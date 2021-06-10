@@ -71,6 +71,7 @@
 (define (env-set! name e) (hash-set! *env-table* name e))
 
 (define* (cc expr #:optional (mode 'normal) #:key (finish? #f))
+  ;;(pk "expr" (cps->expr expr)) (read)
   (match expr
     (($ app/k _ f (($ lambda/k ($ cps _ kont name attr) (k) body) args ...))
      (=> failed!)
@@ -92,11 +93,13 @@
           (else (failed!))))))
     (($ lambda/k ($ cps _ kont name attr) args body)
      (let* ((frees (fix-fv (free-vars expr #t)))
-            (env (new-env (id-name name) args frees)))
+            (env (new-env (id-name name) args frees))
+            (def (assoc-ref attr 'def)))
        (extend-env! (current-env) env)
        (closure-set! (id-name name) env)
        (parameterize ((current-env env)
-                      (current-kont name))
+                      (current-kont name)
+                      (current-def (or (has-renamed? def) def (current-def))))
          (env-set! (id-name name) env)
          (case mode
            ((normal)
@@ -159,7 +162,7 @@
      ;; cases:
      ;; 1. let-binding:
      ;;    (letcont/k ((j (lambda (x) jbody)))
-     ;;      (j const-or-nonfunc))
+     ;;      (j const-or-value-form))
      ;;    ==> (begin
      ;;          const-or-nonfunc as new-local
      ;;          jbody[k/new-local])
@@ -184,6 +187,9 @@
      ;;
      ;; 3. common CPS
      ;;    (letcont/k ((j (lambda (k) jbody))) (_ j args))
+     ;;
+     ;; 4. Sequence
+     ;;    (letcont/k ((j (begin jbody))) (begin j exprs))
 
      (match expr
        (($ letcont/k ($ bind-special-form/k _ jname
@@ -198,16 +204,22 @@
          ((toplevel? (current-env))
           (failed!))
          (else
-          (let ((local (new-id "#local-")))
+          (let ((local (new-id "#local-"))
+                (def (current-def)))
             (env-local-push! (current-env) local)
-            (cc
-             (make-seq/k
-              (list kont name attr)
-              (list
-               arg
-               (cfs jbody
-                    (list jargs)
-                    (list local)))))))))
+            (when def
+              ;; If the current-def was registered as a named-let var, then update
+              ;; its local name
+              (renamed-update! (after-rename def) (id-name local)))
+            (parameterize ((current-def (after-rename def)))
+              (cc
+               (make-seq/k
+                (list kont name attr)
+                (list
+                 arg
+                 (cfs jbody
+                      (list jargs)
+                      (list local))))))))))
        (else (cc (cfs body (list jname) (list jcont))))))
     (($ letval/k ($ bind-special-form/k ($ cps _ kont name attr) var value body))
      (env-local-push! (current-env) var)
@@ -246,7 +258,18 @@
     (($ app/k ($ cps _ kont name attr) f args)
      (let ((new-attr (if (kont-eq? kont f)
                          (assoc-set! attr 'keep-result? #t)
-                         attr)))
+                         attr))
+           (def (after-rename (current-def))))
+       (when (and def
+                  (eq? def (id-name f))
+                  (is-tmp-local-var? (id-name f)))
+         ;; If these conditions are met, then it's a recursive named-let call:
+         ;; 1. The var is inside a closure
+         ;; 2. The var is equal to the current-def
+         ;; 3. The var was renamed as a local-tmp-var
+         ;; NOTE: We have to record it here, since it should be kept as free-var in
+         ;;       closure-capture-fv.
+         (named-let-register! (id-name f)))
        (make-app/k (list kont name new-attr)
                    (cc f)
                    (map (lambda (e) (cc e (if (and (primitive? f)

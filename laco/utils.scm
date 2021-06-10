@@ -25,6 +25,7 @@
                                  bytevector-u16-set!))
   #:export (newsym
             new-label
+            is-tmp-local-var?
             extract-ids
             extract-keys
             new-stack
@@ -98,14 +99,21 @@
             is-pure-label?
             after-rename
             renamed-register!
+            renamed-update!
             renamed-keep!
+            has-renamed?
             scoped-label!
             is-scoped-label?
             is-ptc?
-            ptc-register!))
+            ptc-register!
+            is-named-let?
+            named-let-register!))
 
 (define (newsym sym) (gensym (symbol->string sym)))
 (define (new-label str) (symbol->string (gensym str)))
+
+(define (is-tmp-local-var? sym)
+  (string-contains (symbol->string sym) "local-"))
 
 (define (extract-ids pattern)
   (define (symbol-list? x)
@@ -314,7 +322,6 @@
 ;;       so we can use label to indicate the stack frame.
 (define (label-back-index label)
   (let ((ll (queue-slots *label-queue*)))
-    (pk "ll" ll label)
     (cond
      ((list-index (lambda (x) (eq? x label)) ll) => identity)
      (else (throw 'laco-error label-back-index
@@ -374,18 +381,22 @@
 
 (define *ordered-frees-table* (make-hash-table))
 (define (ordered-frees-add! label item)
-  (let ((frees (hash-ref *ordered-frees-table* label (new-queue))))
-    (when (not (member (car item) (map car (queue-slots frees))))
-      (hash-set! *ordered-frees-table*
-                 label
-                 (queue-in! frees item)))))
+  (cond
+   ((is-named-let? (car item)) #f)
+   (else
+    (let ((frees (hash-ref *ordered-frees-table* label (new-queue))))
+      (when (not (member (car item) (map car (queue-slots frees))))
+        (hash-set! *ordered-frees-table*
+                   label
+                   (queue-in! frees item)))))))
 (define (get-ordered-frees label)
   (queue-slots (hash-ref *ordered-frees-table* label (new-queue))))
-(define (fvar->lvar-fixed-offset label pred)
+(define (fvar->lvar-fixed-offset name label pred)
   (let ((frees (hash-ref *ordered-frees-table* label (new-queue))))
     (or (list-index pred (queue-slots frees))
         (throw 'laco-error fvar->lvar-fixed-offset
-               "Invalid fvar `~a' in label `~a' to get fixed-offset!"))))
+               "Invalid fvar `~a' in label `~a' to get fixed-offset!"
+               name label))))
 (define (ordered-frees-fix! label pred fixed-offset)
   (let* ((frees (hash-ref *ordered-frees-table* label
                           (format #f
@@ -434,12 +445,25 @@
 
 (define *renamed-vars* (make-hash-table))
 (define (after-rename sym) (hash-ref *renamed-vars* sym))
+(define (has-renamed? sym)
+  (let ((v (hash-ref *renamed-vars* sym)))
+    (if (eq? v 'named-let)
+        #f
+        v)))
 (define (renamed-register! sym) (hash-set! *renamed-vars* sym 'named-let))
+(define (renamed-update! old new)
+  (hash-set! *renamed-vars* old new))
 (define (renamed-keep! old new)
   (when (eq? 'named-let (hash-ref *renamed-vars* old))
     ;; (pk "renamed-keep!" old new read)
-    (hash-set! *renamed-vars* old new)))
+    (renamed-update! old new)))
 
 (define *ptc-table* (make-hash-table))
 (define (is-ptc? name) (hash-ref *ptc-table* name))
 (define (ptc-register! name) (hash-set! *ptc-table* name #t))
+
+(define *named-let-table* (make-hash-table))
+(define (is-named-let? sym)
+  (hash-ref *named-let-table* sym))
+(define (named-let-register! sym)
+  (hash-set! *named-let-table* sym #t))

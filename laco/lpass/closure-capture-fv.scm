@@ -92,6 +92,8 @@
      (parameterize ((current-closure label)
                     (need-capture? #t)
                     (current-frees frees))
+       ;; (pk "closure" label)
+       ;; (pk "frees" (map id-name (car (current-frees)))) (read)
        (hash-set! *closures* label lexpr)
        (insr-closure-body-set! lexpr (map ccfv body)))
      lexpr)
@@ -107,6 +109,7 @@
      lexpr)
     (($ insr-free _ label name mode offset keep?)
      (cond
+      ((is-named-let? name) lexpr)
       ((and (need-capture?) (hash-ref (current-frees) name))
        => (lambda (pattern)
             (match pattern
@@ -132,13 +135,14 @@
                  ;; We use a list to wrap (offset) to distinct the regular local-var
                  ;; and the free-var converted local-var, this is somehow an ugly
                  ;; approach, it's better to find a better way in the future.
-                 (pk "local"(make-insr-local '() name mode
-                                             (list
-                                              (fvar->lvar-fixed-offset
-                                               (current-closure)
-                                               (lambda (item)
-                                                 (eq? (car item) name))))
-                                             keep?))))
+                 (make-insr-local '() name mode
+                                  (list
+                                   (fvar->lvar-fixed-offset
+                                    name
+                                    (current-closure)
+                                    (lambda (item)
+                                      (eq? (car item) name))))
+                                  keep?)))
               (else (throw 'laco-error 'closure-capture-fv
                            "Invalid pattern `~a' in ~a!" pattern name)))))
       (else lexpr)))
