@@ -38,6 +38,7 @@
 (check "Symbol list" "symbol-list")
 (check "Integer list" "int-list")
 (check "Variables in list" "var-list")
+(check "List print" "list-print")
 (check "Fold branch 1" "fold-branch-1")
 (check "Fold branch 2" "fold-branch-2")
 (check "Branch 1" "branch-1")
