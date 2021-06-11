@@ -88,6 +88,8 @@
 ;; 1. If the value can be unboxed, then we store them in unboxed style
 ;; 2. char and boolean are globally unique, so no unboxing available
 
+(define (>=0 x) (>= x 0))
+
 (define-record-type object)
 
 (define-typed-record integer-object (parent object)
@@ -97,18 +99,18 @@
 ;; We use list to hold pair elements, and it'll be converted to pair in codegen
 (define-typed-record pair-object (parent object)
   (fields
-   (size positive?)
+   (size (lambda (x) (= x 2)))
    (value list?)))
 
 (define-typed-record list-object (parent object)
   (fields
-   (size positive?)
+   (size >=0)
    (value list?)))
 
 (define-typed-record vector-object (parent object)
   (fields
    ;; we use list to hold the vector, it'll become real vector in codegen
-   (size positive?)
+   (size >=0)
    (value list?)))
 
 (define-typed-record char-object (parent object)
