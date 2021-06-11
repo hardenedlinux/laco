@@ -83,7 +83,7 @@
      ((symbol? x) 'symbol)
      ((keyword? x) 'keyword)
      ((char? x) 'char)
-     ((and (integer? x) (exact? x)) 'integer)
+     ((exact-integer? x) 'integer)
      ((real? x) 'real)
      ((complex? x) 'complex)
      ((string? x) 'string)
