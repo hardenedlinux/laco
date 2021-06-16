@@ -69,5 +69,6 @@
 (check "Applicative order 1" "applicative-order-1")
 (check "list-ref" "list-ref")
 (check "add_sub" "add_sub")
+(check "multiply" "multiply")
 
 (test-end "test-suite")
