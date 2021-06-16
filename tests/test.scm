@@ -70,5 +70,6 @@
 (check "list-ref" "list-ref")
 (check "add_sub" "add_sub")
 (check "multiply" "multiply")
+(check "division" "division")
 
 (test-end "test-suite")
