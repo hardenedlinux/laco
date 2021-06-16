@@ -68,5 +68,6 @@
 (check "Named Let Loop in Function" "named-let-loop-in-func")
 (check "Applicative order 1" "applicative-order-1")
 (check "list-ref" "list-ref")
+(check "add_sub" "add_sub")
 
 (test-end "test-suite")
