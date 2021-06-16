@@ -141,10 +141,14 @@
     bv))
 
 ;; In LambdaChip, Real is IEEE754 in 32bit
-(define *IEEE754-32bit-max* 3.4028235e38)
-(define *IEEE754-32bit-min* (* 1.0 (expt 2 -149)))
+(define *IEEE754-32bit-positive-max* 3.4028235e38)
+(define *IEEE754-32bit-positive-min* (* 1.0 (expt 2 -149)))
+(define *IEEE754-32bit-negative-min* -3.4028235e38)
+(define *IEEE754-32bit-negative-max* (* -1.0 (expt 2 -149)))
 (define (real-obj-encode data)
-  (when (or (< data *IEEE754-32bit-min*) (> data *IEEE754-32bit-max*))
+  (when (if (> data 0)
+            (or (< data *IEEE754-32bit-positive-min*) (> data *IEEE754-32bit-positive-max*))
+            (or (< data *IEEE754-32bit-negative-min*) (> data *IEEE754-32bit-negative-max*)))
     (throw 'laco-error real-obj-encode
            "Invalid real object `~a', should be 32bit!" data))
   (let ((bv (make-bytevector 6 0)))
