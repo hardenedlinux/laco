@@ -69,7 +69,7 @@
 
 (define (gen-version-bv)
   ;; TODO: Add version management
-  #vu8(0 3 2))
+  #vu8(0 3 3))
 
 (define *head* #vu8(76 69 70)) ; LEF
 (define (gen-lef port m g p c)
