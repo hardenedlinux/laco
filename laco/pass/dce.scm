@@ -16,6 +16,7 @@
 
 (define-module (laco pass dce)
   #:use-module (laco utils)
+  #:use-module (laco pass effect-analysis)
   #:use-module (laco env)
   #:use-module (laco types)
   #:use-module (laco cps)
@@ -41,6 +42,18 @@
     (fold-right (lambda (x p)
                   (if (memq (id-name x) rl) (cons x p) p))
                 '() old)))
+
+;; TODO:
+;; 1. The effectless and useless constant expression should be eliminated, say:
+;;    (begin
+;;     (list 0 1 2)
+;;     123)
+;;    The useless constant (list 0 1 2) should be eliminated.
+;;    * This optimization may need fallback from the letval/k that found the
+;;      constant. And check the letval/k of the elements one by one.
+;;    * If all elements are confirmed that effectless, then eliminate it.
+;;    * If n of m elments have effect, then convert the n elements to be a
+;;      seq/k with n exprs. The effectless elements should be eliminated.
 
 (define (dve expr)
   (match expr

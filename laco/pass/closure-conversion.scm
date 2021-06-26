@@ -190,6 +190,9 @@
      ;;
      ;; 4. Sequence
      ;;    (letcont/k ((j (begin jbody))) (begin j exprs))
+     ;;
+     ;; 5. constant
+     ;;    (letcont/k ((j (letval/k ((v [constant])) vbody))) cbody)
 
      (match expr
        (($ letcont/k ($ bind-special-form/k _ jname
