@@ -51,8 +51,6 @@
 (check "let* test 1" "let-star-1")
 (check "let* test 2" "let-star-optimized-out")
 (check "let* test 3" "let-star-side-effect-1")
-(check "pair print" "pair-print")
-(check "pair car cdr" "pair-car-cdr")
 (check "list append" "list-append")
 (check "list car cdr" "list-car-cdr")
 (check "char print" "char-print")
@@ -71,5 +69,6 @@
 (check "add_sub" "add_sub")
 (check "multiply" "multiply")
 (check "division" "division")
+(check "pair" "pair")
 
 (test-end "test-suite")
