@@ -327,6 +327,7 @@
        ((or (? string?) (? number?) (? symbol?) (? char?))
         (gen-constant s))
        ((? list?) (parse-it `(list ,@(map _quasiquote s))))
+       ((? pair?) (parse-it `(cons ,(_quasiquote (car s)) ,(_quasiquote (cdr s)))))
        (else (throw 'laco-error parse-it "quote: haven't support `~a'!" s))))
     (('unquote k) (parse-it k))
     (('unquote-splicing s) `(unquote-splicing ,(parse-it s)))
