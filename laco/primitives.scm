@@ -130,6 +130,7 @@
     i2c-read-byte! ; 16 + 22
     i2c-write-byte! ; 16 + 23
     null? ; 16 + 24
+    pair? ; 16 + 25
     ))
 
 (define (print-primitives)
@@ -147,7 +148,7 @@
 
 (define *inapplicable-primitive*
   '(halt return display restore usleep device-configure! gpio-set! gpio-toggle!
-         get-board-id read-char read-string read-line i2c-read-byte! i2c-write-byte! null?))
+         get-board-id read-char read-string read-line i2c-read-byte! i2c-write-byte! null? pair?))
 
 (define (applicable-primitive? p)
   (not (memq (primitive-name p) *inapplicable-primitive*)))
@@ -306,3 +307,7 @@
 (define-primitive (null?)
   (lambda _
     (throw 'laco-error 'prim:get-board-id "BUG: null? shouldn't be called in compile time!")))
+
+(define-primitive (pair?)
+  (lambda _
+    (throw 'laco-error 'prim:get-board-id "BUG: pair? shouldn't be called in compile time!")))
