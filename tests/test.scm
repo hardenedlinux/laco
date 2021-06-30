@@ -70,5 +70,6 @@
 (check "multiply" "multiply")
 (check "division" "division")
 (check "pair" "pair")
+(check "null" "null")
 
 (test-end "test-suite")

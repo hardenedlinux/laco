@@ -1,0 +1,13 @@
+; null.scm
+(display (null? (cdr '(3))))
+(newline)
+(display (null? 3))
+(newline)
+(display (null? '()))
+(newline)
+(display (null? '(1 2)))
+(newline)
+(display (null? '(1 . 2)))
+(newline)
+(display (null? 1))
+(newline)
