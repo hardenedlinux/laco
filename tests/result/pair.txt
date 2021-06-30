@@ -2,3 +2,7 @@
 3
 6
 (7 . 8)
+#true
+#true
+#false
+#false
