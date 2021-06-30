@@ -28,6 +28,11 @@
 ;; would be converted to the offset of the frame, then we lose the information to
 ;; detect the proper-tail-recursion.
 
+(define (no-proc-in-list? lst)
+  (every (lambda (e)
+           (not (or (lambda/k? e) (letfun/k? e) (closure/k? e))))
+         lst))
+
 (define* (tco expr #:optional (tail-body? #f))
   (define (tag-tail-call! exprs)
     (when (not (null? exprs))
@@ -39,6 +44,7 @@
               (=> failed!)
               (cond
                ((and tail-body?
+                     (no-proc-in-list? (app/k-args tail))
                      (not (kont-eq? k prim:return)) (kont-eq? kont k)
                      (not (is-ptc? (cps->name f))))
                 (cps-property-set! tail 'tail-call #t)
@@ -46,7 +52,7 @@
                (else (failed!))))
              (else (tco tail)))))))
   (match expr
-    (($ lambda/k _ _ (or ($ app/k _ k2 _) ($ seq/k _ (($ app/k _ k2 _)))))
+    (($ lambda/k _ _ (or ($ app/k _ k2 args) ($ seq/k _ (($ app/k _ k2 args)))))
      (let* ((e (match (lambda/k-body expr)
                  ((? app/k? a) a)
                  (($ seq/k _ ((? app/k? a))) a)
@@ -55,7 +61,8 @@
                               (cps->expr (lambda/k-body expr))))))
             (tail? (kont-eq? (cps-kont expr) k2)))
        ;; CASE: (lambda (k args ...) (k ...)) -> tail-call
-       (when (and tail? (not (is-ptc? (cps->name e))))
+       (when (and tail? (not (is-ptc? (cps->name e)))
+                  (no-proc-in-list? args))
          (cps-property-set! e 'tail-call #t))
        (cond
         ((closure-was-named-let? expr)

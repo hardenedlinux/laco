@@ -241,7 +241,7 @@
   (make-seq/k (list kont name attr) exprs))
 
 (define (applicable? x)
-  (or (letfun/k? x) (primitive? x) (lambda/k? x) (closure/k? x)
+  (or (letfun/k? x) (primitive? x) (lambda/k? x) (closure/k? x) (app/k? x)
       ;; FIXME: Not all id, should be the registered proc id
       (id? x)))
 (define (valid-arg? x)
@@ -577,6 +577,7 @@
                       (cons x p)))
                 '() ll))
   (match cpse
+    (#f 'waht?!)
     (($ lambda/k _ args body)
      `(lambda (,@(map cps->expr args)) ,(cps->expr body)))
     (($ closure/k _ env body)

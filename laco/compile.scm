@@ -136,7 +136,8 @@ Options:
      ;;       miss all the rest passes.
      lambda-lifting))
   (init-optimizations)
-  (parameterize ((current-kont 'global))
+  (parameterize ((current-kont 'global)
+                 (is-top? #t))
     (top-level-for-each
      ;; NOTE: We scan all free-vars in globals before any optimizing to make sure
      ;;       no any free-var will be eliminated in dead-function-elimination.
@@ -157,7 +158,8 @@ Options:
      remove-unused-captures
      closure-capture-free-vars))
   (init-lir-optimizations)
-  (parameterize ((current-kont 'global))
+  (parameterize ((current-kont 'global)
+                 (is-top? #t))
     (top-level-for-each
      (lambda (f e)
        (parameterize ((current-def f))

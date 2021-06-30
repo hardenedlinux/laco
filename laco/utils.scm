@@ -107,7 +107,10 @@
             is-ptc?
             ptc-register!
             is-named-let?
-            named-let-register!))
+            named-let-register!
+            is-top?
+            lifted!
+            is-lifted?))
 
 (define (newsym sym) (gensym (symbol->string sym)))
 (define (new-label str) (symbol->string (gensym str)))
@@ -468,3 +471,9 @@
   (hash-ref *named-let-table* sym))
 (define (named-let-register! sym)
   (hash-set! *named-let-table* sym #t))
+
+(define is-top? (make-parameter #f))
+
+(define *lifted* (make-hash-table))
+(define (lifted! v) (hash-set! *lifted* v #t))
+(define (is-lifted? v) (hash-ref *lifted* v))

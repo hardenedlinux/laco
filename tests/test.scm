@@ -71,5 +71,6 @@
 (check "division" "division")
 (check "pair" "pair")
 (check "null" "null")
+(check "Nested Lambda 1" "nested-lambda-1")
 
 (test-end "test-suite")

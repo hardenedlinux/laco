@@ -82,10 +82,13 @@
        (seq/k-exprs-set! expr `(,@e ,@(seq/k-exprs body)))
        (dve expr))))
     (($ lambda/k _ args body)
-     (let ((refereced-args (keep-referenced args (all-ref-vars body))))
-       (lambda/k-args-set! expr refereced-args)
-       (lambda/k-body-set! expr (dve body))
-       expr))
+     #;
+     (let ((refereced-args (keep-referenced args (all-ref-vars body)))) ;
+     (lambda/k-args-set! expr refereced-args) ;
+     (lambda/k-body-set! expr (dve body)) ;
+     expr)
+     (lambda/k-body-set! expr (dve body))
+     expr)
     (($ branch/k _ cnd b1 b2)
      (branch/k-cnd-set! expr (dve cnd))
      (branch/k-tbranch-set! expr (dve b1))

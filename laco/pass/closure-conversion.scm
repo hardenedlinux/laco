@@ -103,7 +103,7 @@
          (env-set! (id-name name) env)
          (case mode
            ((normal)
-            (if (is-escaped? expr)
+            (if (and (not (assoc-ref attr 'lambda-lifted)) (is-escaped? expr))
                 (make-closure/k (list kont name attr) env (cc body 'closure))
                 (make-lambda/k (list kont name attr) args (cc body))))
            ((closure closure-in-pcall)
