@@ -16,6 +16,7 @@
 
 (define-module (laco pass)
   #:use-module (laco utils)
+  #:use-module (laco types)
   #:use-module (laco cps)
   #:use-module (laco lir)
   #:use-module (laco object)
@@ -64,6 +65,7 @@
             ;;    ((? insr?) (lir->expr e))
             ;;    ((? primitive?) (primitive-name e))
             ;;    ((? object?) (object->value e))
+            ;;    ((? id?) (id-name e))
             ;;    (else (error "BUG: invalid type" e))))
             e))
         expr (list 'lst ...)))

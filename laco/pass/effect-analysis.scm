@@ -60,7 +60,6 @@
     (($ lambda/k _ _ body)
      (let ((checked-body (ea body))
            (all-vars (map id-name (all-ref-vars body))))
-       (pk "all-effect-vars" (all-effect-vars all-vars))
        (cps-property-set! expr 'effect-vars (all-effect-vars all-vars))
        (lambda/k-body-set! expr checked-body)
        expr))
