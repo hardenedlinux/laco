@@ -44,6 +44,7 @@
               (=> failed!)
               (cond
                ((and tail-body?
+                     ;; NOTE: tail-call must be the leaf node
                      (no-proc-in-list? (app/k-args tail))
                      (not (kont-eq? k prim:return)) (kont-eq? kont k)
                      (not (is-ptc? (cps->name f))))
@@ -62,6 +63,7 @@
             (tail? (kont-eq? (cps-kont expr) k2)))
        ;; CASE: (lambda (k args ...) (k ...)) -> tail-call
        (when (and tail? (not (is-ptc? (cps->name e)))
+                  ;; NOTE: tail-call must be the leaf node
                   (no-proc-in-list? args))
          (cps-property-set! e 'tail-call #t))
        (cond
