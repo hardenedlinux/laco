@@ -62,6 +62,7 @@
 (check "Global expression 1" "global-expr-1")
 (check "Named Let 1" "named-let-1")
 (check "Named Let 2" "named-let-2")
+(check "Named Let 3" "named-let-3")
 (check "Named Let Loop" "named-let-loop")
 (check "Named Let Loop in Function" "named-let-loop-in-func")
 (check "Applicative order 1" "applicative-order-1")

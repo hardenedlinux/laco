@@ -290,9 +290,9 @@
     (('let id ((ks vs) ...) body ...) ; named let
      (let-values (((kvs fb) (extract-all-local-defs body)))
        (parameterize ((current-def id))
-         (parse-it `(letrec ((,id (lambda ,@ks ,(if (null? kvs)
-                                                    `(begin ,@fb)
-                                                    `(letrec* ,kvs (begin ,@fb))))))
+         (parse-it `(letrec ((,id (lambda ,ks ,(if (null? kvs)
+                                                   `(begin ,@fb)
+                                                   `(letrec* ,kvs (begin ,@fb))))))
                       (,id ,@vs))))))
     (('let* ((ks vs) ...) body ...)
      (letrec ((dispatch

@@ -1,0 +1,10 @@
+(let lp ((k 5)
+         (j 3))
+  (display "k = ")
+  (display k)
+  (display ", j = ")
+  (display j)
+  (newline)
+  (if (= k 0)
+      0
+      (lp (- k 1) (+ 12 j))))
