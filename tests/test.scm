@@ -74,5 +74,6 @@
 (check "null" "null")
 (check "Nested Lambda 1" "nested-lambda-1")
 (check "eq_gt_lt" "eq_gt_lt")
+(check "Global List 1" "global-list-1")
 
 (test-end "test-suite")

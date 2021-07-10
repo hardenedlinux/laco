@@ -167,6 +167,13 @@
   (sasm-nop))
 
 (define (gen-sasm lir)
+  (define (fix-collection lst)
+    (map (lambda (e)
+           (if (insr-global? e)
+               (top-level-ref (insr-global-name e))
+               e))
+         lst))
+
   (sasm-memory-begin)
   (emit-sasm-memory lir)
   (sasm-memory-end)
@@ -175,6 +182,10 @@
   (top-level-for-each
    (lambda (k v)
      (match v
+       (($ list-object _ _ lst)
+        (list-object-value-set! v (fix-collection lst))
+        (global-label-register! k "object")
+        (emit-sasm v))
        ((? object?)
         (global-label-register! k "object")
         (emit-sasm v))
