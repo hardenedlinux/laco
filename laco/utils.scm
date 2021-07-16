@@ -110,7 +110,9 @@
             named-let-register!
             is-top?
             lifted!
-            is-lifted?))
+            is-lifted?
+            *definition-in-cps*
+            is-def-in-cps?))
 
 (define (newsym sym) (gensym (symbol->string sym)))
 (define (new-label str) (symbol->string (gensym str)))
@@ -477,3 +479,6 @@
 (define *lifted* (make-hash-table))
 (define (lifted! v) (hash-set! *lifted* v #t))
 (define (is-lifted? v) (hash-ref *lifted* v))
+
+(define *definition-in-cps* (gensym "#definition-"))
+(define (is-def-in-cps? s) (eq? s *definition-in-cps*))

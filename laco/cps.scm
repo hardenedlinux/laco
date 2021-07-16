@@ -469,7 +469,7 @@
          (new-assign/k (new-id var #f) e))
         (else
          (top-level-set! var e))))
-     *laco/unspecified*)
+     *definition-in-cps*)
     (($ binding ($ ast _ body) ($ ref _ var) value)
      (let* ((jname (new-id "#jcont-"))
             (ov (new-id var #f))
@@ -521,15 +521,13 @@
                            (new-app/k cont cname #:kont cont))
              vals ex)))
     (($ seq ($ ast _ exprs))
-     (let* ((r-exprs (reverse exprs))
-            (el (fold
-                 (lambda (x p)
-                   (let ((ret (ast->cps x)))
-                     (if (is-unspecified-node? ret) p (cons ret p))))
-                 ;; Make sure the tail-postion calls the current-continuation
-                 (list (ast->cps (car r-exprs) cont)) (cdr r-exprs)))
+     (let* ((el (filter-map (lambda (e) (and (not (is-def-in-cps? e)) e))
+                            (map ast->cps (reverse exprs))))
             (ev (map (lambda (_) (new-id "#k-")) el)))
-       (fold (lambda (e v p) (new-letcont/k v e p #:kont cont))
+       (fold (lambda (e v p)
+               (if (is-def-in-cps? e)
+                   p
+                   (new-letcont/k v e p #:kont cont)))
              (new-seq/k ev #:kont cont)
              el ev)))
     (($ call _ f e)
@@ -563,6 +561,7 @@
       (else (throw 'laco-error 'ast->cps "BUG: ref should be symbol! `~a'" sym))))
     ((? id? id) (new-app/k cont id #:kont cont))
     ((? primitive? p) (new-app/k cont p #:kont cont))
+    ((? is-def-in-cps?) expr)
     ((? constant? c)
      (let ((x (new-id "#const-"))
            (cst (new-constant/k c)))

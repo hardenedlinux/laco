@@ -75,5 +75,6 @@
 (check "Nested Lambda 1" "nested-lambda-1")
 (check "eq_gt_lt" "eq_gt_lt")
 (check "Global List 1" "global-list-1")
+(check "Exprs in the mid of definition" "expr-in-mid-defs")
 
 (test-end "test-suite")
