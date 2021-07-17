@@ -522,7 +522,7 @@
              vals ex)))
     (($ seq ($ ast _ exprs))
      (let* ((el (filter-map (lambda (e) (and (not (is-def-in-cps? e)) e))
-                            (map ast->cps (reverse exprs))))
+                            (map ast->cps exprs)))
             (ev (map (lambda (_) (new-id "#k-")) el)))
        (fold (lambda (e v p)
                (if (is-def-in-cps? e)
@@ -576,7 +576,6 @@
                       (cons x p)))
                 '() ll))
   (match cpse
-    (#f 'waht?!)
     (($ lambda/k _ args body)
      `(lambda (,@(map cps->expr args)) ,(cps->expr body)))
     (($ closure/k _ env body)
