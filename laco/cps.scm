@@ -359,8 +359,8 @@
       ;; new binding, don't apply rename more deeply
       (else expr)))
     (($ assign/k _ v e)
-     (when (and (not (null? old)) (is-effect-var? (id-name v)))
-       (let ((i (new->index v)))
+     (let ((i (new->index v)))
+       (when (and i (is-effect-var? (id-name v)))
          (effect-var-register! (id-name (list-ref new i)))))
      (assign/k-var-set! expr (alpha-renaming v old new))
      (assign/k-expr-set! expr (alpha-renaming e old new))
