@@ -76,5 +76,7 @@
 (check "eq_gt_lt" "eq_gt_lt")
 (check "Global List 1" "global-list-1")
 (check "Exprs in the mid of definition" "expr-in-mid-defs")
+(check "Raise" "raise")
+(check "Raise continuable" "raise-cont")
 
 (test-end "test-suite")

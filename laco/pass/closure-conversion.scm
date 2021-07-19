@@ -159,23 +159,7 @@
      ;;    alpha-renaming, however, it can't be recycled by GC when the scope ends.
      ;; 5. Don't create env here.
 
-     ;; cases:
-     ;; 1. let-binding:
-     ;;    (letcont/k ((j (lambda (x) jbody)))
-     ;;      (j const-or-value-form))
-     ;;    ==> (begin
-     ;;          const-or-nonfunc as new-local
-     ;;          jbody[k/new-local])
-     ;;   NOTE: For function binding, we have letfun/k
-     ;;   E.g: (let ((x (list-ref '(1 2 3) 0)))
-     ;;          (display x))
-     ;;        ==> (letcont/k ((j (lambda (x0) (display x0))))
-     ;;              (j (list-ref '(1 2 3) 0)))
-     ;;        ==> (begin
-     ;;              (list-ref '(1 2 3) 0) as local-0
-     ;;              (display local-0))
-     ;;   NOTE: This conversion is necessary for appplicable-order before CFS.
-     ;;
+     ;; Possble cases:
      ;; 2. let-binding evaluated value of a func
      ;;    (letcont/k ((j (lambda (x0) jbody)))
      ;;      (func[k] j))
@@ -191,8 +175,9 @@
      ;; 4. Sequence
      ;;    (letcont/k ((j (begin jbody))) (begin j exprs))
      ;;
-     ;; 5. constant
+     ;; 5. Constant
      ;;    (letcont/k ((j (letval/k ((v [constant])) vbody))) cbody)
+     ;;
 
      (match expr
        (($ letcont/k ($ bind-special-form/k _ jname
@@ -201,7 +186,22 @@
                                            (and (not (id-eq? v jname))
                                                 (not (lambda/k? v))))
                                          arg)))))
-        ;; For let bindings
+        ;; 1. let-binding:
+        ;;    (letcont/k ((j (lambda (x) jbody)))
+        ;;      (j const-or-value-form))
+        ;;    ==> (begin
+        ;;          const-or-nonfunc as new-local
+        ;;          jbody[k/new-local])
+        ;;   NOTE: For function binding, we have letfun/k
+        ;;   E.g: (let ((x (list-ref '(1 2 3) 0)))
+        ;;          (display x))
+        ;;        ==> (letcont/k ((j (lambda (x0) (display x0))))
+        ;;              (j (list-ref '(1 2 3) 0)))
+        ;;        ==> (begin
+        ;;              (list-ref '(1 2 3) 0) as local-0
+        ;;              (display local-0))
+        ;;   NOTE: This conversion is necessary for appplicable-order before CFS.
+        ;;
         (let ((def (current-def))
               (tmpvar (if (toplevel? (current-env))
                           (new-id "#global-tmp-")
@@ -228,6 +228,18 @@
                  (cfs jbody
                       (list jargs)
                       (list tmpvar))))))))))
+       (($ letcont/k ($ bind-special-form/k _ jname
+                        ($ letfun/k ($ bind-special-form/k _ fname func fbody))
+                        ($ seq/k _ (e))))
+        ;; 6. Function
+        ;;    (letcont/k ((j (letval/k ((f function)) fbody))) (begin j))
+        ;;   ==> fbody[f/function]
+        (=> failed!)
+        (cond
+         ((not (id-eq? e jname))
+          (failed!))
+         (else
+          (cc (cfs fbody (list fname) (list func))))))
        (else (cc (cfs body (list jname) (list jcont))))))
     (($ letval/k ($ bind-special-form/k ($ cps _ kont name attr) var value body))
      (env-local-push! (current-env) var)
@@ -361,7 +373,6 @@
      (assign/k-var-set! expr (var-conversion v))
      (assign/k-expr-set! expr (var-conversion e))
      expr)
-    ((? id?) expr)
     (else expr)))
 
 (define-pass closure-conversion expr (var-conversion (cc expr)))

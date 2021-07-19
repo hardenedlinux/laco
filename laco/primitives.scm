@@ -134,6 +134,16 @@
     spi-transceive! ; 16 + 26
     i2c-read-list! ; 16 + 27
     i2c-write-list! ; 16 + 28
+    with-exception-handler ; 16 + 29
+    raise ; 16 + 30
+    raise-continuable ; 16 + 31
+    error ; 16 + 32
+    error-object? ; 16 + 33
+    error-object-message ; 16 + 34
+    error-object-irritants ; 16 + 35
+    read-error? ; 16 + 36
+    file-error? ; 16 + 37
+    dynamic-wind ; 16 + 38
     ))
 
 (define (print-primitives)
@@ -156,7 +166,8 @@
 (define *inapplicable-primitive*
   '(halt return display restore usleep device-configure! gpio-set! gpio-toggle!
          get-board-id read-char read-string read-line i2c-read-byte! i2c-write-byte!
-         null? pair? spi-transceive! i2c-read-list! i2c-write-list!))
+         null? pair? spi-transceive! i2c-read-list! i2c-write-list!
+         with-exception-handler raise raise-continuable))
 
 (define (applicable-primitive? p)
   (not (memq (primitive-name p) *inapplicable-primitive*)))
@@ -331,3 +342,44 @@
 (define-primitive (i2c-write-list!)
   (lambda _
     (gen-error 'i2c-write-list!)))
+
+;; ------ exceptions -------
+(define-primitive (with-exception-handler)
+  (lambda _
+    (gen-error 'with-exception-handler)))
+
+(define-primitive (raise)
+  (lambda _
+    (gen-error 'raise)))
+
+(define-primitive (raise-continuable)
+  (lambda _
+    (gen-error 'raise-continuable)))
+
+(define-primitive (error)
+  (lambda _
+    (gen-error 'error)))
+
+(define-primitive (error-object)
+  (lambda _
+    (gen-error 'raise-object)))
+
+(define-primitive (error-object-message)
+  (lambda _
+    (gen-error 'error-object-message)))
+
+(define-primitive (error-object-irritants)
+  (lambda _
+    (gen-error 'error-object-irritants)))
+
+(define-primitive (read-error?)
+  (lambda _
+    (gen-error 'read-error)))
+
+(define-primitive (file-error?)
+  (lambda _
+    (gen-error 'file-error)))
+
+(define-primitive (dynamic-wind)
+  (lambda _
+    (gen-error 'dynamic-wind)))
