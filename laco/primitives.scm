@@ -142,6 +142,10 @@
    (map cons *prim-table* (iota (length *prim-table*))))
   (display "--------END--------\n"))
 
+(define (gen-error name)
+  (throw 'laco-error (symbol-append 'prim: name)
+         (format #f "BUG: ~a shouldn't be called in compile time!" name)))
+
 (define (primitive->number p)
   (define (gen-num ll) (- (length *prim-table*) (length ll)))
   (cond
@@ -160,7 +164,7 @@
 ;; halt can associate with primitive `halt', its activity is TOS.
 (define-primitive (pop)
   (lambda _
-    (throw 'laco-error 'prim:pop "BUG: shouldn't be called in compile time!")))
+    (gen-error 'pop)))
 
 (define-primitive (+)
   (lambda args
@@ -182,15 +186,15 @@
 
 (define-primitive (restore)
   (lambda _
-    (throw 'laco-error 'prim:restore "BUG: shouldn't be called in compile time!")))
+    (gen-error 'restore)))
 
 (define-primitive (display)
   (lambda _
-    (throw 'laco-error 'prim:display "BUG: shouldn't be called in compile time!")))
+    (gen-error 'display)))
 
 (define-primitive (apply)
   (lambda _
-    (throw 'laco-error 'prim:apply "BUG: shouldn't be called in compile time!")))
+    (gen-error 'apply)))
 
 (define-primitive (not)
   (lambda arg
@@ -258,23 +262,23 @@
 
 (define-primitive (usleep)
   (lambda _
-    (throw 'laco-error 'prim:usleep "BUG: usleep shouldn't be called in compile time!")))
+    (gen-error 'usleep)))
 
 (define-primitive (device-configure!)
   (lambda _
-    (throw 'laco-error 'prim:device-configure! "BUG: device-configure! shouldn't be called in compile time!")))
+    (gen-error 'device-configure!)))
 
 (define-primitive (gpio-set!)
   (lambda _
-    (throw 'laco-error 'prim:gpio-set! "BUG: gpio-set! shouldn't be called in compile time!")))
+    (gen-error 'gpio-set!)))
 
 (define-primitive (gpio-toggle!)
   (lambda _
-    (throw 'laco-error 'prim:gpio-toggle! "BUG: gpio-toggle! shouldn't be called in compile time!")))
+    (gen-error 'gpio-toggle!)))
 
 (define-primitive (get-board-id)
   (lambda _
-    (throw 'laco-error 'prim:get-board-id "BUG: get-board-id shouldn't be called in compile time!")))
+    (gen-error 'get-board-id)))
 
 (define-primitive (cons)
   (lambda (x y)
@@ -290,40 +294,40 @@
 
 (define-primitive (read-char)
   (lambda _
-    (throw 'laco-error 'prim:read-char "BUG: read-char shouldn't be called in compile time!")))
+    (gen-error 'read-char)))
 
 (define-primitive (read-string)
   (lambda _
-    (throw 'laco-error 'prim:string "BUG: read-string shouldn't be called in compile time!")))
+    (gen-error 'read-string)))
 
 (define-primitive (list->string)
   (lambda _
-    (throw 'laco-error 'prim:list->string "BUG: list->string shouldn't be called in compile time!")))
+    (gen-error 'list->string)))
 
 (define-primitive (i2c-read-byte!)
   (lambda _
-    (throw 'laco-error 'prim:get-board-id "BUG: i2c-read-byte! shouldn't be called in compile time!")))
+    (gen-error 'i2c-read-byte!)))
 
 (define-primitive (i2c-write-byte!)
   (lambda _
-    (throw 'laco-error 'prim:get-board-id "BUG: i2c-write-byte! shouldn't be called in compile time!")))
+    (gen-error 'i2c-write-byte!)))
 
 (define-primitive (null?)
   (lambda _
-    (throw 'laco-error 'prim:get-board-id "BUG: null? shouldn't be called in compile time!")))
+    (gen-error 'null?)))
 
 (define-primitive (pair?)
   (lambda _
-    (throw 'laco-error 'prim:get-board-id "BUG: pair? shouldn't be called in compile time!")))
+    (gen-error 'pair?)))
 
 (define-primitive (spi-transceive!)
   (lambda _
-    (throw 'laco-error 'prim:get-board-id "BUG: spi-transceive! shouldn't be called in compile time!")))
+    (gen-error 'spi-transceive!)))
 
 (define-primitive (i2c-read-list!)
   (lambda _
-    (throw 'laco-error 'prim:get-board-id "BUG: i2c-read-list! shouldn't be called in compile time!")))
+    (gen-error 'i2c-read-list!)))
 
 (define-primitive (i2c-write-list!)
   (lambda _
-    (throw 'laco-error 'prim:get-board-id "BUG: i2c-write-list! shouldn't be called in compile time!")))
+    (gen-error 'i2c-write-list!)))
