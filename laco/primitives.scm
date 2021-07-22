@@ -144,6 +144,19 @@
     read-error? ; 16 + 36
     file-error? ; 16 + 37
     dynamic-wind ; 16 + 38
+    list? ; 16 + 39
+    string? ; 16 + 40
+    char? ; 16 + 41
+    keyword? ; 16 + 42
+    symbol? ; 16 + 43
+    procedure? ; 16 + 44
+    primitive? ; 16 + 45
+    boolean? ; 16 + 46
+    number? ; 16 + 47
+    integer? ; 16 + 48
+    real? ; 16 + 49
+    rational? ; 16 + 50
+    complex? ; 16 + 51
     ))
 
 (define (print-primitives)
@@ -166,7 +179,7 @@
 (define *inapplicable-primitive*
   '(halt return display restore usleep device-configure! gpio-set! gpio-toggle!
          get-board-id read-char read-string read-line i2c-read-byte! i2c-write-byte!
-         null? pair? spi-transceive! i2c-read-list! i2c-write-list!
+         spi-transceive! i2c-read-list! i2c-write-list!
          with-exception-handler raise raise-continuable))
 
 (define (applicable-primitive? p)
@@ -323,13 +336,9 @@
   (lambda _
     (gen-error 'i2c-write-byte!)))
 
-(define-primitive (null?)
-  (lambda _
-    (gen-error 'null?)))
+(define-primitive (null?) null?)
 
-(define-primitive (pair?)
-  (lambda _
-    (gen-error 'pair?)))
+(define-primitive (pair?) pair?)
 
 (define-primitive (spi-transceive!)
   (lambda _
@@ -383,3 +392,29 @@
 (define-primitive (dynamic-wind)
   (lambda _
     (gen-error 'dynamic-wind)))
+
+(define-primitive (list?) list?)
+
+(define-primitive (string?) string?)
+
+(define-primitive (char?) char?)
+
+(define-primitive (keyword?) keyword?)
+
+(define-primitive (symbol?) symbol?)
+
+(define-primitive (procedure?) procedure?)
+
+(define-primitive (primitive?) primitive?)
+
+(define-primitive (boolean?) boolean?)
+
+(define-primitive (number?) number?)
+
+(define-primitive (integer?) integer?)
+
+(define-primitive (real?) real?)
+
+(define-primitive (rational?) rational?)
+
+(define-primitive (complex?) complex?)
