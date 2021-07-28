@@ -521,8 +521,16 @@
                            (new-app/k cont cname #:kont cont))
              vals ex)))
     (($ seq ($ ast _ exprs))
-     (let* ((el (filter-map (lambda (e) (and (not (is-def-in-cps? e)) e))
-                            (map ast->cps exprs)))
+     (let* ((r-exprs (reverse exprs))
+            (tail (ast->cps (car r-exprs) cont))
+            (el (fold
+                 (lambda (e p)
+                   (let ((ret (ast->cps e)))
+                     (if (is-def-in-cps? ret)
+                         p
+                         (cons ret p))))
+                 (if (is-def-in-cps? tail) '() (list tail))
+                 (cdr r-exprs)))
             (ev (map (lambda (_) (new-id "#k-")) el)))
        (fold (lambda (e v p)
                (if (is-def-in-cps? e)
