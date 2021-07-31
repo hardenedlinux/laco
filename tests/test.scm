@@ -78,5 +78,6 @@
 (check "Exprs in the mid of definition" "expr-in-mid-defs")
 (check "Raise" "raise")
 (check "Raise continuable" "raise-cont")
+(check "Re-define toplevel" "redefine")
 
 (test-end "test-suite")

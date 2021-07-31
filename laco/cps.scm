@@ -468,8 +468,8 @@
          ;; If it exists, then transform it to an assignment
          (new-assign/k (new-id var #f) e))
         (else
-         (top-level-set! var e))))
-     *definition-in-cps*)
+         (top-level-set! var e)
+         *definition-in-cps*))))
     (($ binding ($ ast _ body) ($ ref _ var) value)
      (let* ((jname (new-id "#jcont-"))
             (ov (new-id var #f))
@@ -522,15 +522,10 @@
              vals ex)))
     (($ seq ($ ast _ exprs))
      (let* ((r-exprs (reverse exprs))
+            (expr-cps (map ast->cps (reverse (cdr r-exprs))))
             (tail (ast->cps (car r-exprs) cont))
-            (el (fold
-                 (lambda (e p)
-                   (let ((ret (ast->cps e)))
-                     (if (is-def-in-cps? ret)
-                         p
-                         (cons ret p))))
-                 (if (is-def-in-cps? tail) '() (list tail))
-                 (cdr r-exprs)))
+            (el (filter-map (lambda (e) (and (not (is-def-in-cps? e)) e))
+                            (append expr-cps (list tail))))
             (ev (map (lambda (_) (new-id "#k-")) el)))
        (fold (lambda (e v p)
                (if (is-def-in-cps? e)
