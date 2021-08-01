@@ -37,13 +37,32 @@
     (($ constant _ 'integer v) #t)
     (else #f)))
 
+(define *int->int*
+  '(+ - * /))
+
+(define *preds*
+  '(number? symbol? keyword? procedure? primitive?
+            boolean? char? integer? rational? real? complex?))
+
+(define *collection-preds*
+  '(null? list? vector? pair?))
+
+(define (make-applicable-checker what)
+  (lambda (p)
+    (and (applicable-primitive? p)
+         (memq (primitive-name p) what))))
+
+(define is-prim:int->int? (make-applicable-checker *int->int*))
+(define is-prim:pred? (make-applicable-checker *preds*))
+(define is-prim:collection-pred? (make-applicable-checker *collection-preds*))
+
 ;; NOTE: fold-constant must be applied before, otherwise it doesn't work.
 ;; FIXME: Only pure-functional primitives can be reduced.
 (define (delta expr)
   (define (prim-fold p args)
     (and (every constant-integer? args)
          (prim-apply p args)))
-  (match expr
+  (match (pk "expr" (cps->expr expr) expr)
     (($ app/k _ ($ lambda/k _ v body) e)
      (lambda/k-body-set! (app/k-func expr) (delta body))
      (app/k-args-set! expr (map delta e))
@@ -67,9 +86,34 @@
      expr)
     (($ app/k _ (? primitive? p) args)
      (let ((al (map delta args)))
+       ;; TODO: Add more patterns
        (cond
-        ((and (every cps-integer? al) (applicable-primitive? p))
+        ((and (every cps-integer? al) (is-prim:int->int? p))
          (new-constant/k (prim-apply p al)))
+        ((and (is-prim:pred? p) (every constant/k? al))
+         (new-constant/k (prim-apply p (map constant/k-value al))))
+        ((and (is-prim:collection-pred? p)
+              (or (collection/k? (car al)) (constant/k? (car al))))
+         (when (not (= 1 (length al)))
+           (throw 'laco-error "Pred `~a' only accepts one argument! (~a)"
+                  (primitive-name p) (cps->expr al)))
+         (let* ((e (car al))
+                (result
+                 (cond
+                  ((collection/k? e)
+                   (let ((type (collection/k-type e)))
+                     (if (eq? type 'list)
+                         (if (null? (collection/k-value e))
+                             ((primitive-impl p) 'null)
+                             ((primitive-impl p) type))
+                         ((primitive-impl p) type))))
+                  ((constant/k? e)
+                   (gen-constant #f))
+                  (else
+                   (throw
+                    'laco-error
+                    "BUG: only accepts collection or constant, not `~a'" e)))))
+           (new-constant/k result)))
         (else
          (app/k-args-set! expr al)
          expr))))

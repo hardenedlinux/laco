@@ -185,6 +185,10 @@
 (define (applicable-primitive? p)
   (not (memq (primitive-name p) *inapplicable-primitive*)))
 
+(define (make-pred type)
+  (lambda (t)
+    (gen-constant (eq? t type))))
+
 ;; halt can associate with primitive `halt', its activity is TOS.
 (define-primitive (pop)
   (lambda _
@@ -336,9 +340,12 @@
   (lambda _
     (gen-error 'i2c-write-byte!)))
 
-(define-primitive (null?) null?)
+(define-primitive (null?) (make-pred 'null))
 
-(define-primitive (pair?) pair?)
+(define-primitive (pair?)
+  (lambda (t)
+    (gen-constant (or (eq? t 'pair)
+                      (eq? t 'list)))))
 
 (define-primitive (spi-transceive!)
   (lambda _
@@ -393,28 +400,28 @@
   (lambda _
     (gen-error 'dynamic-wind)))
 
-(define-primitive (list?) list?)
+(define-primitive (list?) (make-pred 'list))
 
-(define-primitive (string?) string?)
+(define-primitive (string?) (make-pred 'string))
 
-(define-primitive (char?) char?)
+(define-primitive (char?) (make-pred 'char))
 
-(define-primitive (keyword?) keyword?)
+(define-primitive (keyword?) (make-pred 'keyword))
 
-(define-primitive (symbol?) symbol?)
+(define-primitive (symbol?) (make-pred 'symbol))
 
-(define-primitive (procedure?) procedure?)
+(define-primitive (procedure?) (make-pred 'procedure))
 
-(define-primitive (primitive?) primitive?)
+(define-primitive (primitive?) (make-pred 'primitive))
 
-(define-primitive (boolean?) boolean?)
+(define-primitive (boolean?) (make-pred 'boolean))
 
 (define-primitive (number?) number?)
 
-(define-primitive (integer?) integer?)
+(define-primitive (integer?) (make-pred 'integer))
 
 (define-primitive (real?) real?)
 
-(define-primitive (rational?) rational?)
+(define-primitive (rational?) (make-pred 'rational))
 
-(define-primitive (complex?) complex?)
+(define-primitive (complex?) (make-pred 'complex))
