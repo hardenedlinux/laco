@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020
+;;  Copyright (C) 2020-2021
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -62,7 +62,7 @@
   (define (prim-fold p args)
     (and (every constant-integer? args)
          (prim-apply p args)))
-  (match (pk "expr" (cps->expr expr) expr)
+  (match expr
     (($ app/k _ ($ lambda/k _ v body) e)
      (lambda/k-body-set! (app/k-func expr) (delta body))
      (app/k-args-set! expr (map delta e))
