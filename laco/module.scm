@@ -56,7 +56,7 @@
     (define (ble-enable!)
       ;; FR8016 firmware need to have 87.5ms to 93.75ms before receive AT command
       (usleep 100000)
-      (display "\r\nAT+AUTO+++=Y\r\n"))
+      (display "\nAT+AUTO+++=Y\n"))
 
     ;; FIXME: It should be (define* (newline #:optional port) ...). We'll fix it
     ;;        when we have define*.
