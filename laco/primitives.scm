@@ -157,6 +157,9 @@
     real? ; 16 + 49
     rational? ; 16 + 50
     complex? ; 16 + 51
+    exact? ; 16 + 52
+    inexact? ; 16 + 53
+    i2c-read-bytevector! ; 16 + 54
     ))
 
 (define (print-primitives)
@@ -179,7 +182,7 @@
 (define *inapplicable-primitive*
   '(halt return display restore usleep device-configure! gpio-set! gpio-toggle!
          get-board-id read-char read-string read-line i2c-read-byte! i2c-write-byte!
-         spi-transceive! i2c-read-list! i2c-write-list!
+         spi-transceive! i2c-read-list! exact? inexact? i2c-read-bytevector! i2c-write-list!
          with-exception-handler raise raise-continuable))
 
 (define (applicable-primitive? p)
@@ -354,6 +357,10 @@
 (define-primitive (i2c-read-list!)
   (lambda _
     (gen-error 'i2c-read-list!)))
+
+(define-primitive (i2c-read-bytevector!)
+  (lambda _
+    (gen-error 'i2c-read-bytevector!)))
 
 (define-primitive (i2c-write-list!)
   (lambda _
