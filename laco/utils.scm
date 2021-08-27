@@ -301,10 +301,14 @@
     (else (throw 'laco-error name->mode "Invalid mode-name `~a'!" name))))
 
 (define (const-useless-position exprs)
-  (list-head exprs (1- (length exprs))))
+  (if (null? exprs)
+    '()
+    (list-head exprs (1- (length exprs)))))
 
 (define (tail-position exprs)
-  (list-tail exprs (1- (length exprs))))
+  (if (null? exprs)
+    '()
+    (list-tail exprs (1- (length exprs)))))
 
 (define *normal-call-table* (make-hash-table))
 (define (normal-call-register! label)
