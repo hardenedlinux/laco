@@ -191,6 +191,9 @@
 (define-public (emit-vector-object size)
   (sasm-emit `((push-vector-object ,size) . "")))
 
+(define-public (emit-bytevector-object lst)
+  (sasm-emit `((push-bytevector-object ,lst) . "")))
+
 (define-public (emit-prelude proc label mode arity)
   (sasm-emit `((prelude ,(drop-hash label) ,(mode->name mode) ,arity)
                . ,(format #f "Prelude for `~a'" (drop-hash proc)))))

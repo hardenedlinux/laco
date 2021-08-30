@@ -20,6 +20,7 @@
   #:use-module (laco primitives)
   #:use-module (ice-9 match)
   #:use-module (laco records)
+  #:use-module ((rnrs) #:select (bytevector?))
   #:export (object?
 
             integer-object
@@ -35,6 +36,10 @@
             vector-object
             vector-object?
             make-vector-object
+
+            bytevector-object
+            bytevector-object?
+            make-bytevector-object
 
             char-object
             char-object?
@@ -159,6 +164,12 @@
   (fields
    (value keyword?)))
 
+(define-typed-record bytevector-object (parent object)
+  (fields
+   ;; size is not needed, since it bytevector-length can calculated
+   ;; (size >=0)
+   (value bytevector?)))
+
 ;; constant -> object
 (define (create-constant-object c)
   (let ((val (constant-val c)))
@@ -179,6 +190,7 @@
        ;;       keyword in other cases.
        (make-keyword-object '() val))
       ('boolean (make-boolean-object '() val))
+      ('bytevector (make-bytevector-object '() val))
       (else (throw 'laco-error create-constant-object "Invalid type `~a'!"
                    (constant-type c))))))
 
@@ -196,6 +208,7 @@
    ((keyword-object? o) (keyword-object-value o))
    ((boolean-object? o) (boolean-object-value o))
    ((prim-object? o) (prim-object-prim o))
+   ((bytevector-object? o) (bytevector-object-value o))
    (else (throw 'laco-error object->value "Invalid type `~a'!" o))))
 
 ;; collection -> object

@@ -120,6 +120,8 @@
     (($ vector-object _ size lst)
      (for-each emit-sasm (reverse lst))
      (emit-vector-object size))
+    (($ bytevector-object _ bv)
+     (emit-bytevector-object bv))
     (($ proc-object _ proc arity entry)
      (emit-proc-object proc arity (lambda-has-vargs? (string->symbol proc)) entry))
     (($ prim-object _ p)

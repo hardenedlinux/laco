@@ -19,6 +19,7 @@
   #:use-module (laco utils)
   #:use-module (laco records)
   #:use-module (srfi srfi-1)
+  #:use-module ((rnrs) #:select (bytevector?))
   #:export (constant
             constant?
             make-constant
@@ -91,6 +92,7 @@
      ((list? x) 'list)
      ((vector? x) 'vector)
      ((char? x) 'char)
+     ((bytevector? x) 'bytevector)
      ((unspecified? x) 'unspecified)
      (else (throw 'laco-error 'detect-literal-type "Invalid literal type!" x))))))
 

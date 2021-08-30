@@ -24,6 +24,9 @@
                                  bytevector-u16-set!
                                  bytevector-u32-set!
                                  bytevector-ieee-single-set!
+                                 bytevector?
+                                 bytevector-length
+                                 bytevector-copy!
                                  define-record-type))
   #:export (label-counter
             single-encode
@@ -38,6 +41,7 @@
             rational-obj-encode
             complex-obj-encode
             string-obj-encode
+            bytevector-obj-encode
             keyword-obj-encode
             char-obj-encode
             boolean-obj-encode
@@ -247,6 +251,25 @@
     ;; encoding length = header + type + string + '\0'
     (label-counter (+ 2 (string-length str) 1))
     (list bv sbv #vu8(0))))
+
+(define (bytevector-obj-encode value)
+  (pk "bytevector-obj-encode value = " value)
+  (when (not (bytevector? value))
+    (throw 'laco-error string-obj-encode
+           "Invalid object `~a', should be a bytevector!" value))
+  (let* ((size (bytevector-length value))
+         (bv (make-bytevector (+ 4 size) 0)))
+    (when (or (< size 0) (>= size (expt 2 16)))
+      (throw 'laco-error collection-obj-encode
+             "Invalid bytevector size `~a', should be 0~2^16!" size))
+    (bytevector-u8-set! bv 0 #b11100010)
+    (bytevector-u8-set! bv 1 21) ;; 21 is the type of bytevector
+    (bytevector-u16-set! bv 2 size 'big)
+    (label-counter (+ 4 size))
+    ;; TODO: bytevector-copy! is different in r6rs and r7rs
+    (bytevector-copy! value 0 bv 4 size)
+    bv))
+
 
 ;; NOTE: We use string to encode keyword, but it's better to use symbol-like keyword
 (define (keyword-obj-encode k)

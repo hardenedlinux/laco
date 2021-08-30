@@ -23,6 +23,7 @@
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-11)
+  #:use-module ((rnrs) #:select (bytevector?))
   #:export (parser
             parse-module))
 
@@ -338,6 +339,7 @@
     (('list e ...) (make-collection (map parse-it e)
                                     'list (length e)))
     (('vector e ...) (make-collection (map parse-it e) 'vector (vector-length e)))
+    ((? bytevector? e) (gen-constant e))
     ((op args ...)
      (let ((f (parse-it op #:use 'value #:op? #t)))
        (cond

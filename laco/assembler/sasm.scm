@@ -278,6 +278,9 @@
 (define-public (push-vector-object size)
   (collection-obj-encode 5 size))
 
+(define-public (push-bytevector-object bv)
+  (bytevector-obj-encode bv))
+
 ;; TODO:
 ;; 1. add opt-index
 ;; 2. detect opt-index and convert vargs to list in vm.c
