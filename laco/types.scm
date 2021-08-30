@@ -31,7 +31,6 @@
             is-integer-node?
             is-boolean-node?
             is-char-node?
-            is-immediate-node?
             is-unspecified-node?
             integer-check
             pred-constant
@@ -121,14 +120,6 @@
 (define (is-char-node? x) (pred-constant x 'char))
 (define (is-integer-node? x) (pred-constant x 'integer))
 (define (is-unspecified-node? x) (pred-constant x 'unspecified))
-
-;; NOTE: not all constant are immediate, e.g, strings are constant
-;;       but not immediate.
-(define *immediate-type-nodes*
-  '(integer char boolean pair list string vector char))
-(define (is-immediate-node? x)
-  (and (constant? x)
-       (memq (constant-type x) *immediate-type-nodes*)))
 
 (define *integer-range*
   '((u4 . (0 . 15))
