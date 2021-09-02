@@ -37,13 +37,13 @@
          (main-entry))))
 
 (define (global->bytecode g)
-  (map (lambda (ge)
-         (match ge
-           (((? asm-insr? insr) args ...)
-            (apply (insr->proc insr) args))
-           (else (throw 'laco-error global->bytecode
-                        "Invalid global expression `~a'!" ge))))
-       g))
+  (flatten (map (lambda (ge)
+                  (match ge
+                         (((? asm-insr? insr) args ...)
+                          (apply (insr->proc insr) args))
+                         (else (throw 'laco-error global->bytecode
+                                      "Invalid global expression `~a'!" ge))))
+                g)))
 
 (define (program->bytecode p)
   (define (->bytecode pe)

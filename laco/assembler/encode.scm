@@ -258,7 +258,7 @@
     (throw 'laco-error string-obj-encode
            "Invalid object `~a', should be a bytevector!" value))
   (let* ((size (bytevector-length value))
-         (bv (make-bytevector (+ 4 size) 0)))
+         (bv (make-bytevector 4 0)))
     (when (or (< size 0) (>= size (expt 2 16)))
       (throw 'laco-error collection-obj-encode
              "Invalid bytevector size `~a', should be 0~2^16!" size))
@@ -266,10 +266,7 @@
     (bytevector-u8-set! bv 1 21) ;; 21 is the type of bytevector
     (bytevector-u16-set! bv 2 size 'big)
     (label-counter (+ 4 size))
-    ;; TODO: bytevector-copy! is different in r6rs and r7rs
-    (bytevector-copy! value 0 bv 4 size)
-    bv))
-
+    (list bv value)))
 
 ;; NOTE: We use string to encode keyword, but it's better to use symbol-like keyword
 (define (keyword-obj-encode k)
