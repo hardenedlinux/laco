@@ -55,9 +55,6 @@
             make-object-list-pred
             symbol-list?
             any?
-            immediate?
-            collection?
-            atom?
             args-with-keys
             get-all-defs
             new-counter
@@ -225,21 +222,6 @@
 
 (define (laco-list? x) #f)
 (define (laco-pair? x) #f)
-
-(define (immediate? x)
-  (or (number? x)
-      (string? x)
-      (symbol? x)
-      (vector? x)
-      (number? x)))
-
-(define (collection? x)
-  (or (laco-list? x)
-      (laco-pair? x)))
-
-(define (atom? x)
-  (or (immediate? x)
-      (collection? x)))
 
 (define (args-with-keys args)
   (any keyword? args))

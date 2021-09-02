@@ -253,7 +253,6 @@
     (list bv sbv #vu8(0))))
 
 (define (bytevector-obj-encode value)
-  (pk "bytevector-obj-encode value = " value)
   (when (not (bytevector? value))
     (throw 'laco-error string-obj-encode
            "Invalid object `~a', should be a bytevector!" value))
