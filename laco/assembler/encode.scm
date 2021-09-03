@@ -139,7 +139,7 @@
            "Invalid integer object `~a', should be 32bit!" data))
   (let ((bv (make-bytevector 6 0)))
     (bytevector-u8-set! bv 0 #b11100010)
-    (bytevector-u8-set! bv 1 0)
+    (bytevector-u8-set! bv 1 0) ;; 0 imm_int
     (bytevector-s32-set! bv 2 data 'big)
     (label-counter 6)
     bv))
@@ -157,14 +157,14 @@
            "Invalid real object `~a', should be 32bit!" data))
   (let ((bv (make-bytevector 6 0)))
     (bytevector-u8-set! bv 0 #b11100010)
-    (bytevector-u8-set! bv 1 13)
+    (bytevector-u8-set! bv 1 13) ;; 13 real
     (bytevector-ieee-single-set! bv 2 data 'big)
     (label-counter 6)
     bv))
 
 (define (rational-obj-encode data)
   (let ((bv (make-bytevector 6 0))
-        (type (if (positive? data) 14 15))
+        (type (if (positive? data) 14 15)) ;; 14 rational_pos, 15 rational_neg
         (n (abs (numerator data)))
         (d (abs (denominator data))))
     (when (or (< n (- (1- (expt 2 15)))) (> data (1- (expt 2 15))))
@@ -195,7 +195,7 @@
      ((and (exact? r) (exact? i))
       (let ((bv (make-bytevector 6 0)))
         (bytevector-u8-set! bv 0 #b11100010)
-        (bytevector-u8-set! bv 1 16)
+        (bytevector-u8-set! bv 1 16) ;; 16 complex_exact
         (bytevector-s16-set! bv 2 r 'big)
         (bytevector-s16-set! bv 4 i 'big)
         (label-counter 6)
@@ -203,7 +203,7 @@
      (else
       (let ((bv (make-bytevector 10 0)))
         (bytevector-u8-set! bv 0 #b11100010)
-        (bytevector-u8-set! bv 1 17)
+        (bytevector-u8-set! bv 1 17) ;; 17 complex_inexact
         (bytevector-ieee-single-set! bv 2 r 'big)
         (bytevector-ieee-single-set! bv 6 i 'big)
         (label-counter 10)
@@ -213,7 +213,7 @@
   ;; FIXME: Check pn
   (let ((bv (make-bytevector 6 0)))
     (bytevector-u8-set! bv 0 #b11100010)
-    (bytevector-u8-set! bv 1 10)
+    (bytevector-u8-set! bv 1 10) ;; 10 primitive
     (bytevector-u32-set! bv 2 pn 'big)
     (label-counter 6)
     bv))
@@ -247,7 +247,7 @@
         ;; NOTE: We don't support UTF-8 for performance
         (sbv (string->bytevector str "iso8859-1")))
     (bytevector-u8-set! bv 0 #b11100010)
-    (bytevector-u8-set! bv 1 8)
+    (bytevector-u8-set! bv 1 8) ;; 8 is immutable string
     ;; encoding length = header + type + string + '\0'
     (label-counter (+ 2 (string-length str) 1))
     (list bv sbv #vu8(0))))
@@ -262,7 +262,7 @@
       (throw 'laco-error collection-obj-encode
              "Invalid bytevector size `~a', should be 0~2^16!" size))
     (bytevector-u8-set! bv 0 #b11100010)
-    (bytevector-u8-set! bv 1 21) ;; 21 is the type of bytevector
+    (bytevector-u8-set! bv 1 21) ;; 21 is the type of immutable bytevector
     (bytevector-u16-set! bv 2 size 'big)
     (label-counter (+ 4 size))
     (list bv value)))
