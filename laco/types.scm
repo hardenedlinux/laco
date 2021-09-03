@@ -144,7 +144,7 @@
 
 (define *immediates-pred*
   (list keyword? integer? string? char? boolean? pair? list? vector? symbol?
-        real? number? complex? rational?))
+        real? number? complex? rational? bytevector?))
 
 (define (is-immediate? x)
   (any (lambda (c) (c x)) *immediates-pred*))

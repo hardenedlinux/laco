@@ -160,6 +160,7 @@
     exact? ; 16 + 52
     inexact? ; 16 + 53
     i2c-read-bytevector! ; 16 + 54
+    bytevector? ; 16 + 55
     ))
 
 (define (print-primitives)
@@ -432,3 +433,5 @@
 (define-primitive (rational?) (make-pred 'rational))
 
 (define-primitive (complex?) (make-pred 'complex))
+
+(define-primitive (bytevector?) (make-pred 'bytevector))
