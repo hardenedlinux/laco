@@ -163,6 +163,7 @@
     bytevector? ; 16 + 55
     %make-bytevector ; 16 + 56
     bytevector-length ; 16 + 57
+    bytevector-u8-ref ; 16 + 58
     ))
 
 (define (print-primitives)
@@ -190,6 +191,7 @@
          get-board-id read-char read-string read-line i2c-read-byte! i2c-write-byte!
          spi-transceive! i2c-read-list! exact? inexact? i2c-read-bytevector! i2c-write-list!
          with-exception-handler raise raise-continuable %make-bytevector bytevector-length
+         bytevector-u8-ref
          ))
 
 (define (applicable-primitive? p)
@@ -449,3 +451,7 @@
 (define-primitive (bytevector-length)
   (lambda _
     (gen-error 'bytevector-length)))
+
+(define-primitive (bytevector-u8-ref)
+  (lambda _
+    (gen-error 'bytevector-u8-ref)))
