@@ -68,6 +68,9 @@
 
     (define* (bytevector-copy bv #:optional (start 0) (end (bytevector-length bv)))
       (%bytevector-copy bv start end))
+
+    (define* (bytevector-copy! to at from #:optional (start 0) (end (bytevector-length from)))
+      (%bytevector-copy! to at from start end))
     ))
 
 ;; If mod-path is #f, then it's the main script
