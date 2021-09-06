@@ -161,6 +161,7 @@
     inexact? ; 16 + 53
     i2c-read-bytevector! ; 16 + 54
     bytevector? ; 16 + 55
+    %make-bytevector ; 16 + 56
     ))
 
 (define (print-primitives)
@@ -180,11 +181,15 @@
    (else (throw 'laco-error primitive->number "Invalid primitive name `~a'!"
                 (primitive-name p)))))
 
+;; if there is a function is already done
+;; constant project reduction
+;; delta reduction
 (define *inapplicable-primitive*
   '(halt return display restore usleep device-configure! gpio-set! gpio-toggle!
          get-board-id read-char read-string read-line i2c-read-byte! i2c-write-byte!
          spi-transceive! i2c-read-list! exact? inexact? i2c-read-bytevector! i2c-write-list!
-         with-exception-handler raise raise-continuable))
+         with-exception-handler raise raise-continuable %make-bytevector
+         ))
 
 (define (applicable-primitive? p)
   (not (memq (primitive-name p) *inapplicable-primitive*)))
@@ -435,3 +440,7 @@
 (define-primitive (complex?) (make-pred 'complex))
 
 (define-primitive (bytevector?) (make-pred 'bytevector))
+
+(define-primitive (%make-bytevector)
+  (lambda _
+    (gen-error '%make-bytevector)))

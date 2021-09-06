@@ -62,6 +62,9 @@
     ;;        when we have define*.
     (define (newline)
       (display "\n"))
+
+    (define* (make-bytevector k #:optional (byte 0))
+      (%make-bytevector k byte))
     ))
 
 ;; If mod-path is #f, then it's the main script
