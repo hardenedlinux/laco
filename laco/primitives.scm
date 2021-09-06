@@ -162,6 +162,7 @@
     i2c-read-bytevector! ; 16 + 54
     bytevector? ; 16 + 55
     %make-bytevector ; 16 + 56
+    bytevector-length ; 16 + 57
     ))
 
 (define (print-primitives)
@@ -188,7 +189,7 @@
   '(halt return display restore usleep device-configure! gpio-set! gpio-toggle!
          get-board-id read-char read-string read-line i2c-read-byte! i2c-write-byte!
          spi-transceive! i2c-read-list! exact? inexact? i2c-read-bytevector! i2c-write-list!
-         with-exception-handler raise raise-continuable %make-bytevector
+         with-exception-handler raise raise-continuable %make-bytevector bytevector-length
          ))
 
 (define (applicable-primitive? p)
@@ -444,3 +445,7 @@
 (define-primitive (%make-bytevector)
   (lambda _
     (gen-error '%make-bytevector)))
+
+(define-primitive (bytevector-length)
+  (lambda _
+    (gen-error 'bytevector-length)))
