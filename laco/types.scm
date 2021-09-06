@@ -142,6 +142,11 @@
         (and (> x (car range)) (< x (cdr range))))
       (throw 'laco-error integer-check "`~a' is not an integer!" x)))
 
+;; immediate refers data type which their raw data are read from LEF binary
+;; for example literal string is an immediate
+;; if there is a list contains a variable or closure, it is not an immediate
+;; A closure contains data generated in runtime thus it is not an immediate
+;; literal bytevector is an immediate
 (define *immediates-pred*
   (list keyword? integer? string? char? boolean? pair? list? vector? symbol?
         real? number? complex? rational? bytevector?))
