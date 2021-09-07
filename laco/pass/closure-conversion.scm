@@ -208,10 +208,16 @@
                           (new-id "#local-tmp-"))))
           (cond
            ((toplevel? (current-env))
-            (top-level-set! (id-name tmpvar) (cc arg))
-            (cc (cfs jbody
-                     (list jargs)
-                     (list tmpvar))))
+            (cond
+             ((or (id? arg) (app/k? arg))
+              (cc (cfs jbody
+                       (list jargs)
+                       (list arg))))
+             (else
+              (top-level-set! (id-name tmpvar) (cc arg))
+              (cc (cfs jbody
+                       (list jargs)
+                       (list tmpvar))))))
            (else
             (env-local-push! (current-env) tmpvar)
             (when def
