@@ -89,14 +89,20 @@
         (else (throw 'laco-error extract-opt-args
                      "Invalid pattern `~a`!" next)))))
   (let-values (((el opts ks) (extract-opt-args func args)))
-    (let ((keys (map (lambda (x)
-                       (or (and=> (assoc-ref ks (car x)) car)
-                           (cadr x)))
-                     (keys-of-def func))))
+    (let* ((keys (map (lambda (x)
+                        (or (and=> (assoc-ref ks (car x)) car)
+                            (cadr x)))
+                      (keys-of-def func)))
+           (ids (ids-of-def func)))
       (verify-kargs func ks)
       (let lp ((next el) (ret '()))
         (match next
-          (() `(,@(reverse ret) ,@opts ,@keys))
+          (()
+           (values
+            ids
+            (map list
+                 ids
+                 `(,@(reverse ret) ,@opts ,@keys))))
           ((e rest ...)
            (lp rest (cons e ret)))
           (else
@@ -345,10 +351,14 @@
        (cond
         ((not f) (throw 'laco-error parse-it "PROC `~a': unbound variable: " op))
         ((macro? f) ((macro-expander f) args))
-        ((opt-def-ref (ref-var f))
-         (let ((cooked-args (cook-opt-args (ref-var f) args)))
-           (make-call #f f
-                      (map (lambda (e) (parse-it e #:use 'value)) cooked-args))))
+        ((and (not (object-property expr 'is-extracted?)) (opt-def-ref (ref-var f)))
+         (let-values (((ids bindings) (cook-opt-args (ref-var f) args)))
+           (let ((new-expr `(,op ,@ids)))
+             (set-object-property! new-expr 'is-extracted? #t)
+             (parse-it `(let* (,@bindings) ,new-expr)))
+           #;
+           (make-call #f f              ;
+           (map (lambda (e) (parse-it e #:use 'value)) (map cadr bindings)))))
         (else
          (make-call #f f
                     (map (lambda (e) (parse-it e #:use 'value)) args))))))
