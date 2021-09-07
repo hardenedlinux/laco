@@ -79,5 +79,6 @@
 (check "Raise" "raise")
 (check "Raise continuable" "raise-cont")
 (check "Re-define toplevel" "redefine")
+(check "Bytevector Operations" "bytevector")
 
 (test-end "test-suite")
