@@ -25,11 +25,12 @@
 (display d)
 (newline)
 
-; (define e (bytevector-copy c 0 5)) ;; NG
+;; FIXME: use this when vm error about global variables fixed
+;; (define e (bytevector-copy c 0 5))
 (define e (bytevector-copy b 0 5)) ;; OK
 (display e)
 (newline)
 
-(bytevector-copy! c 0 a 1 3)
+(bytevector-copy! c 1 a 1 3)
 (display c)
 (newline)
