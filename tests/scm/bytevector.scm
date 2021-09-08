@@ -1,4 +1,4 @@
-; bytevector.scm
+;; bytevector.scm
 (define a #vu8(10 11 12 13 14))
 (display a)
 (newline)
@@ -34,3 +34,12 @@
 (bytevector-copy! c 1 a 1 3)
 (display c)
 (newline)
+
+(let ((g (bytevector-append c d)))
+  (display g)
+  (newline))
+
+;; FIXME: use this when vm error about global variables fixed
+;; (define f (bytevector-append a b))
+;; (display f)
+;; (newline)
