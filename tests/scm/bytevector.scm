@@ -1,9 +1,9 @@
 ;; bytevector.scm
-(define a #vu8(10 11 12 13 14))
+(define a #u8(10 11 12 13 14))
 (display a)
 (newline)
 
-(define b #vu8(20 21 22 23 24))
+(define b #u8(20 21 22 23 24))
 (display b)
 (newline)
 
