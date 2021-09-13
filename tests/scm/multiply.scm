@@ -1,7 +1,5 @@
 (define (mul x y)
   (* x y))
-(define (div x y)
-  (/ x y))
 
 (display (mul -65535 -65535))
 (newline)
