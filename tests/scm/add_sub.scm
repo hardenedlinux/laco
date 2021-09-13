@@ -50,3 +50,15 @@
 
 (display (sub -2147483647 2147483647)) ;; overflow
 (newline)
+
+(display (sub 5/3 0.6666666))
+(newline)
+
+(display (sub -2147483648 -2147483648)) ;; overflow
+(newline)
+
+(display (sub 2147483647 -2147483648)) ;; overflow
+(newline)
+
+(display (+ 32768/7 62769/7))
+(newline)
