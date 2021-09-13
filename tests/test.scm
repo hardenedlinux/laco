@@ -27,8 +27,6 @@
 
 (test-begin "test-suite")
 
-(check "Add" "add")
-(check "Rational Division" "rational-division")
 (check "Rational 1" "rational-1")
 (check "Fibonacci Sequence" "fibonacci")
 (check "Factorial" "factorial")
@@ -69,7 +67,7 @@
 (check "list-ref" "list-ref")
 (check "add_sub" "add_sub")
 (check "multiply" "multiply")
-(check "division" "division")
+(check "Rational Division" "rational-division")
 (check "pair" "pair")
 (check "null" "null")
 (check "Nested Lambda 1" "nested-lambda-1")
