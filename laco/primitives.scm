@@ -169,6 +169,7 @@
     %bytevector-copy! ; 16 + 61
     bytevector-append ; 16 + 62
     i2c-write-bytevector! ; 16 + 63
+    floor ; 16 + 64
     ))
 
 (define (print-primitives)
@@ -197,7 +198,7 @@
          spi-transceive! i2c-read-list! exact? inexact? i2c-read-bytevector! i2c-write-list!
          with-exception-handler raise raise-continuable %make-bytevector bytevector-length
          bytevector-u8-ref bytevector-u8-set! %bytevector-copy %bytevector-copy! bytevector-append
-         i2c-write-bytevector!
+         i2c-write-bytevector! floor
          ))
 
 (define (applicable-primitive? p)
@@ -481,3 +482,7 @@
 (define-primitive (i2c-write-bytevector!)
   (lambda _
     (gen-error 'i2c-write-bytevector!)))
+
+(define-primitive (floor)
+  (lambda _
+    (gen-error 'floor)))
