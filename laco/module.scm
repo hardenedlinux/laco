@@ -71,6 +71,14 @@
 
     (define* (bytevector-copy! to at from #:optional (start 0) (end (bytevector-length from)))
       (%bytevector-copy! to at from start end))
+
+    (define (pk str obj)
+      (display ";;; (")
+      (display str)
+      (display ") ")
+      (display obj)
+      (newline)
+      obj)
     ))
 
 ;; If mod-path is #f, then it's the main script
