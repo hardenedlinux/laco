@@ -170,6 +170,31 @@
     bytevector-append ; 16 + 62
     i2c-write-bytevector! ; 16 + 63
     floor ; 16 + 64
+    floor/                    ; 16 + 65 = 81
+    ceiling                   ; 16 + 66 = 82
+    truncate                  ; 16 + 67 = 83
+    round                     ; 16 + 68 = 84
+    rationalize               ; 16 + 69 = 85
+    floor-quotient            ; 16 + 70 = 86
+    floor-remainder           ; 16 + 71 = 87
+    truncate/                 ; 16 + 72 = 88
+    truncate-quotient         ; 16 + 73 = 89
+    truncate-remainder        ; 16 + 74 = 90
+    numerator                 ; 16 + 75 = 91
+    denominator               ; 16 + 76 = 92
+    exact-integer?            ; 16 + 77 = 93
+    finite?                   ; 16 + 78 = 94
+    infinite?                 ; 16 + 79 = 95
+    nan?                      ; 16 + 80 = 96
+    zero?                     ; 16 + 81 = 97
+    positive?                 ; 16 + 82 = 98
+    negative?                 ; 16 + 83 = 99
+    odd?                      ; 16 + 84 = 100
+    even?                     ; 16 + 85 = 101
+    square                    ; 16 + 86 = 102
+    sqrt                      ; 16 + 87 = 103
+    exact-integer-sqrt        ; 16 + 88 = 104
+    expt                      ; 16 + 89 = 105
     ))
 
 (define (print-primitives)
@@ -199,6 +224,32 @@
          with-exception-handler raise raise-continuable %make-bytevector bytevector-length
          bytevector-u8-ref bytevector-u8-set! %bytevector-copy %bytevector-copy! bytevector-append
          i2c-write-bytevector! floor
+         floor/
+         ceiling
+         truncate
+         round
+         rationalize
+         floor-quotient
+         floor-remainder
+         truncate/
+         truncate-quotient
+         truncate-remainder
+         numerator
+         denominator
+         exact-integer?
+         finite?
+         infinite?
+         nan?
+         zero?
+         positive?
+         negative?
+         odd?
+         even?
+         square
+         sqrt
+         exact-integer-sqrt
+         expt
+
          ))
 
 (define (applicable-primitive? p)
@@ -486,3 +537,103 @@
 (define-primitive (floor)
   (lambda _
     (gen-error 'floor)))
+
+(define-primitive (floor/)
+  (lambda _
+    (gen-error 'floor/)))
+
+(define-primitive (ceiling)
+  (lambda _
+    (gen-error 'ceiling)))
+
+(define-primitive (truncate)
+  (lambda _
+    (gen-error 'truncate)))
+
+(define-primitive (round)
+  (lambda _
+    (gen-error 'round)))
+
+(define-primitive (rationalize)
+  (lambda _
+    (gen-error 'rationalize)))
+
+(define-primitive (floor-quotient)
+  (lambda _
+    (gen-error 'floor-quotient)))
+
+(define-primitive (floor-remainder)
+  (lambda _
+    (gen-error 'floor-remainder)))
+
+(define-primitive (truncate/)
+  (lambda _
+    (gen-error 'truncate/)))
+
+(define-primitive (truncate-quotient)
+  (lambda _
+    (gen-error 'truncate-quotient)))
+
+(define-primitive (truncate-remainder)
+  (lambda _
+    (gen-error 'truncate-remainder)))
+
+(define-primitive (numerator)
+  (lambda _
+    (gen-error 'numerator)))
+
+(define-primitive (denominator)
+  (lambda _
+    (gen-error 'denominator)))
+
+(define-primitive (exact-integer?)
+  (lambda _
+    (gen-error 'exact-integer?)))
+
+(define-primitive (finite?)
+  (lambda _
+    (gen-error 'finite?)))
+
+(define-primitive (infinite?)
+  (lambda _
+    (gen-error 'infinite?)))
+
+(define-primitive (nan?)
+  (lambda _
+    (gen-error 'nan?)))
+
+(define-primitive (zero?)
+  (lambda _
+    (gen-error 'zero?)))
+
+(define-primitive (positive?)
+  (lambda _
+    (gen-error 'positive?)))
+
+(define-primitive (negative?)
+  (lambda _
+    (gen-error 'negative?)))
+
+(define-primitive (odd?)
+  (lambda _
+    (gen-error 'odd?)))
+
+(define-primitive (even?)
+  (lambda _
+    (gen-error 'even?)))
+
+(define-primitive (square)
+  (lambda _
+    (gen-error 'square)))
+
+(define-primitive (sqrt)
+  (lambda _
+    (gen-error 'sqrt)))
+
+(define-primitive (exact-integer-sqrt)
+  (lambda _
+    (gen-error 'exact-integer-sqrt)))
+
+(define-primitive (expt)
+  (lambda _
+    (gen-error 'expt)))
