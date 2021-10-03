@@ -21,6 +21,7 @@
   #:use-module (laco cps)
   #:use-module (laco pass)
   #:use-module (laco pass normalize)
+  #:use-module (laco pass closure-conversion)
   #:use-module (ice-9 match))
 
 ;; NOTE: This pass must be after normalize and closure-conversion
@@ -45,6 +46,7 @@
     ))
 
 (define lift-name (make-parameter ""))
+(define inside-lifted-body? (make-parameter #f))
 
 (define (ll expr)
   (match expr
@@ -55,9 +57,14 @@
        (bind-special-form/k-body-set! expr (ll body))
        expr)
       (else
-       (top-level-set! (id-name fname) (ll func))
-       (parameterize ((lift-name (id->string fname)))
-         (ll body)))))
+       (let* ((nid (new-id (string-append "#lifted-lambda-" (id->string fname))))
+              (name (id-name nid))
+              (nstr (id->string nid)))
+         (parameterize ((lift-name nstr)
+                        (inside-lifted-body? #t))
+           (top-level-set! name (ll (cfs func (list fname) (list nid)))))
+         (lifted! name)
+         (ll (cfs body (list fname) (list nid)))))))
     (($ closure/k  ($ cps _ name _ attr) env body)
      (let ((lifted-proc (new-lambda/k (env->args env) body #:attr attr)))
        ;;(pk "args" (map id-name (env->args env)))
@@ -96,7 +103,9 @@
      expr)
     (($ lambda/k ($ cps _ _ name _) args body)
      (cond
-      ((and (not (is-top?)) (not (is-lifted? (id-name name))))
+      ((and (not (inside-lifted-body?))
+            (not (is-top?))
+            (not (is-lifted? (id-name name))))
        (let ((lname (new-id "#lifted-lambda-")))
          (parameterize ((is-top? #f))
            (lambda/k-body-set! expr (ll body)))
@@ -123,4 +132,4 @@
 ;; Lambda-lifting does two things:
 ;; 1. Lifting free variables to parameters
 ;; 2. Lifting functions to higher scoping as possible
-(define-pass lambda-lifting expr (ll expr))
+(define-pass lambda-lifting expr (var-conversion (ll expr)))

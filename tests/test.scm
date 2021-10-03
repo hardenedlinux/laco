@@ -55,6 +55,7 @@
 (check "list->string" "list_to_string")
 (check "Lambda Lifting 1" "lambda-lifting-1")
 (check "Lambda Lifting 2" "lambda-lifting-2")
+(check "Lambda multi-args application" "lambda-app-multi-args")
 (check "Closure 1" "closure-1")
 (check "Closure 2" "closure-2")
 (check "Global expression 1" "global-expr-1")

@@ -24,7 +24,8 @@
   #:use-module (laco pass)
   #:use-module (laco records)
   #:use-module (ice-9 match)
-  #:use-module ((srfi srfi-1) #:select (fold-right)))
+  #:use-module ((srfi srfi-1) #:select (fold-right))
+  #:export (var-conversion))
 
 ;; NOTE:
 ;; 1. We only perform CC after DCE, so there's no unused binding.
@@ -71,7 +72,6 @@
 (define (env-set! name e) (hash-set! *env-table* name e))
 
 (define* (cc expr #:optional (mode 'normal) #:key (finish? #f))
-  ;;(pk "expr" (cps->expr expr)) (read)
   (match expr
     (($ app/k _ f (($ lambda/k ($ cps _ kont name attr) (k) body) args ...))
      (=> failed!)
@@ -137,11 +137,11 @@
      (make-seq/k (list kont name attr) (map cc exprs)))
     (($ letfun/k ($ bind-special-form/k ($ cps _ kont name attr) fname func body))
      (let ((env (if (toplevel? (current-env))
-                    (new-env (id-name name) '() (fix-fv (free-vars expr)))
+                    (new-env (id-name fname) '() (fix-fv (free-vars expr)))
                     (current-env))))
        (env-local-push! env fname)
        (parameterize ((current-env env))
-         (env-set! (id-name name) env)
+         (env-set! (id-name fname) env)
          (make-letfun/k (list kont name attr)
                         fname
                         (cc func)
@@ -346,11 +346,13 @@
      (app/k-args-set! expr (map var-conversion args))
      expr)
     ((? bind-special-form/k?)
-     (bind-special-form/k-value-set!
-      expr (var-conversion (bind-special-form/k-value expr)))
-     (bind-special-form/k-body-set!
-      expr (var-conversion (bind-special-form/k-body expr)))
-     expr)
+     (let ((env (env-ref (id-name (bind-special-form/k-var expr)))))
+       (parameterize ((current-env env))
+         (bind-special-form/k-value-set!
+          expr (var-conversion (bind-special-form/k-value expr)))
+         (bind-special-form/k-body-set!
+          expr (var-conversion (bind-special-form/k-body expr))))
+       expr))
     (($ seq/k ($ cps _ _ _ attr) exprs)
      (cond
       ((assoc-ref attr 'env)
