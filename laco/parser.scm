@@ -164,10 +164,10 @@
          ;; 1. In the top-level (toplevel definition).
          ;; 2. In the beginning of body (inner definition).
          (throw 'laco-error parse-it
-                "Definition is only allowd in the top of context" expr))
+                "Definition is only allowed in the top of context" expr))
         ((null? e)
          ;; R6Rs supports definition without expression, which implies to define
-         ;; a var with the value `unspecifed'.
+         ;; a var with the value `unspecified'.
          ;; With respect to the future Scheme, we support it anyway.
          *laco/unspecified*)
         (else
