@@ -81,5 +81,6 @@
 (check "Bytevector Operations" "bytevector")
 (check "And test" "and-test")
 (check "Or test" "or-test")
+(check "Mathematical Operations" "numbers")
 
 (test-end "test-suite")
