@@ -313,22 +313,18 @@
        (parse-it (dispatch ks vs))))
     (('or rest ...)
      (cond
-      ((null? rest) (gen-constant 'false))
+      ((null? rest) (gen-constant #f))
       ((null? (cdr rest)) (parse-it (car rest)))
       (else
-       (let ((b1 (gensym "or-"))
-             (b2 (gensym "or-")))
-         (parse-it `((lambda (,b1 ,b2) (if ,b1 ,b1 (,b2)))
-                     ,(car rest) (lambda () (or ,@(cdr rest)))))))))
+       (parse-it `(let ((cnd ,(car rest)))
+                    (if cnd cnd (or ,@(cdr rest))))))))
     (('and rest ...)
      (cond
       ((null? rest) (gen-constant #t))
       ((null? (cdr rest)) (parse-it (car rest)))
       (else
-       (let ((b1 (gensym "and-"))
-             (b2 (gensym "and-")))
-         (parse-it `((lambda (,b1 ,b2) (if ,b1 (,b2) ,b1))
-                     ,(car rest) (lambda () (and ,@(cdr rest)))))))))
+       (parse-it `(let ((cnd ,(car rest)))
+                    (if cnd (and ,@(cdr rest)) #f))))))
     (('quote s)
      (match s
        ((or (? string?) (? number?) (? symbol?) (? char?))

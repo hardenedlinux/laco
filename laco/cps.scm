@@ -388,6 +388,39 @@
     ((? id?) (rename expr))
     (else expr)))
 
+(define (clone expr)
+  (define new-name (new-id "#kont-"))
+  (match expr
+    (($ lambda/k ($ cps _ kont _ attr) fargs body)
+     (make-lambda/k (list kont new-name attr) fargs (clone body)))
+    (($ app/k ($ cps _ kont _ attr) func fargs)
+     (make-app/k (list kont new-name attr)
+                 (clone func) (map clone fargs)))
+    (($ seq/k ($ cps _ kont _ attr) exprs)
+     (make-seq/k (list kont new-name attr) (map clone exprs)))
+    (($ letcont/k ($ cps _ kont _ attr) var value body)
+     (make-letcont/k (list kont new-name attr)
+                     var (clone value) (clone body)))
+    (($ letfun/k ($ cps _ kont _ attr) var value body)
+     (make-letfun/k (list kont new-name attr)
+                    var (clone value) (clone body)))
+    (($ letval/k ($ cps _ kont _ attr) var value body)
+     (make-letval/k (list kont new-name attr)
+                    var (clone value) (clone body)))
+    (($ branch/k ($ cps _ kont _ attr) cnd b1 b2)
+     (make-branch/k (list kont new-name attr)
+                    (clone cnd)
+                    (clone b1)
+                    (clone b2)))
+    (($ assign/k ($ cps _ kont _ attr) v e)
+     (make-assign/k (list kont new-name attr)
+                    v (clone e)))
+    (($ collection/k ($ cps _ kont _ attr) var type size value)
+     (make-collection/k (list kont new-name attr)
+                        var type size
+                        (map identity value)))
+    (else expr)))
+
 (define* (comp-cps expr #:optional (cont prim:return))
   (match expr
     (($ closure ($ ast _ body) params _ _ _ sym)
@@ -401,7 +434,9 @@
             (fun (new-lambda/k `(,fk ,@nv)
                                (alpha-renaming (ast->cps body fk) params nv)
                                #:name fk #:kont fk #:attr attr)))
-       (new-letfun/k fname fun (new-app/k cont fname #:kont cont) #:kont cont)))
+       (new-letfun/k fname fun (new-app/k cont
+                                          fname #:kont cont)
+                     #:kont cont)))
     (($ binding ($ ast _ body) ($ ref _ var) value)
      (let* ((jname (new-id "#jcont-"))
             (ov (new-id var #f))
@@ -409,24 +444,25 @@
             (fk (new-id "#letcont/k-"))
             (jcont (new-lambda/k
                     (list nv)
-                    (alpha-renaming (comp-cps body cont) (list var) (list nv))
+                    (alpha-renaming (comp-cps body cont)
+                                    (list var) (list nv))
                     #:kont cont)))
        (new-letcont/k jname jcont
                       (alpha-renaming (ast->cps value jname) (list var) (list nv))
                       #:kont cont)))
     (($ branch ($ ast _ (cnd b1 b2)))
-     (let* ((jname (new-id "#jcont-"))
+     (let* ((jname (new-id "#jcont-branch-"))
             (kname (new-id "#kont-"))
-            (k1 (new-id "#letcont/k-"))
-            (k2 (new-id "#letcont/k-"))
+            (k1 (new-id "#letcont/k-branch-1-"))
+            (k2 (new-id "#letcont/k-branch-2-"))
             (kont2
              (new-letcont/k k2
-                            (new-lambda/k '() (ast->cps b2 jname)
+                            (new-lambda/k '() (ast->cps b2 cont)
                                           #:kont jname #:attr '((branch . #t)))
                             (new-branch/k kname k1 k2)))
             (kont1
              (new-letcont/k k1
-                            (new-lambda/k '() (ast->cps b1 jname)
+                            (new-lambda/k '() (ast->cps b1 (clone cont))
                                           #:kont jname #:attr '((branch . #t)))
                             kont2))
             (kont3
@@ -452,7 +488,9 @@
             (fun (new-lambda/k `(,fk ,@nv)
                                (alpha-renaming (ast->cps body fk) params nv)
                                #:name fk #:kont fk #:attr attr)))
-       (new-letfun/k fname fun (new-app/k cont fname #:kont cont) #:kont cont)))
+       (new-letfun/k fname fun (new-app/k cont fname
+                                          #:kont cont)
+                     #:kont cont)))
     (($ def ($ ast _ body) var)
      ;; NOTE: The local function definition should be converted to let-binding
      ;;       by AST builder. So the definition that appears here are top-level.
@@ -477,7 +515,8 @@
             (fk (new-id "#letcont/k-"))
             (jcont (new-lambda/k
                     (list nv)
-                    (alpha-renaming (ast->cps body cont) (list var) (list nv))
+                    (alpha-renaming (ast->cps body cont)
+                                    (list var) (list nv))
                     #:kont cont)))
        (new-letcont/k jname jcont
                       (alpha-renaming (ast->cps value jname)
@@ -485,19 +524,25 @@
                                       (list nv))
                       #:kont cont)))
     (($ branch ($ ast _ (cnd b1 b2)))
-     (let* ((kname (new-id "#kcont-"))
+     (let* ((kname (new-id "#kcont-branch-"))
             (z (new-id "#cnd-"))
-            (k1 (new-id "#letcont/k-"))
-            (k2 (new-id "#letcont/k-"))
+            (k1 (new-id "#letcont/k-branch-1-"))
+            (k2 (new-id "#letcont/k-branch-2-"))
             (kont2
              (new-letcont/k k2
-                            (new-lambda/k '() (ast->cps b2 cont)
-                                          #:kont cont #:attr '((branch . #t)))
+                            (new-lambda/k '() (comp-cps b2 cont)
+                                          #:kont cont
+                                          #:attr '((branch . #t)))
                             (new-branch/k z k1 k2)))
             (kont1
              (new-letcont/k k1
-                            (new-lambda/k '() (ast->cps b1 cont)
-                                          #:kont cont #:attr '((branch . #t)))
+                            ;; NOTE: the cont will be reused for branch-2,
+                            ;;       however, our CFS is mutable, we have to clone
+                            ;;       the cont here to make sure it's safe. Otherwise
+                            ;;       the outcome will be wrong definitely.
+                            (new-lambda/k '() (comp-cps b1 (clone cont))
+                                          #:kont cont
+                                          #:attr '((branch . #t)))
                             kont2))
             (kont3
              (new-lambda/k (list z) kont1)))
@@ -517,7 +562,8 @@
        (fold (lambda (e x p)
                (ast->cps e (new-lambda/k (list x) p #:kont cont)))
              (new-letval/k cname
-                           (new-collection/k cname type size ex #:kont cont)
+                           (new-collection/k cname type size ex
+                                             #:kont cont)
                            (new-app/k cont cname #:kont cont))
              vals ex)))
     (($ seq ($ ast _ exprs))
@@ -547,11 +593,13 @@
                     #:kont cont #:attr '((binding . #t)))))
                 (cond
                  (is-prim?
-                  (new-app/k cont (new-app/k fn el #:kont cont
-                                             #:attr '((binding-body . #t)))
+                  (new-app/k cont
+                             (new-app/k fn el #:kont cont
+                                        #:attr '((binding-body . #t)))
                              #:kont cont))
                  (else
-                  (new-app/k fn (append (list cont) el) #:kont cont
+                  (new-app/k fn (append (list cont) el)
+                             #:kont cont
                              #:attr '((binding-body . #t)))))
                 e el)))
        (comp-cps (or is-prim? func) (new-lambda/k (list fn) k #:kont fn))))
@@ -560,7 +608,8 @@
       ((is-op-a-primitive? sym)
        => (lambda (p)
             (new-app/k cont p #:kont cont)))
-      ((symbol? sym) (new-app/k cont (new-id sym #f) #:kont cont))
+      ((symbol? sym)
+       (new-app/k cont (new-id sym #f) #:kont cont))
       (else (throw 'laco-error 'ast->cps "BUG: ref should be symbol! `~a'" sym))))
     ((? id? id) (new-app/k cont id #:kont cont))
     ((? primitive? p) (new-app/k cont p #:kont cont))
@@ -568,7 +617,8 @@
     ((? constant? c)
      (let ((x (new-id "#const-"))
            (cst (new-constant/k c)))
-       (new-letval/k x cst (new-app/k cont x #:kont cont) #:kont cont)))
+       (new-letval/k x cst (new-app/k cont x #:kont cont)
+                     #:kont cont)))
     (else (throw 'laco-error 'ast->cps "Wrong expr: " expr))))
 
 (define* (cps->expr cpse)
