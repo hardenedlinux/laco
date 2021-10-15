@@ -39,10 +39,10 @@
 (define (global->bytecode g)
   (flatten (map (lambda (ge)
                   (match ge
-                         (((? asm-insr? insr) args ...)
-                          (apply (insr->proc insr) args))
-                         (else (throw 'laco-error global->bytecode
-                                      "Invalid global expression `~a'!" ge))))
+                    (((? asm-insr? insr) args ...)
+                     (apply (insr->proc insr) args))
+                    (else (throw 'laco-error global->bytecode
+                                 "Invalid global expression `~a'!" ge))))
                 g)))
 
 (define (program->bytecode p)
@@ -69,7 +69,7 @@
 
 (define (gen-version-bv)
   ;; TODO: Add version management
-  #vu8(0 4 0))
+  #vu8(0 4 2))
 
 (define *head* #vu8(76 69 70)) ; LEF
 (define (gen-lef port m g p c)

@@ -171,7 +171,7 @@ am__v_texidevnull_ = $(am__v_texidevnull_@AM_DEFAULT_V@)
 am__v_texidevnull_0 = > /dev/null
 am__v_texidevnull_1 = 
 am__dirstamp = $(am__leading_dot)dirstamp
-INFO_DEPS = $(srcdir)/doc/version.info $(srcdir)/doc/laco.info
+INFO_DEPS = $(srcdir)/doc/version $(srcdir)/doc/laco
 TEXINFO_TEX = $(top_srcdir)/build-aux/texinfo.tex
 am__TEXINFO_TEX_DIR = $(top_srcdir)/build-aux
 DVIS = doc/version.dvi doc/laco.dvi
@@ -673,7 +673,7 @@ doc/$(am__dirstamp):
 	@$(MKDIR_P) doc
 	@: > doc/$(am__dirstamp)
 
-$(srcdir)/doc/version.info: doc/version.texi 
+$(srcdir)/doc/version: doc/version.texi 
 	$(AM_V_MAKEINFO)restore=: && backupdir="$(am__leading_dot)am$$$$" && \
 	am__cwd=`pwd` && $(am__cd) $(srcdir) && \
 	rm -rf $$backupdir && mkdir $$backupdir && \
@@ -717,7 +717,7 @@ doc/version.html: doc/version.texi  doc/$(am__dirstamp)
 	  rm -rf $(@:.html=.htp); exit 1; \
 	fi
 
-$(srcdir)/doc/laco.info: doc/laco.texi 
+$(srcdir)/doc/laco: doc/laco.texi 
 	$(AM_V_MAKEINFO)restore=: && backupdir="$(am__leading_dot)am$$$$" && \
 	am__cwd=`pwd` && $(am__cd) $(srcdir) && \
 	rm -rf $$backupdir && mkdir $$backupdir && \

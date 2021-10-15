@@ -86,7 +86,7 @@ Author: NalaGinrut <mulei@gnu.org>
 
 (define announce-foot
   (format #f "~%~a~%Version: ~a.~%God bless hacking.~%~%" "GPLv3+"
-          "0.4.0"))
+          "0.4.2"))
 
 (define help-str
   "
