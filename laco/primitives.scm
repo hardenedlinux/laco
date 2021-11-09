@@ -195,6 +195,7 @@
     sqrt                      ; 16 + 87 = 103
     exact-integer-sqrt        ; 16 + 88 = 104
     expt                      ; 16 + 89 = 105
+    gpio-get!                 ; 16 + 90 = 106
     ))
 
 (define (print-primitives)
@@ -249,7 +250,7 @@
          sqrt
          exact-integer-sqrt
          expt
-
+         gpio-get!
          ))
 
 (define (applicable-primitive? p)
@@ -637,3 +638,7 @@
 (define-primitive (expt)
   (lambda _
     (gen-error 'expt)))
+
+(define-primitive (gpio-get!)
+  (lambda _
+    (gen-error 'gpio-get!)))
