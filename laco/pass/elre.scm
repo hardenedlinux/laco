@@ -80,6 +80,8 @@
            (else
             ;; case-3: (begin single-expr) -> single-expr
             (elre (car exprs))))))
+      ((null? exprs)
+       expr)
       (else
        (parameterize ((current-kont (cps-kont expr)))
          (let ((ne (map elre (eliminate-non-tail-return exprs))))
@@ -96,7 +98,6 @@
     (($ app/k ($ cps _ kont name _) ($ lambda/k ($ cps _ _ _ attr) args1 body) args2)
      ;; case-5: ((lambda params body) args) -> body[params/args]
      (=> failed!)
-     (pk "attr" attr)
      (cond
       ((not (= (length args1) (length args2)))
        (throw 'laco-error elre "Arguments list isn't equal in lambda apply"))

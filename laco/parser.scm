@@ -134,7 +134,7 @@
                  (make-call #f (make-ref #f 'append) (list ll e)))))
           (else (lp (cdr next) (cons (car next) ret)))))))
 
-(define (extract-all-local-defs body)
+(define (extract-all-local-defs-from-let-body body)
   (let lp ((next body) (defs '()) (fixed-body '()))
     (match next
       (()
@@ -142,9 +142,19 @@
       ((('define v e) rest ...)
        (lp rest (cons (list v e) defs) fixed-body))
       ((('begin e ...) rest ...)
-       (pk e rest)
        (lp (append e rest) defs fixed-body))
       (else (lp (cdr next) defs `(,@fixed-body ,(car next)))))))
+
+(define (extract-local-def-from-define-body exprs)
+  (let lp ((next exprs) (local-defs '()) (real-body '()))
+    (match next
+      (() (values (reverse local-defs) (reverse real-body)))
+      ((('define* pattern body ...) rest ...)
+       (throw 'laco-error extract-local-def-from-define-body
+              "Local define* is not supported yet!" (car next)))
+      ((('define pattern body ...) rest ...)
+       (lp (cdr next) (cons (car next) local-defs) real-body))
+      (else (lp (cdr next) local-defs (cons (car next) real-body))))))
 
 (define current-def (make-parameter #f))
 
@@ -171,26 +181,55 @@
          ;; With respect to the future Scheme, we support it anyway.
          *laco/unspecified*)
         (else
-         (match expr
-           (((or 'define 'define*) ((? symbol? var) args ...) body ...)
-            (if (null? body)
+         (let-values (((local-defs real-body)
+                       (extract-local-def-from-define-body e)))
+           (cond
+            ((null? local-defs)
+             ;; No local definitions
+             (match expr
+               (((or 'define 'define*) ((? symbol? var) args ...) body ...)
+                (if (null? body)
+                    (throw 'laco-error parse-it
+                           "No expressions in body in form `~a'" expr)
+                    (let ((def (make-def (parse-it `(,head ,args ,@body)
+                                                   #:body-begin? #t) var)))
+                      (when (eq? head 'lambda*)
+                        (hash-set! *opt-defs* var def))
+                      def)))
+               (('define (? symbol? var) val)
+                (make-def (parse-it val #:body-begin? #t) var))
+               ((_ ((? symbol var) (? args-with-keys args)) body ...)
+                (when (eq? head 'define)
+                  (throw 'laco-error parse-it
+                         "Source expression failed to match any pattern in form ~a"
+                         expr))
+                (make-def (parse-it `(define* ,args ,@body) #:body-begin? #t) var))
+               (else (throw 'laco-error parse-it
+                            "define: no pattern to match! `~a'" expr))))
+            (else
+             ;; extract local definitions
+             (match expr
+               (((or 'define 'define*) ((? symbol? var) args ...) body ...)
+                (let ((parsed-body
+                       (parse-it
+                        `(,head
+                          ,args
+                          ,@(let extract ((next-def local-defs))
+                              (match next-def
+                                (() real-body)
+                                (((or ('define (? symbol? v) ('lambda (args ...)) body ...)
+                                      ('define ((? symbol? v) args ...) body ...))
+                                  rest ...)
+                                 `((letrec ((,v (lambda (,@args) ,@body)))
+                                     ,@(extract (cdr next-def)))))
+                                (else
+                                 (throw 'laco-error parse-it
+                                        "Wrong local define syntax!" next-def)))))
+                        #:body-begin? #t)))
+                  (make-def parsed-body var)))
+               (else
                 (throw 'laco-error parse-it
-                       "No expressions in body in form `~a'" expr)
-                (let ((def (make-def (parse-it `(,head ,args ,@body)
-                                               #:body-begin? #t) var)))
-                  (when (eq? head 'lambda*)
-                    (hash-set! *opt-defs* var def))
-                  def)))
-           (('define (? symbol? var) val)
-            (make-def (parse-it val #:body-begin? #t) var))
-           ((_ ((? symbol var) (? args-with-keys args)) body ...)
-            (when (eq? head 'define)
-              (throw 'laco-error parse-it
-                     "Source expression failed to match any pattern in form ~a"
-                     expr))
-            (make-def (parse-it `(define* ,args ,@body) #:body-begin? #t) var))
-           (else (throw 'laco-error parse-it
-                        "define: no pattern to match! `~a'" expr)))))))
+                       "local define: no pattern to match! `~a'" expr))))))))))
     (('set! v val)
      (let ((var (parse-it v)))
        (cond
@@ -231,7 +270,7 @@
                          (begin ,@rhs)
                          (cond ,@rest)))))))
     (('lambda pattern body ...)
-     (let-values (((kvs fb) (extract-all-local-defs body)))
+     (let-values (((kvs fb) (extract-all-local-defs-from-let-body body)))
        (let* ((ids (extract-ids pattern))
               (has-opt? (or (pair? pattern) (symbol? pattern))))
          (make-closure (parse-it (if (null? kvs)
@@ -289,13 +328,13 @@
        (parse-it (dispatch ks vs))))
     (('let ((ks vs) ...) body ...) ; common let
      ;; NOTE: All bindings become single binding here by our CPS design
-     (let-values (((kvs fb) (extract-all-local-defs body)))
+     (let-values (((kvs fb) (extract-all-local-defs-from-let-body body)))
        (fold (lambda (k v p) (make-binding p (parse-it k) (parse-it v)))
              (parse-it (if (null? kvs)
                            `(begin ,@fb)
                            `(letrec* ,kvs (begin ,@fb)))) ks vs)))
     (('let id ((ks vs) ...) body ...) ; named let
-     (let-values (((kvs fb) (extract-all-local-defs body)))
+     (let-values (((kvs fb) (extract-all-local-defs-from-let-body body)))
        (parameterize ((current-def id))
          (parse-it `(letrec ((,id (lambda ,ks ,(if (null? kvs)
                                                    `(begin ,@fb)

@@ -40,9 +40,10 @@
 (define (ea expr)
   (match expr
     (($ seq/k _ exprs)
-     (let ((tail (car (reverse exprs))))
-       (when (lambda/k? tail)
-         (tag-escape! tail)))
+     (when (not exprs)
+       (let ((tail (car (reverse exprs))))
+         (when (lambda/k? tail)
+           (tag-escape! tail))))
      (seq/k-exprs-set! expr (map ea exprs))
      expr)
     (($ app/k _ func args)

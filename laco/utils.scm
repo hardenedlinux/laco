@@ -284,13 +284,13 @@
 
 (define (const-useless-position exprs)
   (if (null? exprs)
-    '()
-    (list-head exprs (1- (length exprs)))))
+      '()
+      (list-head exprs (1- (length exprs)))))
 
 (define (tail-position exprs)
   (if (null? exprs)
-    '()
-    (list-tail exprs (1- (length exprs)))))
+      '()
+      (list-tail exprs (1- (length exprs)))))
 
 (define *normal-call-table* (make-hash-table))
 (define (normal-call-register! label)
@@ -413,9 +413,10 @@
 (define (remove-fvs! fvs)
   (for-each (lambda (fv)
               (let ((cnt (hash-ref *fv-in-globals* fv)))
-                (if (= cnt 1)
-                    (hash-remove! *fv-in-globals* fv)
-                    (hash-set! *fv-in-globals* fv (1- cnt)))))
+                (when cnt
+                  (if (= cnt 1)
+                      (hash-remove! *fv-in-globals* fv)
+                      (hash-set! *fv-in-globals* fv (1- cnt))))))
             fvs))
 
 (define (keyword->string k)
