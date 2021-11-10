@@ -83,5 +83,6 @@
 (check "Or test" "or-test")
 (check "Mathematical Operations" "numbers")
 (check "Local definition 1" "local-def-1")
+(check "Local definition 2" "local-def-2")
 
 (test-end "test-suite")
