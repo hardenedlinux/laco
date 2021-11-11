@@ -1,4 +1,4 @@
-(define (floor x)
+(define (floor2 x)
   (define (floor_lp1 n)
     (if (> n x)
         n
@@ -14,4 +14,4 @@
   (let ((lim (floor_lp1 1)))
     (floor_lp2 (/ lim 4) (/ lim 2) lim)))
 
-(display (floor 10.2))
+(display (floor2 10.2))

@@ -33,6 +33,11 @@
            (not (or (lambda/k? e) (letfun/k? e) (closure/k? e))))
          lst))
 
+(define (is-global-defined-func)
+  (eq? (current-kont 'global)))
+
+(define inside-closure? (make-parameter #f))
+
 (define* (tco expr #:optional (tail-body? #f))
   (define (tag-tail-call! exprs)
     (when (not (null? exprs))
@@ -47,11 +52,13 @@
                      ;; NOTE: tail-call must be the leaf node
                      (no-proc-in-list? (app/k-args tail))
                      (not (kont-eq? k prim:return)) (kont-eq? kont k)
+                     (not (inside-closure?))
                      (not (is-ptc? (cps->name f))))
                 (cps-property-set! tail 'tail-call #t)
                 (tco tail #t))
                (else (failed!))))
              (else (tco tail)))))))
+  ;;(pk "expr" (cps->expr expr))
   (match expr
     (($ lambda/k _ _ (or ($ app/k _ k2 args) ($ seq/k _ (($ app/k _ k2 args)))))
      (let* ((e (match (lambda/k-body expr)
@@ -64,7 +71,8 @@
        ;; CASE: (lambda (k args ...) (k ...)) -> tail-call
        (when (and tail? (not (is-ptc? (cps->name e)))
                   ;; NOTE: tail-call must be the leaf node
-                  (no-proc-in-list? args))
+                  (no-proc-in-list? args)
+                  (not (inside-closure?)))
          (cps-property-set! e 'tail-call #t))
        (cond
         ((closure-was-named-let? expr)
@@ -96,7 +104,8 @@
       (else (lambda/k-body-set! expr (tco body #t))))
      expr)
     (($ seq/k _ exprs)
-     (if tail-body?
+     (if (and tail-body?
+              (not (inside-closure?)))
          (seq/k-exprs-set! expr (tag-tail-call! exprs))
          (seq/k-exprs-set! expr (map tco exprs)))
      expr)
@@ -106,6 +115,7 @@
        (throw 'laco-error tco "BUG: empty seq/k!"))
      (when (and tail-body?
                 (eq? (current-def) (cps->name f))
+                (not (inside-closure?))
                 (not (is-ptc? (cps->name f))))
        (cps-property-set! expr 'tail-call #t))
      (let ((tail (car (list-tail exprs (1- (length exprs))))))
@@ -151,9 +161,10 @@
      (app/k-args-set! expr (map tco args))
      expr)
     (($ letfun/k ($ bind-special-form/k _ var value body))
-     (parameterize ((current-def (id-name var)))
-       (bind-special-form/k-value-set! expr (tco value tail-body?)))
-     (bind-special-form/k-body-set! expr (tco body #t))
+     (parameterize ((current-def (id-name var))
+                    (inside-closure? #t))
+       (bind-special-form/k-value-set! expr (tco value tail-body?))
+       (bind-special-form/k-body-set! expr (tco body #t)))
      expr)
     ((? bind-special-form/k?)
      (bind-special-form/k-value-set! expr (tco (bind-special-form/k-value expr) tail-body?))
@@ -165,7 +176,14 @@
      (branch/k-fbranch-set! expr (tco b2 #t))
      expr)
     (($ assign/k _ v e)
-     (assign/k-expr-set! expr (tco e))
+     ;; NOTE: The local def will definitely be converted to letrec/letrec*, so it
+     ;;       appears in the operand of assignment. We can quickly confirm if the
+     ;;       tail context is inside a closure.
+     ;; NOTE: We prevent to emit tail-call inside a closure since it's a little hard
+     ;;       to confirm if it's a leaf. But PTC is relatively easier to emit from
+     ;;       a closure.
+     (parameterize ((inside-closure? #f))
+       (assign/k-expr-set! expr (tco e)))
      expr)
     (else expr)))
 
