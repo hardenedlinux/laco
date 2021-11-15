@@ -196,6 +196,7 @@
     exact-integer-sqrt        ; 16 + 88 = 104
     expt                      ; 16 + 89 = 105
     gpio-get                  ; 16 + 90 = 106
+    vm-reset!                 ; 16 + 90 = 107
     ))
 
 (define (print-primitives)
@@ -251,6 +252,7 @@
          exact-integer-sqrt
          expt
          gpio-get
+         vm-reset!
          ))
 
 (define (applicable-primitive? p)
@@ -642,3 +644,7 @@
 (define-primitive (gpio-get)
   (lambda _
     (gen-error 'gpio-get)))
+
+(define-primitive (vm-reset!)
+  (lambda _
+    (gen-error 'vm-reset!)))
