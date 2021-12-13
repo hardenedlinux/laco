@@ -50,19 +50,17 @@
      (app/k-func-set! expr (ea func))
      (app/k-args-set!
       expr
-      (if (null? args)
-          '()
-          (cons
-           ;; NOTE:
-           ;; We call the continuation that added by CPS compiler the syn-kont, and the
-           ;; users created continuation the user-kont.
-           ;; The syn-kont is never an escaped-in closure, but could be an excape-out.
-           (ea (car args))
-           (map (lambda (e)
-                  (when (lambda/k? e)
-                    (tag-escape! e))
-                  (ea e))
-                (cdr args)))))
+      (cons
+       ;; NOTE:
+       ;; We call the continuation that added by CPS compiler the syn-kont, and the
+       ;; users created continuation the user-kont.
+       ;; The syn-kont is never an escaped-in closure, but could be an excape-out.
+       (ea (car args))
+       (map (lambda (e)
+              (when (lambda/k? e)
+                (tag-escape! e))
+              (ea e))
+            (cdr args))))
      expr)
     (($ lambda/k _ _ body)
      (when (lambda/k? body)
