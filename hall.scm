@@ -1,7 +1,7 @@
 (hall-description
  (name "laco")
  (prefix "")
- (version "0.4.2")
+ (version "0.4.3")
  (author "Mu Lei known as NalaGinrut")
  (copyright (2021))
  (synopsis "Lambda Compiler")
