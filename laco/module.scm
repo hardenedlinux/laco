@@ -71,6 +71,9 @@
 
     (define* (bytevector-copy! to at from #:optional (start 0) (end (bytevector-length from)))
       (%bytevector-copy! to at from start end))
+    
+    (define* (make-string k #:optional (char #\nul))
+      (%make-string k char))
 
     (define (pk str obj)
       (display ";;; (")

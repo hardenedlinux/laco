@@ -197,7 +197,7 @@
     expt                      ; 16 + 89 = 105
     gpio-get                  ; 16 + 90 = 106
     vm-reset!                 ; 16 + 91 = 107
-    make-string               ; 16 + 92 = 108
+    %make-string              ; 16 + 92 = 108
     string                    ; 16 + 93 = 109
     string-length             ; 16 + 94 = 110
     string-ref                ; 16 + 95 = 111
@@ -259,7 +259,7 @@
          expt
          gpio-get
          vm-reset!
-         make-string
+         %make-string
          string
          string-length
          string-ref
@@ -661,9 +661,9 @@
   (lambda _
     (gen-error 'vm-reset!)))
 
-(define-primitive (make-string)
+(define-primitive (%make-string)
   (lambda _
-    (gen-error 'make-string)))
+    (gen-error '%make-string)))
 
 (define-primitive (string)
   (lambda _
