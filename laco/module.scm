@@ -71,9 +71,12 @@
 
     (define* (bytevector-copy! to at from #:optional (start 0) (end (bytevector-length from)))
       (%bytevector-copy! to at from start end))
-    
-    (define* (make-string k #:optional (char #\nul))
+
+    (define* (make-string k #:optional (char #\a))
       (%make-string k char))
+
+    (define* (string-copy str0 #:optional (start 0) (end (string-length str0)))
+      (%string-copy str0 start end))
 
     (define* (string-append string1 string2)
       (%string-append string1 string2))

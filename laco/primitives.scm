@@ -204,7 +204,8 @@
     string-set!               ; 16 + 96 = 112
     string=?                  ; 16 + 97 = 113
     substring                 ; 16 + 98 = 114
-    %string-append             ; 16 + 99 = 115
+    %string-append            ; 16 + 99 = 115
+    %string-copy              ; 16 + 100 = 116
     ))
 
 (define (print-primitives)
@@ -269,6 +270,7 @@
          string=?
          substring
          %string-append
+         %string-copy
          ))
 
 (define (applicable-primitive? p)
@@ -696,3 +698,7 @@
 (define-primitive (%string-append)
   (lambda _
     (gen-error '%string-append)))
+
+(define-primitive (%string-copy)
+  (lambda _
+    (gen-error '%string-copy)))
