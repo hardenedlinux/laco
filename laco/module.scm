@@ -75,6 +75,9 @@
     (define* (make-string k #:optional (char #\nul))
       (%make-string k char))
 
+    (define* (string-append string1 string2)
+      (%string-append string1 string2))
+
     (define (pk str obj)
       (display ";;; (")
       (display str)
