@@ -84,6 +84,9 @@
     (define* (string-copy! string1 at string2 #:optional (start 0) (end (string-length string2)))
       (%string-copy! string1 at string2 start end))
 
+    (define* (string-fill! string0 fill #:optional (start 0) (end (string-length string0)))
+      (%string-fill! string0 fill start end))
+
     (define (pk str obj)
       (display ";;; (")
       (display str)
