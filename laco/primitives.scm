@@ -203,6 +203,7 @@
     string-ref                ; 16 + 95 = 111
     string-set!               ; 16 + 96 = 112
     string=?                  ; 16 + 97 = 113
+    substring                 ; 16 + 98 = 114
     ))
 
 (define (print-primitives)
@@ -265,6 +266,7 @@
          string-ref
          string-set!
          string=?
+         substring
          ))
 
 (define (applicable-primitive? p)
@@ -684,3 +686,7 @@
 (define-primitive (string=?)
   (lambda _
     (gen-error 'string=?)))
+
+(define-primitive (substring)
+  (lambda _
+    (gen-error 'substring)))
