@@ -16,4 +16,4 @@ Makefile
 scripts/laco
 pre-inst-env
 tests/*.trs
-
+config.status

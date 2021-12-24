@@ -12,8 +12,8 @@
 
 (package
  (name "laco")
- (version "0.4.3")
- (source "./laco-0.4.3.tar.gz")
+ (version "0.4.4")
+ (source "./laco-0.4.4.tar.gz")
  (build-system gnu-build-system)
  (arguments
   `(#:modules
