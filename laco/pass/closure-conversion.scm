@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020-2021
+;;  Copyright (C) 2020-2022
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -24,6 +24,8 @@
   #:use-module (laco pass)
   #:use-module (laco records)
   #:use-module (ice-9 match)
+  #:use-module (ice-9 pretty-print)
+  #:use-module (ice-9 regex)
   #:use-module ((srfi srfi-1) #:select (fold-right))
   #:export (var-conversion))
 
@@ -32,8 +34,8 @@
 ;; 2. We distinct local bindings and free vars. Both of them are ordered in a
 ;;    queue. This is useful when we perform linearization for codegen.
 ;; 3. We use flat-closure design, which put all free variables with values in
-;;    a single record of the function. This can save some RAMs for embedded
-;;    system.
+;;    a single record of the function. This may save some available RAMs for embedded
+;;    system albeit increased the LEF size.
 ;; 4. According to Appel's book, we must perform heap-exhausted test. However,
 ;;    we leave this duty to the VM when it calls procedure each time. This may
 ;;    save some RAMs compared to the code injection.
@@ -49,12 +51,14 @@
 ;; Instr -> create-closure-object
 ;; Free-vars are not actually captured, they’re referenced from stack.
 ;; The closure doesn’t escape.
+;; NOTE: Laco will give hint for optimizing closure-on-stack, however, whether to use it
+;;       depends on the VM implementation.
 ;;
 ;; Closure on heap
 ;; Instr -> capture-closure-object
 ;; Free-vars are captured and stored into the heap.
-;; The closure has escaped:
-;; 1. Pass as argument to non-primitive (except for ret)
+;; The closure has escaped when:
+;; 1. Pass as argument to non-primitive (except for prim:return)
 ;; 2. Return from the scope where it was created
 ;;
 ;; Optimizing
@@ -71,6 +75,23 @@
 (define (env-ref name) (hash-ref *env-table* name 'global))
 (define (env-set! name e) (hash-set! *env-table* name e))
 
+(define *rec-stack* (new-stack))
+(define (check-recursive fid)
+  (memq fid (stack-slots *rec-stack*)))
+(define (rec-register! fid)
+  (when (and fid (not (check-recursive fid)))
+    (stack-push! *rec-stack* fid)))
+
+(define is-named-let-scope? (make-parameter #f))
+
+(define (lifted-closure? expr)
+  (let ((name (cps->name-string expr)))
+    (string-match "#closure-(assign|func|expr)-lift-" name)))
+
+(define (is-tmp-var? sym)
+  (let ((name (symbol->string sym)))
+    (string-match "#(global|local)-tmp-" name)))
+
 (define* (cc expr #:optional (mode 'normal) #:key (finish? #f))
   (match expr
     (($ app/k _ f (($ lambda/k ($ cps _ kont name attr) (k) body) args ...))
@@ -86,6 +107,9 @@
           ((assoc-ref attr 'binding)
            ;;(clean-tail-call! expr)
            (env-local-push! (current-env) k)
+           ;; NOTE:
+           ;; (f (lambda (k) body) args)
+           ;; <==> body[k/(f restore args)]
            (let ((value (new-app/k (cc f) (map cc `(,prim:restore ,@args))
                                    #:attr '((keep-result? #t)))))
              #;(make-seq/k (list kont name attr) `(,value ,(cc body)))
@@ -103,9 +127,16 @@
          (env-set! (id-name name) env)
          (case mode
            ((normal)
-            (if (and (not (assoc-ref attr 'lambda-lifted)) (is-escaped? expr))
-                (make-closure/k (list kont name attr) env (cc body 'closure))
-                (make-lambda/k (list kont name attr) args (cc body))))
+            ;; NOTE: closure-lifted and lambda-lifted are mutual exclusive.
+            ;;       If a closure was lifted to the global in lambda-lifting pass, then
+            ;;       its closure-lifted flag would be removed, and lambda-lifted flag was
+            ;;       enabled.
+            (cond
+             ((or (assoc-ref attr 'closure-lifted)
+                  (and (not (assoc-ref attr 'lambda-lifted)) (is-escaped? expr)))
+              (make-closure/k (list kont name attr) env (cc body 'closure)))
+             (else
+              (make-lambda/k (list kont name attr) args (cc body)))))
            ((closure closure-in-pcall)
             ;; NOTE:
             ;; 1. Counting frame size for each closure env in lir
@@ -179,74 +210,111 @@
      ;;    (letcont/k ((j (letval/k ((v [constant])) vbody))) cbody)
      ;;
 
-     (match expr
-       (($ letcont/k ($ bind-special-form/k _ jname
-                        ($ lambda/k _ (jargs) jbody)
-                        ($ app/k _ _ ((? (lambda (v)
-                                           (and (not (id-eq? v jname))
-                                                (not (lambda/k? v))))
-                                         arg)))))
-        ;; 1. let-binding:
-        ;;    (letcont/k ((j (lambda (x) jbody)))
-        ;;      (j const-or-value-form))
-        ;;    ==> (begin
-        ;;          const-or-nonfunc as new-local
-        ;;          jbody[k/new-local])
-        ;;   NOTE: For function binding, we have letfun/k
-        ;;   E.g: (let ((x (list-ref '(1 2 3) 0)))
-        ;;          (display x))
-        ;;        ==> (letcont/k ((j (lambda (x0) (display x0))))
-        ;;              (j (list-ref '(1 2 3) 0)))
-        ;;        ==> (begin
-        ;;              (list-ref '(1 2 3) 0) as local-0
-        ;;              (display local-0))
-        ;;   NOTE: This conversion is necessary for appplicable-order before CFS.
-        ;;
-        (let ((def (current-def))
-              (tmpvar (if (toplevel? (current-env))
-                          (new-id "#global-tmp-")
-                          (new-id "#local-tmp-"))))
+     (parameterize ((current-def (id-name jname)))
+       (rec-register! (current-def))
+       (match expr
+         ;; (($ letcont/k ($ bind-special-form/k _ (? lifted-closure? fname) func (? assign/k?)))
+         ;;  (=> failed!)
+         ;;  (cond
+         ;;   ((toplevel? (current-env))
+         ;;    (failed!))
+         ;;   (else
+         ;;    (env-local-push! (current-env) fname)
+         ;;    (cc func))))
+         (($ letcont/k ($ bind-special-form/k _ (? lifted-closure? fname) func fbody))
+          (=> failed!)
           (cond
-           ((toplevel? (current-env))
+           ((not (toplevel? (current-env)))
+            (env-local-push! (current-env) fname)
+            (cc
+             (make-seq/k
+              (list kont name attr)
+              (list
+               func
+               fbody))))
+           (else (failed!))))
+         (($ letcont/k ($ bind-special-form/k _ jname
+                          ($ lambda/k _ (jargs) jbody)
+                          ($ app/k _ _ ((? (lambda (v)
+                                             (and (not (id-eq? v jname))
+                                                  (not (lambda/k? v))))
+                                           arg)))))
+          ;; 1. let-binding:
+          ;;    (letcont/k ((j (lambda (x) jbody)))
+          ;;      (j const-or-value-form))
+          ;;    ==> (begin
+          ;;          const-or-nonfunc as new-local
+          ;;          jbody[k/new-local])
+          ;;   NOTE: For function binding, we have letfun/k
+          ;;   E.g: (let ((x (list-ref '(1 2 3) 0)))
+          ;;          (display x))
+          ;;        ==> (letcont/k ((j (lambda (x0) (display x0))))
+          ;;              (j (list-ref '(1 2 3) 0)))
+          ;;        ==> (begin
+          ;;              (list-ref '(1 2 3) 0) as local-0
+          ;;              (display local-0))
+          ;;   NOTE: This conversion is necessary for appplicable-order before CFS.
+          ;;
+          (let ((tmpvar (if (toplevel? (current-env))
+                            (new-id "#global-tmp-")
+                            (new-id "#local-tmp-"))))
             (cond
-             ((or (id? arg) (app/k? arg))
-              (cc (cfs jbody
-                       (list jargs)
-                       (list arg))))
+             ((toplevel? (current-env))
+              (cond
+               ((or (id? arg) (app/k? arg))
+                (cc (cfs jbody
+                         (list jargs)
+                         (list arg))))
+               (else
+                (top-level-set! (id-name tmpvar) (cc arg))
+                (cc (cfs jbody
+                         (list jargs)
+                         (list tmpvar))))))
              (else
-              (top-level-set! (id-name tmpvar) (cc arg))
-              (cc (cfs jbody
-                       (list jargs)
-                       (list tmpvar))))))
+              (let ((def (id-name jargs)))
+                (env-local-push! (current-env) tmpvar)
+                (when (and def (not (has-renamed? def)))
+                  ;; If the current-def was registered as a named-let var, then update
+                  ;; its local name
+                  ;; Why (after-rename def) rather than def here???
+                  (renamed-update! def (id-name tmpvar))
+                  ;; (format #t "RENAME:  ~a ------------------ ~a~%" def (id-name tmpvar))
+                  ;; (read)
+                  (set! def (after-rename def)))
+                (parameterize ((current-def def))
+                  ;; (pk "-------------------start---------------------")
+                  ;; (pk "=============== current-def" (current-def))
+                  ;; (pretty-print (cps->expr expr))
+                  ;; (pk "-------------------end-----------------------")
+                  ;; (pk "upper def" (id-name jargs))
+                  ;; (pk "def" (current-def))
+                  ;; (pk "after-name" (after-rename (id-name jargs)))
+                  ;; (read)
+                  (rec-register! def)
+                  (cc
+                   (make-seq/k
+                    (list kont name attr)
+                    (list
+                     arg
+                     (cfs jbody
+                          (list jargs)
+                          (list tmpvar)))))))))))
+         (($ letcont/k ($ bind-special-form/k _ jname
+                          ($ letfun/k ($ bind-special-form/k _ fname func fbody))
+                          ($ seq/k _ (e))))
+          ;; 6. Function
+          ;;    (letcont/k ((j (letval/k ((f function)) fbody))) (begin j))
+          ;;   ==> fbody[f/function]
+          (=> failed!)
+          (cond
+           ((not (id-eq? e jname))
+            (failed!))
            (else
-            (env-local-push! (current-env) tmpvar)
-            (when def
-              ;; If the current-def was registered as a named-let var, then update
-              ;; its local name
-              (renamed-update! (after-rename def) (id-name tmpvar))
-              (set! def (after-rename def)))
-            (parameterize ((current-def def))
-              (cc
-               (make-seq/k
-                (list kont name attr)
-                (list
-                 arg
-                 (cfs jbody
-                      (list jargs)
-                      (list tmpvar))))))))))
-       (($ letcont/k ($ bind-special-form/k _ jname
-                        ($ letfun/k ($ bind-special-form/k _ fname func fbody))
-                        ($ seq/k _ (e))))
-        ;; 6. Function
-        ;;    (letcont/k ((j (letval/k ((f function)) fbody))) (begin j))
-        ;;   ==> fbody[f/function]
-        (=> failed!)
-        (cond
-         ((not (id-eq? e jname))
-          (failed!))
+            (parameterize ((current-def (id-name fname)))
+              (rec-register! (current-def))
+              (cc (cfs fbody (list fname) (list func)))))))
          (else
-          (cc (cfs fbody (list fname) (list func))))))
-       (else (cc (cfs body (list jname) (list jcont))))))
+          (cc (cfs body (list jname) (list jcont)))))))
     (($ letval/k ($ bind-special-form/k ($ cps _ kont name attr) var value body))
      (env-local-push! (current-env) var)
      (make-letval/k (list kont name attr)
@@ -282,19 +350,26 @@
       (else
        (cc (cfs (lambda/k-body (app/k-func expr)) args es)))))
     (($ app/k ($ cps _ kont name attr) f args)
-     (let ((new-attr (if (kont-eq? kont f)
-                         (assoc-set! attr 'keep-result? #t)
-                         attr))
-           (def (after-rename (current-def))))
-       (when (and def
-                  (eq? def (id-name f))
-                  (is-tmp-var? (id-name f)))
+     (let* ((new-attr (if (kont-eq? kont f)
+                          (assoc-set! attr 'keep-result? #t)
+                          attr))
+            (is-rec? (check-recursive (id-name f))))
+       ;; (pk "-------------------start---------------------")
+       ;; (pk "=============== current-def" (current-def))
+       ;; (pretty-print (cps->expr expr))
+       ;; (pk "-------------------end-----------------------")
+       ;; (pk "is-rec?" is-rec?)
+       ;; (pk "after-name" (after-rename (current-def)))
+       ;; (pk "f" (id-name f))
+       ;; (read)
+       (when is-rec?
          ;; If these conditions are met, then it's a recursive named-let call:
          ;; 1. The var is inside a closure
          ;; 2. The var is equal to the current-def
          ;; 3. The var was renamed as a local-tmp-var
          ;; NOTE: We have to record it here, since it should be kept as free-var in
          ;;       closure-capture-fv.
+         ;;(pk "check!!!!!!!!!!!!") (read)
          (named-let-register! (id-name f)))
        (make-app/k (list kont name new-attr)
                    (cc f)

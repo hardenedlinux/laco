@@ -130,6 +130,7 @@ Options:
      escape-analysis
      primitive-conversion
      args-extend
+     closure-lifting
      closure-conversion
      eliminate-redundant
      ;; NOTE: lambda-lifting must be at the end, otherwise the lifted things will

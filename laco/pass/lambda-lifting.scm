@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020-2021
+;;  Copyright (C) 2020-2022
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -79,7 +79,8 @@
          (let ((cname (new-id "#lifted-closure-")))
            (parameterize ((is-top? #f))
              (lambda/k-body-set! lifted-proc (ll body)))
-           (cps-attr-set! lifted-proc (assoc-set! attr 'lambda-lifted #t))
+           (cps-property-set! lifted-proc 'lambda-lifted #t)
+           (cps-property-remove! lifted-proc 'closure-lifted)
            (top-level-set! (id-name cname) lifted-proc)
            (set-fv-in-globals! (id-name cname))
            (lifted! (id-name name))

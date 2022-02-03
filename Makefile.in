@@ -538,6 +538,7 @@ SOURCES = laco.scm \
 	  laco/lpass/fv-lifting.scm \
 	  laco/lpass/closure-capture-fv.scm \
 	  laco/pass/closure-conversion.scm \
+	  laco/pass/closure-lifting.scm \
 	  laco/pass/dce.scm \
 	  laco/pass/effect-analysis.scm \
 	  laco/pass/useless-cont.scm \

@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020-2021
+;;  Copyright (C) 2020-2022
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -35,6 +35,7 @@
             cps-attr cps-attr-set!
             cps-property-set!
             cps-property-ref
+            cps-property-remove!
 
             lambda/k lambda/k?
             lambda/k-args lambda/k-args-set!
@@ -162,6 +163,10 @@
 (define (cps-property-ref cexp k)
   (let ((attr (cps-attr cexp)))
     (assoc-ref attr k)))
+
+(define (cps-property-remove! cexp k)
+  (let ((attr (cps-attr cexp)))
+    (cps-attr-set! cexp (assoc-remove! attr k))))
 
 (define-typed-record lambda/k (parent cps)
   (fields

@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020-2021
+;;  Copyright (C) 2020-2022
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -25,7 +25,6 @@
                                  bytevector-u16-set!))
   #:export (newsym
             new-label
-            is-tmp-var?
             extract-ids
             extract-keys
             new-stack
@@ -113,10 +112,6 @@
 
 (define (newsym sym) (gensym (symbol->string sym)))
 (define (new-label str) (symbol->string (gensym str)))
-
-(define (is-tmp-var? sym)
-  (or (string-contains (symbol->string sym) "local-tmp-")
-      (string-contains (symbol->string sym) "global-tmp-")))
 
 (define (extract-ids pattern)
   (define (symbol-list? x)
@@ -437,17 +432,22 @@
 (define (is-pure-label? label) (hash-ref *pure-labels* label))
 
 (define *renamed-vars* (make-hash-table))
-(define (after-rename sym) (hash-ref *renamed-vars* sym))
+(define (after-rename sym)
+  (and sym
+       (hash-ref *renamed-vars* sym)))
 (define (has-renamed? sym)
   (let ((v (hash-ref *renamed-vars* sym)))
     (if (eq? v 'named-let)
         #f
         v)))
-(define (renamed-register! sym) (hash-set! *renamed-vars* sym 'named-let))
+(define (renamed-register! sym)
+  (when sym
+    (hash-set! *renamed-vars* sym 'named-let)))
 (define (renamed-update! old new)
-  (hash-set! *renamed-vars* old new))
+  (when old
+    (hash-set! *renamed-vars* old new)))
 (define (renamed-keep! old new)
-  (when (eq? 'named-let (hash-ref *renamed-vars* old))
+  (when (and old (eq? 'named-let (hash-ref *renamed-vars* old)))
     ;; (pk "renamed-keep!" old new read)
     (renamed-update! old new)))
 

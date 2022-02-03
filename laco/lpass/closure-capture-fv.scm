@@ -109,7 +109,9 @@
      lexpr)
     (($ insr-free _ label name mode offset keep?)
      (cond
-      ((is-named-let? name) lexpr)
+      ((is-named-let? name)
+       ;; NOTE: For recursive named-let, we have keep the recursive fname free-var.
+       lexpr)
       ((and (need-capture?) (hash-ref (current-frees) name))
        => (lambda (pattern)
             (match pattern
