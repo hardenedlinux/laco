@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020-2021
+;;  Copyright (C) 2020-2025
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -50,12 +50,16 @@
             var-uid var-global?
             new-var
 
+            macro make-macro macro?
+            macro-name macro-src macro-expander
+
+            syntax make-syntax syntax?
+            syntax-reserves syntax-expander
+
             collection make-collection collection?
             collection-type collection-size
 
             ->special-form
-
-            macro-expander
 
             ast->src))
 
@@ -70,9 +74,9 @@
 ;; we don't distinct prim call in AST
 (define-record-type call (parent ast) (fields op args))
 (define-record-type closure (parent ast)
-                    (fields params keys opts nargs def)) ; closure
+  (fields params keys opts nargs def)) ; closure
 (define-record-type seq (parent ast))              ; sequence
-(define-record-type macro (parent ast) (fields expander))
+
 (define-record-type collection (parent ast) (fields type size))
 
 ;; for env, var, and macros
@@ -81,21 +85,26 @@
 (define-record-type var (parent binding) (fields uid global?))
 (define* (new-var id #:optional (global? #f)) (make-var id (newsym id) global?))
 
+(define-record-type macro (parent ast) (fields name src expander))
+
 ;; In Scheme, there'd be these special forms (at least):
 ;; define lambda let let* letrec quote quasiquote set! if case
 ;; cond begin do and or let-syntax letrec-syntax delay
 ;; And macros!
 (define-record-type special-form (parent binding) (fields expander))
 
-(define (macro-expander m)
-  #t)
-
 (define* (ast->src node #:optional (hide-begin? #t))
+  (pk 'node node)
   (match node
     (($ constant _ val type) (unless (eq? 'unspecified type) val))
     (($ collection ($ ast _ subx) type size)
-     `(collection ,type ,@(map ast->src subx)))
+     (match type
+       ('list `(list ,@(map ast->src subx)))
+       ('pair (cons (ast->src (car subx)) (ast->src (cdr subx))))
+       ('vector (list->vector (map ast->src subx)))
+       (else (throw 'laco-error "Invalid collection type!" type))))
     (($ def ($ ast _ subx) v) `(define ,(ast->src v) ,(ast->src subx)))
+    (($ macro ($ ast _ subx) name src _) `(define-syntax ,name ,src))
     (($ ref _ v) (ast->src v))
     (($ assign ($ ast _ subx) v) `(set! ,(ast->src v) ,(ast->src subx)))
     (($ branch ($ ast _ subx))

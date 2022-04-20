@@ -76,6 +76,7 @@ SOURCES = laco/assembler/sasm.scm \
           laco/lir.scm \
           laco/env.scm \
           laco/codegen.scm \
+          laco/macro.scm \
           laco.scm
 
 TESTS = tests/test.scm
@@ -96,7 +97,7 @@ AM_TESTS_ENVIRONMENT = abs_top_srcdir="$(abs_top_srcdir)"
 
 info_TEXINFOS = doc/version.texi \
                 doc/laco.texi
-dvi: # Don't build dvi docs
+dvi-local: # Don't build dvi docs
 
 EXTRA_DIST += ChangeLog \
               AUTHORS \

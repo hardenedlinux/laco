@@ -191,7 +191,7 @@
      (define-record-type tr (parent p)))
     ((_ tr (parent p) (fields (f t t* ...) ...))
      (define-record-type tr
-       (parent p)
+         (parent p)
        (fields (mutable f) ...)
        (protocol
         (lambda (new)
@@ -200,7 +200,7 @@
             ((apply new pf) f ...))))))
     ((_ tr (fields (f t t* ...) ...))
      (define-record-type tr
-       (fields (mutable f) ...)
+         (fields (mutable f) ...)
        (protocol
         (lambda (new)
           (lambda (f ...)

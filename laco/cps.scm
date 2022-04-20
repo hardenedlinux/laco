@@ -496,6 +496,13 @@
        (new-letfun/k fname fun (new-app/k cont fname
                                           #:kont cont)
                      #:kont cont)))
+    (($ macro ($ ast _ body) name src expander)
+     ;; The macro definition will be ignored in CPS, only take care of it
+     ;; when it's expanded somewhere.
+     (let ((x (new-id (format #f "#macro:~a" name)))
+           (cst (new-constant/k *laco/unspecified*)))
+       (new-letval/k x cst (new-app/k cont x #:kont cont)
+                     #:kont cont)))
     (($ def ($ ast _ body) var)
      ;; NOTE: The local function definition should be converted to let-binding
      ;;       by AST builder. So the definition that appears here are top-level.
@@ -651,7 +658,7 @@
     (($ letval/k ($ bind-special-form/k _  var value body))
      `(letval ((,(cps->expr var) ,(cps->expr value))) ,(cps->expr body)))
     (($ app/k _ f e)
-     `(,(cps->expr f) ,@(map (lambda (x) (cps->expr x)) e)))
+     `(,(cps->expr f) ,@(map cps->expr e)))
     (($ assign/k _ v e)
      `(set! ,(cps->expr v) ,(cps->expr e)))
     (($ constant/k _ ($ constant _ val type)) val)

@@ -15,8 +15,9 @@ AC_CONFIG_FILES([pre-inst-env], [chmod +x pre-inst-env])
 AC_CONFIG_FILES([scripts/laco],[chmod +x scripts/laco])
 dnl Search for 'guile' and 'guild'.  This macro defines
 dnl 'GUILE_EFFECTIVE_VERSION'.
-GUILE_PKG([3.0 2.2 2.0])
-GUILE_PROGS
+GUILE_PKG([3.0])
+GUILE_PROGS(3.0)
+GUILE_FLAGS
 GUILE_SITE_DIR
 if test "x$GUILD" = "x"; then
    AC_MSG_ERROR(['guild' binary not found; please check your guile-2.x installation.])

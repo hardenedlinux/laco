@@ -160,6 +160,8 @@
    ;; For example, the orig of x-123 is x
    (orig symbol?)))
 
+;; This is only for AST, for macro expanding, we use newsym
+;; strying -> <id>
 (define* (new-id #:optional (orig "#x-") (rename? #t))
   (let* ((orig-fix (cond
                     ((string? orig) (string->symbol orig))

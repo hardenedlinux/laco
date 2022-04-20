@@ -387,6 +387,7 @@ on `(hostname || uname -n) 2>/dev/null | sed 1q`
 
 # Files that config.status was made for.
 config_files=" Makefile pre-inst-env scripts/laco"
+config_commands=" depfiles"
 
 ac_cs_usage="\
 \`$as_me' instantiates files and other configuration actions
@@ -407,6 +408,9 @@ Usage: $0 [OPTION]... [TAG]...
 
 Configuration files:
 $config_files
+
+Configuration commands:
+$config_commands
 
 Report bugs to the package provider."
 
@@ -508,6 +512,11 @@ _ASBOX
   printf "%s\n" "$ac_log"
 } >&5
 
+#
+# INIT-COMMANDS
+#
+AMDEP_TRUE="" MAKE="make"
+
 
 # Handling of arguments.
 for ac_config_target in $ac_config_targets
@@ -516,6 +525,7 @@ do
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "pre-inst-env") CONFIG_FILES="$CONFIG_FILES pre-inst-env" ;;
     "scripts/laco") CONFIG_FILES="$CONFIG_FILES scripts/laco" ;;
+    "depfiles") CONFIG_COMMANDS="$CONFIG_COMMANDS depfiles" ;;
 
   *) as_fn_error $? "invalid argument: \`$ac_config_target'" "$LINENO" 5;;
   esac
@@ -528,6 +538,7 @@ done
 # bizarre bug on SunOS 4.1.3.
 if $ac_need_defaults; then
   test ${CONFIG_FILES+y} || CONFIG_FILES=$config_files
+  test ${CONFIG_COMMANDS+y} || CONFIG_COMMANDS=$config_commands
 fi
 
 # Have a temporary directory for convenience.  Make it in the build tree
@@ -579,6 +590,8 @@ fi
 
 echo 'BEGIN {' >"$ac_tmp/subs1.awk" &&
 cat >>"$ac_tmp/subs1.awk" <<\_ACAWK &&
+S["am__EXEEXT_FALSE"]=""
+S["am__EXEEXT_TRUE"]="#"
 S["LTLIBOBJS"]=""
 S["LIBOBJS"]=""
 S["guileobjectdir"]="${exec_prefix}/lib/guile/3.0/site-ccache"
@@ -586,6 +599,37 @@ S["guilemoduledir"]="${prefix}/share/guile/site/3.0"
 S["GUILE_EXTENSION"]="/usr/lib/guile/3.0/extensions"
 S["GUILE_SITE_CCACHE"]="/usr/lib/guile/3.0/site-ccache"
 S["GUILE_SITE"]="/usr/share/guile/site/3.0"
+S["GUILE_LDFLAGS"]="-lguile-3.0 -lgc -lpthread -ldl "
+S["GUILE_LTLIBS"]="-lguile-3.0 -lgc -lpthread -ldl  "
+S["EGREP"]="/usr/bin/grep -E"
+S["GREP"]="/usr/bin/grep"
+S["CPP"]="gcc -E"
+S["host_os"]="linux-gnu"
+S["host_vendor"]="pc"
+S["host_cpu"]="x86_64"
+S["host"]="x86_64-pc-linux-gnu"
+S["build_os"]="linux-gnu"
+S["build_vendor"]="pc"
+S["build_cpu"]="x86_64"
+S["build"]="x86_64-pc-linux-gnu"
+S["am__fastdepCC_FALSE"]=""
+S["am__fastdepCC_TRUE"]="#"
+S["CCDEPMODE"]="depmode=none"
+S["am__nodep"]="_no"
+S["AMDEPBACKSLASH"]="\\"
+S["AMDEP_FALSE"]="#"
+S["AMDEP_TRUE"]=""
+S["am__include"]="include"
+S["DEPDIR"]=".deps"
+S["OBJEXT"]="o"
+S["EXEEXT"]=""
+S["ac_ct_CC"]="gcc"
+S["CPPFLAGS"]=""
+S["LDFLAGS"]=""
+S["CFLAGS"]="-g -O2"
+S["CC"]="gcc"
+S["GUILE_LIBS"]="-lguile-3.0 -lgc -lpthread -ldl  "
+S["GUILE_CFLAGS"]="-I/usr/include/guile/3.0 "
 S["GUILE_TOOLS"]="/usr/bin/guild"
 S["GUILE_CONFIG"]="/usr/bin/guile-config"
 S["GUILD"]="/usr/bin/guild"
@@ -668,6 +712,7 @@ S["PACKAGE_TARNAME"]="laco"
 S["PACKAGE_NAME"]="laco"
 S["PATH_SEPARATOR"]=":"
 S["SHELL"]="/bin/bash"
+S["am__quote"]=""
 _ACAWK
 cat >>"$ac_tmp/subs1.awk" <<_ACAWK &&
   for (key in S) S_is_set[key] = 1
@@ -704,7 +749,7 @@ fi < "$ac_tmp/subs1.awk" > "$ac_tmp/subs.awk" \
 fi # test -n "$CONFIG_FILES"
 
 
-eval set X "  :F $CONFIG_FILES      "
+eval set X "  :F $CONFIG_FILES      :C $CONFIG_COMMANDS"
 shift
 for ac_tag
 do
@@ -927,13 +972,111 @@ which seems to be undefined.  Please make sure it is defined" >&2;}
  ;;
 
 
-
+  :C)  { printf "%s\n" "$as_me:${as_lineno-$LINENO}: executing $ac_file commands" >&5
+printf "%s\n" "$as_me: executing $ac_file commands" >&6;}
+ ;;
   esac
 
 
   case $ac_file$ac_mode in
     "pre-inst-env":F) chmod +x pre-inst-env ;;
     "scripts/laco":F) chmod +x scripts/laco ;;
+    "depfiles":C) test x"$AMDEP_TRUE" != x"" || {
+  # Older Autoconf quotes --file arguments for eval, but not when files
+  # are listed without --file.  Let's play safe and only enable the eval
+  # if we detect the quoting.
+  # TODO: see whether this extra hack can be removed once we start
+  # requiring Autoconf 2.70 or later.
+  case $CONFIG_FILES in #(
+  *\'*) :
+    eval set x "$CONFIG_FILES" ;; #(
+  *) :
+    set x $CONFIG_FILES ;; #(
+  *) :
+     ;;
+esac
+  shift
+  # Used to flag and report bootstrapping failures.
+  am_rc=0
+  for am_mf
+  do
+    # Strip MF so we end up with the name of the file.
+    am_mf=`printf "%s\n" "$am_mf" | sed -e 's/:.*$//'`
+    # Check whether this is an Automake generated Makefile which includes
+    # dependency-tracking related rules and includes.
+    # Grep'ing the whole file directly is not great: AIX grep has a line
+    # limit of 2048, but all sed's we know have understand at least 4000.
+    sed -n 's,^am--depfiles:.*,X,p' "$am_mf" | grep X >/dev/null 2>&1 \
+      || continue
+    am_dirpart=`$as_dirname -- "$am_mf" ||
+$as_expr X"$am_mf" : 'X\(.*[^/]\)//*[^/][^/]*/*$' \| \
+	 X"$am_mf" : 'X\(//\)[^/]' \| \
+	 X"$am_mf" : 'X\(//\)$' \| \
+	 X"$am_mf" : 'X\(/\)' \| . 2>/dev/null ||
+printf "%s\n" X"$am_mf" |
+    sed '/^X\(.*[^/]\)\/\/*[^/][^/]*\/*$/{
+	    s//\1/
+	    q
+	  }
+	  /^X\(\/\/\)[^/].*/{
+	    s//\1/
+	    q
+	  }
+	  /^X\(\/\/\)$/{
+	    s//\1/
+	    q
+	  }
+	  /^X\(\/\).*/{
+	    s//\1/
+	    q
+	  }
+	  s/.*/./; q'`
+    am_filepart=`$as_basename -- "$am_mf" ||
+$as_expr X/"$am_mf" : '.*/\([^/][^/]*\)/*$' \| \
+	 X"$am_mf" : 'X\(//\)$' \| \
+	 X"$am_mf" : 'X\(/\)' \| . 2>/dev/null ||
+printf "%s\n" X/"$am_mf" |
+    sed '/^.*\/\([^/][^/]*\)\/*$/{
+	    s//\1/
+	    q
+	  }
+	  /^X\/\(\/\/\)$/{
+	    s//\1/
+	    q
+	  }
+	  /^X\/\(\/\).*/{
+	    s//\1/
+	    q
+	  }
+	  s/.*/./; q'`
+    { echo "$as_me:$LINENO: cd "$am_dirpart" \
+      && sed -e '/# am--include-marker/d' "$am_filepart" \
+        | $MAKE -f - am--depfiles" >&5
+   (cd "$am_dirpart" \
+      && sed -e '/# am--include-marker/d' "$am_filepart" \
+        | $MAKE -f - am--depfiles) >&5 2>&5
+   ac_status=$?
+   echo "$as_me:$LINENO: \$? = $ac_status" >&5
+   (exit $ac_status); } || am_rc=$?
+  done
+  if test $am_rc -ne 0; then
+    { { printf "%s\n" "$as_me:${as_lineno-$LINENO}: error: in \`$ac_pwd':" >&5
+printf "%s\n" "$as_me: error: in \`$ac_pwd':" >&2;}
+as_fn_error $? "Something went wrong bootstrapping makefile fragments
+    for automatic dependency tracking.  If GNU make was not used, consider
+    re-running the configure script with MAKE=\"gmake\" (or whatever is
+    necessary).  You can also try re-running configure with the
+    '--disable-dependency-tracking' option to at least be able to build
+    the package (albeit without support for automatic dependency tracking).
+See \`config.log' for more details" "$LINENO" 5; }
+  fi
+  { am_dirpart=; unset am_dirpart;}
+  { am_filepart=; unset am_filepart;}
+  { am_mf=; unset am_mf;}
+  { am_rc=; unset am_rc;}
+  rm -f conftest-deps.mk
+}
+ ;;
 
   esac
 done # for ac_tag

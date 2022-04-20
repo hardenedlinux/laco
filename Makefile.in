@@ -87,6 +87,8 @@ POST_INSTALL = :
 NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
+build_triplet = @build@
+host_triplet = @host@
 subdir = .
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
@@ -367,7 +369,8 @@ AM_TESTSUITE_SUMMARY_HEADER = ' for $(PACKAGE_STRING)'
 RECHECK_LOGS = $(TEST_LOGS)
 TEST_SUITE_LOG = test-suite.log
 am__test_logs1 = $(TESTS:=.log)
-TEST_LOGS = $(am__test_logs1:.scm.log=.log)
+am__test_logs2 = $(am__test_logs1:@EXEEXT@.log=.log)
+TEST_LOGS = $(am__test_logs2:.scm.log=.log)
 SCM_LOG_COMPILE = $(SCM_LOG_COMPILER) $(AM_SCM_LOG_FLAGS) \
 	$(SCM_LOG_FLAGS)
 am__set_b = \
@@ -381,12 +384,18 @@ am__set_b = \
       b='$*';; \
   esac
 am__DIST_COMMON = $(srcdir)/Makefile.in $(srcdir)/pre-inst-env.in \
+	$(top_srcdir)/build-aux/compile \
+	$(top_srcdir)/build-aux/config.guess \
+	$(top_srcdir)/build-aux/config.rpath \
+	$(top_srcdir)/build-aux/config.sub \
 	$(top_srcdir)/build-aux/install-sh \
 	$(top_srcdir)/build-aux/missing \
 	$(top_srcdir)/build-aux/texinfo.tex \
 	$(top_srcdir)/scripts/laco.in AUTHORS COPYING ChangeLog \
-	INSTALL NEWS README build-aux/install-sh build-aux/mdate-sh \
-	build-aux/missing build-aux/texinfo.tex
+	INSTALL NEWS README build-aux/compile build-aux/config.guess \
+	build-aux/config.rpath build-aux/config.sub \
+	build-aux/install-sh build-aux/mdate-sh build-aux/missing \
+	build-aux/texinfo.tex
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 distdir = $(PACKAGE)-$(VERSION)
 top_distdir = $(distdir)
@@ -414,20 +423,33 @@ AUTOCONF = @AUTOCONF@
 AUTOHEADER = @AUTOHEADER@
 AUTOMAKE = @AUTOMAKE@
 AWK = @AWK@
+CC = @CC@
+CCDEPMODE = @CCDEPMODE@
+CFLAGS = @CFLAGS@
 COPYRIGHT = @COPYRIGHT@
+CPP = @CPP@
+CPPFLAGS = @CPPFLAGS@
 CSCOPE = @CSCOPE@
 CTAGS = @CTAGS@
 CYGPATH_W = @CYGPATH_W@
 DEFS = @DEFS@
+DEPDIR = @DEPDIR@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
+EGREP = @EGREP@
 ETAGS = @ETAGS@
+EXEEXT = @EXEEXT@
+GREP = @GREP@
 GUILD = @GUILD@
 GUILE = @GUILE@
+GUILE_CFLAGS = @GUILE_CFLAGS@
 GUILE_CONFIG = @GUILE_CONFIG@
 GUILE_EFFECTIVE_VERSION = @GUILE_EFFECTIVE_VERSION@
 GUILE_EXTENSION = @GUILE_EXTENSION@
+GUILE_LDFLAGS = @GUILE_LDFLAGS@
+GUILE_LIBS = @GUILE_LIBS@
+GUILE_LTLIBS = @GUILE_LTLIBS@
 GUILE_SITE = @GUILE_SITE@
 GUILE_SITE_CCACHE = @GUILE_SITE_CCACHE@
 GUILE_TOOLS = @GUILE_TOOLS@
@@ -437,12 +459,14 @@ INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
 INSTALL_SCRIPT = @INSTALL_SCRIPT@
 INSTALL_STRIP_PROGRAM = @INSTALL_STRIP_PROGRAM@
+LDFLAGS = @LDFLAGS@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
 LICENSE = @LICENSE@
 LTLIBOBJS = @LTLIBOBJS@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
+OBJEXT = @OBJEXT@
 PACKAGE = @PACKAGE@
 PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
@@ -462,11 +486,18 @@ abs_builddir = @abs_builddir@
 abs_srcdir = @abs_srcdir@
 abs_top_builddir = @abs_top_builddir@
 abs_top_srcdir = @abs_top_srcdir@
+ac_ct_CC = @ac_ct_CC@
+am__include = @am__include@
 am__leading_dot = @am__leading_dot@
+am__quote = @am__quote@
 am__tar = @am__tar@
 am__untar = @am__untar@
 bindir = @bindir@
+build = @build@
 build_alias = @build_alias@
+build_cpu = @build_cpu@
+build_os = @build_os@
+build_vendor = @build_vendor@
 builddir = @builddir@
 datadir = @datadir@
 datarootdir = @datarootdir@
@@ -475,7 +506,11 @@ dvidir = @dvidir@
 exec_prefix = @exec_prefix@
 guilemoduledir = @guilemoduledir@
 guileobjectdir = @guileobjectdir@
+host = @host@
 host_alias = @host_alias@
+host_cpu = @host_cpu@
+host_os = @host_os@
+host_vendor = @host_vendor@
 htmldir = @htmldir@
 includedir = @includedir@
 infodir = @infodir@
@@ -576,6 +611,7 @@ SOURCES = laco/assembler/sasm.scm \
           laco/lir.scm \
           laco/env.scm \
           laco/codegen.scm \
+          laco/macro.scm \
           laco.scm
 
 TESTS = tests/test.scm
@@ -602,7 +638,7 @@ CLEANFILES = \
 all: all-am
 
 .SUFFIXES:
-.SUFFIXES: .scm .go .dvi .log .ps .trs
+.SUFFIXES: .scm .go .dvi .log .ps .scm$(EXEEXT) .trs
 am--refresh: Makefile
 	@:
 $(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
@@ -1117,6 +1153,13 @@ recheck: all
 	--log-file $$b.log --trs-file $$b.trs \
 	$(am__common_driver_flags) $(AM_SCM_LOG_DRIVER_FLAGS) $(SCM_LOG_DRIVER_FLAGS) -- $(SCM_LOG_COMPILE) \
 	"$$tst" $(AM_TESTS_FD_REDIRECT)
+@am__EXEEXT_TRUE@.scm$(EXEEXT).log:
+@am__EXEEXT_TRUE@	@p='$<'; \
+@am__EXEEXT_TRUE@	$(am__set_b); \
+@am__EXEEXT_TRUE@	$(am__check_pre) $(SCM_LOG_DRIVER) --test-name "$$f" \
+@am__EXEEXT_TRUE@	--log-file $$b.log --trs-file $$b.trs \
+@am__EXEEXT_TRUE@	$(am__common_driver_flags) $(AM_SCM_LOG_DRIVER_FLAGS) $(SCM_LOG_DRIVER_FLAGS) -- $(SCM_LOG_COMPILE) \
+@am__EXEEXT_TRUE@	"$$tst" $(AM_TESTS_FD_REDIRECT)
 distdir: $(BUILT_SOURCES)
 	$(MAKE) $(AM_MAKEFLAGS) distdir-am
 
@@ -1344,7 +1387,9 @@ distclean: distclean-am
 	-rm -f Makefile
 distclean-am: clean-am distclean-generic distclean-tags
 
-dvi-am: $(DVIS)
+dvi: dvi-am
+
+dvi-am: $(DVIS) dvi-local
 
 html: html-am
 
@@ -1505,7 +1550,7 @@ uninstall-am: uninstall-binSCRIPTS uninstall-dvi-am uninstall-html-am \
 	dist-gzip dist-info dist-lzip dist-shar dist-tarZ dist-xz \
 	dist-zip dist-zstd distcheck distclean distclean-generic \
 	distclean-tags distcleancheck distdir distuninstallcheck dvi \
-	dvi-am html html-am info info-am install install-am \
+	dvi-am dvi-local html html-am info info-am install install-am \
 	install-binSCRIPTS install-data install-data-am install-dvi \
 	install-dvi-am install-exec install-exec-am install-html \
 	install-html-am install-info install-info-am install-man \
@@ -1524,7 +1569,7 @@ uninstall-am: uninstall-binSCRIPTS uninstall-dvi-am uninstall-html-am \
 $(guile_install_go_files): install-nobase_modDATA
 .scm.go:
 	$(AM_V_GEN)$(top_builddir)/pre-inst-env $(GUILE_TOOLS) compile $(GUILE_WARNINGS) -o "$@" "$<"
-dvi: # Don't build dvi docs
+dvi-local: # Don't build dvi docs
 
 clean-go:
 	-$(RM) $(GOBJECTS)
