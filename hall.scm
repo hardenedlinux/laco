@@ -6,8 +6,8 @@
  (copyright (2021))
  (synopsis "Lambda Compiler")
  (description
-  "Laco is a r7rs Scheme compiler for LambdaChip VM which is designed for functional programming on embedded system.")
- (home-page "https://lambdachip.com")
+  "Laco is a r7rs Scheme compiler for Animula VM which is designed for functional programming on embedded system.")
+ (home-page "https://gitlab.com/HardenedLinux/laco")
  (license gpl3+)
  (dependencies `(("guile" ,guile-3.0)))
  (files (libraries

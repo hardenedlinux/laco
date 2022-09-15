@@ -144,7 +144,7 @@
     (label-counter 6)
     bv))
 
-;; In LambdaChip, Real is IEEE754 in 32bit
+;; In Animula VM, Real is IEEE754 in 32bit
 (define *IEEE754-32bit-positive-max* 3.4028235e38)
 (define *IEEE754-32bit-positive-min* (* 1.0 (expt 2 -149)))
 (define *IEEE754-32bit-negative-min* -3.4028235e38)

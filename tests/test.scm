@@ -3,18 +3,18 @@
   #:use-module (rnrs)
   #:use-module (laco compile))
 
-(define (lambdachip-run name)
+(define (animula-run name)
   (let ((tf (format #f "tests/scm/~a.scm" name)))
     (when (not (file-exists? tf))
       (format #t "The test file `~a' is missing!" tf)
       (exit -1))
-    (let ((vm (getenv "LAMBDACHIP_VM_PATH"))
+    (let ((vm (getenv "ANIMULA_VM_PATH"))
           (lef (format #f "/tmp/~a.lef" name)))
       (when (not vm)
-        (format #t "Please set LAMBDACHIP_VM_PATH then try again!")
+        (format #t "Please set ANIMULA_VM_PATH then try again!")
         (exit -2))
       (system (format #f "./pre-inst-env scripts/laco ~a -o ~a >/dev/null" tf lef))
-      (system (format #f "~a/lambdachip-vm ~a > /tmp/~a.log" vm lef name))
+      (system (format #f "~a/animula-vm ~a > /tmp/~a.log" vm lef name))
       (call-with-input-file (format #f "/tmp/~a.log" name) get-string-all))))
 
 (define (get-result name)
@@ -23,7 +23,7 @@
 (define (check case name)
   (test-equal case
     (get-result name)
-    (lambdachip-run name)))
+    (animula-run name)))
 
 (test-begin "test-suite")
 

@@ -80,6 +80,6 @@
  (propagated-inputs `(("guile" ,guile-3.0)))
  (synopsis "Lambda Compiler")
  (description
-  "Laco is a r7rs Scheme compiler for LambdaChip VM which is designed for functional programming on embedded system.")
- (home-page "https://lambdachip.com")
+  "Laco is a r7rs Scheme compiler for Animula VM which is designed for functional programming on embedded system.")
+ (home-page "https://gitlab.com/HardenedLinux/laco")
  (license license:gpl3+))
