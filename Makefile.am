@@ -76,6 +76,7 @@ SOURCES = laco.scm \
 	  laco/compile.scm \
 	  laco/codegen.scm \
 	  laco/ast.scm \
+	  laco/openai.scm \
 	  laco/assembler.scm
 
 TESTS = tests/test.scm

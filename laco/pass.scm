@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020-2021
+;;  Copyright (C) 2020-2023
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -58,14 +58,14 @@
                            (pass last)))
                      (else (fail!))))
                    (else (throw 'laco-error 'run-pass "Invalid pass: `~a'!" 'item)))))
-            (pk "item"(object->string item))
-            (pretty-print
-             (match e
-               ((? cps?) (cps->expr e))
-               ((? insr?) (lir->expr e))
-               ((? primitive?) (primitive-name e))
-               ((? object?) (object->value e))
-               ((? id?) (id-name e))
-               (else (error "BUG: invalid type" e))))
+            ;; (pk "item"(object->string item))
+            ;; (pretty-print
+            ;;  (match e
+            ;;    ((? cps?) (cps->expr e))
+            ;;    ((? insr?) (lir->expr e))
+            ;;    ((? primitive?) (primitive-name e))
+            ;;    ((? object?) (object->value e))
+            ;;    ((? id?) (id-name e))
+            ;;    (else (error "BUG: invalid type" e))))
             e))
         expr (list 'lst ...)))

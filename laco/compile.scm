@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020-2021
+;;  Copyright (C) 2020-2023
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -26,12 +26,14 @@
   #:use-module (laco types)
   #:use-module (laco codegen)
   #:use-module (laco assembler)
+  #:use-module (laco openai)
   #:use-module (srfi srfi-1)
   #:use-module (ice-9 regex)
   #:use-module (ice-9 ftw)
   #:use-module (ice-9 getopt-long)
   #:use-module (ice-9 match)
   #:use-module (ice-9 pretty-print)
+  #:use-module ((rnrs) #:select (get-string-all))
   #:export (laco-compile))
 
 (define option-spec
@@ -86,7 +88,7 @@ Author: NalaGinrut <mulei@gnu.org>
 
 (define announce-foot
   (format #f "~%~a~%Version: ~a.~%God bless hacking.~%~%" "GPLv3+"
-          "0.4.4"))
+          "0.5.0"))
 
 (define help-str
   "
@@ -133,7 +135,7 @@ Options:
      closure-lifting
      closure-conversion
      eliminate-redundant
-     ;; NOTE: lambda-lifting must be at the end, otherwise the lifted things will
+     ;; NOTE: lambda-lifting must be at the end, otherwise the lifted results will
      ;;       miss all the rest passes.
      lambda-lifting))
   (init-optimizations)
@@ -234,7 +236,23 @@ Options:
       ;; TODO: Throw laco-warning here
       (format (current-error-port) "WARNING: ~s is empty file!~%" filename)
       (exit 0))
-     (else (run-stages outfile mod)))))
+     (else
+      (catch 'laco-error
+        (lambda ()
+          (run-stages outfile mod))
+        (lambda e
+          (cond
+           ((getenv "LACO_OPENAI_KEY")
+            => (lambda (key)
+                 (format (current-warning-port)
+                         "Detected OpenAI Key, enable AI checker!~%")
+                 (format (current-warning-port)
+                         "(Try to set https_proxy if you're behind the firewall)~%")
+                 (display "\n\n\n--------------Waiting for AI hint-------------\n")
+                 (let ((src (call-with-input-file filename get-string-all)))
+                   (ai-check src key))
+                 (exit -1)))
+           (else (apply throw e)))))))))
 
 (define (laco-compile args)
   (let ((options (if (null? args)

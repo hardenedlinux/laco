@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020-2021
+;;  Copyright (C) 2020-2023
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -69,7 +69,7 @@
 
 (define (gen-version-bv)
   ;; TODO: Add version management
-  #vu8(0 4 4))
+  #vu8(0 5 0))
 
 (define *head* #vu8(76 69 70)) ; LEF
 (define (gen-lef port m g p c)
