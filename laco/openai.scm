@@ -18,20 +18,28 @@
   #:export (ai-check))
 
 (define *api-url* "https://api.openai.com/v1/chat/completions")
+(define *model* "gpt-3.5-turbo")
 (define *data* "
 {
-\"model\": \"gpt-3.5-turbo\",
+\"model\": ~s,
 \"messages\": [{\"role\": \"system\", \"content\": ~s}],
-\"temperature\": 0.7
+\"temperature\": 0.7,
+\"max_tokens\": 1024
 }")
 (define *json-handle* "jq -r '.choices[].message.content'")
 
+(define (get-url)
+  (or (getenv "OPENAI_URL")
+      *api-url*))
+
 (define (openai-send key prompt)
   (define (gen-data)
-    (format #f *data* prompt))
+    (let ((model (or (getenv "OPENAI_MODEL")
+                     *model*)))
+      (format #f *data* model prompt)))
   (let* ((type "-H 'Content-Type: application/json'")
          (cmd (format #f "curl -s ~a ~a -H 'Authorization: Bearer ~a' -d '~a' | ~a"
-                      *api-url* type key (gen-data) *json-handle*)))
+                      (get-url) type key (gen-data) *json-handle*)))
     (system cmd)))
 
 (define (ai-check src key)
