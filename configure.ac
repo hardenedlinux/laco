@@ -1,10 +1,9 @@
-
 dnl -*- Autoconf -*-
 
-AC_INIT(laco, 0.5.0)
-AC_SUBST(HVERSION, "\"0.5.0\"")
+AC_INIT(laco, 0.4.4)
+AC_SUBST(HVERSION, "\"0.4.4\"")
 AC_SUBST(AUTHOR, "\"Mu Lei known as NalaGinrut\"")
-AC_SUBST(COPYRIGHT, "'(2021~2023)")
+AC_SUBST(COPYRIGHT, "'(2021)")
 AC_SUBST(LICENSE, gpl3+)
 AC_CONFIG_SRCDIR(laco.scm)
 AC_CONFIG_AUX_DIR([build-aux])
@@ -16,11 +15,11 @@ AC_CONFIG_FILES([pre-inst-env], [chmod +x pre-inst-env])
 AC_CONFIG_FILES([scripts/laco],[chmod +x scripts/laco])
 dnl Search for 'guile' and 'guild'.  This macro defines
 dnl 'GUILE_EFFECTIVE_VERSION'.
-GUILE_PKG([3.0])
+GUILE_PKG([3.0 2.2 2.0])
 GUILE_PROGS
 GUILE_SITE_DIR
 if test "x$GUILD" = "x"; then
-AC_MSG_ERROR(['guild' binary not found; please check your guile-2.x installation.])
+   AC_MSG_ERROR(['guild' binary not found; please check your guile-2.x installation.])
 fi
 
 dnl Hall auto-generated guile-module dependencies
