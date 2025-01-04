@@ -133,7 +133,7 @@ SCM_LOG_DRIVER =                                \
 
 # Tell 'build-aux/test-driver.scm' to display only source file names,
 # not indivdual test names.
-AM_SCM_LOG_DRIVER_FLAGS = --brief=yes
+AM_SCM_LOG_DRIVER_FLAGS = --brief=no
 
 AM_SCM_LOG_FLAGS = --no-auto-compile -L "$(top_srcdir)"
 
