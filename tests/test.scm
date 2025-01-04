@@ -21,6 +21,8 @@
   (call-with-input-file (format #f "tests/result/~a.txt" name) get-string-all))
 
 (define (check case-name name)
+  (when (string=? name "numbers")
+    (test-expect-fail 2))
   (test-group case-name
               (test-equal name
                           (get-result name)
@@ -80,7 +82,7 @@
 (check "Bytevector Operations" "bytevector")
 (check "And test" "and-test")
 (check "Or test" "or-test")
-(test-skip "Mathematical Operations" "numbers")
+(check "Mathematical Operations" "numbers")
 (check "Local definition 1" "local-def-1")
 (check "Local definition 2" "local-def-2")
 (check "Local definition 3" "local-def-3")
