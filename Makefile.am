@@ -1,5 +1,4 @@
-bin_SCRIPTS = scripts/laco \
-              scripts/laco
+bin_SCRIPTS = scripts/laco
 
 # Handle substitution of fully-expanded Autoconf variables.
 do_subst = $(SED)					\
@@ -33,35 +32,11 @@ SUFFIXES = .scm .go
 .scm.go:
 	$(AM_V_GEN)$(top_builddir)/pre-inst-env $(GUILE_TOOLS) compile $(GUILE_WARNINGS) -o "$@" "$<"
 
-SOURCES = laco/assembler/encode.go \
-          laco/assembler/sasm.go \
-          laco/assembler/sasm.scm \
+SOURCES = laco/assembler/sasm.scm \
           laco/assembler/encode.scm \
-          laco/lpass/closure-capture-fv.go \
-          laco/lpass/fv-lifting.go \
-          laco/lpass/remove-unused-captures.go \
           laco/lpass/remove-unused-captures.scm \
           laco/lpass/fv-lifting.scm \
           laco/lpass/closure-capture-fv.scm \
-          laco/pass/closure-conversion.go \
-          laco/pass/normalize.go \
-          laco/pass/elre.go \
-          laco/pass/tco.go \
-          laco/pass/lambda-lifting.go \
-          laco/pass/func-inline.go \
-          laco/pass/delta-reduction.go \
-          laco/pass/const-propagation.go \
-          laco/pass/eta-cont.go \
-          laco/pass/fold-const.go \
-          laco/pass/args-extend.go \
-          laco/pass/fold-branch.go \
-          laco/pass/escape-analysis.go \
-          laco/pass/primitive-conversion.go \
-          laco/pass/useless-constant.go \
-          laco/pass/useless-cont.go \
-          laco/pass/eta-func.go \
-          laco/pass/dce.go \
-          laco/pass/effect-analysis.go \
           laco/pass/useless-cont.scm \
           laco/pass/useless-constant.scm \
           laco/pass/tco.scm \
@@ -82,9 +57,6 @@ SOURCES = laco/assembler/encode.go \
           laco/pass/closure-lifting.scm \
           laco/pass/closure-conversion.scm \
           laco/pass/args-extend.scm \
-          laco/pass/closure-lifting.go \
-          laco/records/procedural.go \
-          laco/records/syntactic.go \
           laco/records/syntactic.scm \
           laco/records/procedural.scm \
           laco/types.scm \
@@ -95,23 +67,6 @@ SOURCES = laco/assembler/encode.go \
           laco/compile.scm \
           laco/ast.scm \
           laco/assembler.scm \
-          laco/openai.go \
-          laco/cps.go \
-          laco/lir.go \
-          laco/primitives.go \
-          laco/parser.go \
-          laco/compile.go \
-          laco/codegen.go \
-          laco/object.go \
-          laco/sasm.go \
-          laco/utils.go \
-          laco/ast.go \
-          laco/pass.go \
-          laco/env.go \
-          laco/types.go \
-          laco/module.go \
-          laco/assembler.go \
-          laco/records.go \
           laco/utils.scm \
           laco/sasm.scm \
           laco/records.scm \
