@@ -2,7 +2,7 @@ image: ubuntu:noble
 
 before_script:
   - apt-get -qq update
-  - apt-get -qq -y install texinfo guile-3.0 guile-3.0-dev build-essential automake git autoconf libtool libc6-dev-i386
+  - apt-get -qq -y install texinfo guile-3.0 guile-3.0-dev build-essential automake git autoconf libtool gettext libc6-dev-i386
   - git clone --depth 1  https://gitlab.com/hardenedlinux/animula-linux.git
   - cd animula-linux
   - git clone --depth 1  https://gitlab.com/hardenedlinux/animula.git
