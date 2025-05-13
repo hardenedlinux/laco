@@ -1,13 +1,13 @@
 dnl -*- Autoconf -*-
 
-AC_INIT(laco, 0.4.4)
-AC_SUBST(HVERSION, "\"0.4.4\"")
+AC_INIT(laco, 0.5)
+AC_SUBST(HVERSION, "\"0.5\"")
 AC_SUBST(AUTHOR, "\"Mu Lei known as NalaGinrut\"")
-AC_SUBST(COPYRIGHT, "'(2021)")
+AC_SUBST(COPYRIGHT, "'(2025)")
 AC_SUBST(LICENSE, gpl3+)
 AC_CONFIG_SRCDIR(laco.scm)
 AC_CONFIG_AUX_DIR([build-aux])
-AM_INIT_AUTOMAKE([1.12 gnu silent-rules subdir-objects  color-tests parallel-tests -Woverride -Wno-portability])
+AM_INIT_AUTOMAKE([gnu silent-rules subdir-objects  color-tests parallel-tests -Woverride -Wno-portability])
 AM_SILENT_RULES([yes])
 
 AC_CONFIG_FILES([Makefile])
@@ -20,7 +20,7 @@ GUILE_PROGS(3.0)
 GUILE_FLAGS
 GUILE_SITE_DIR
 if test "x$GUILD" = "x"; then
-   AC_MSG_ERROR(['guild' binary not found; please check your guile-2.x installation.])
+   AC_MSG_ERROR(['guild' binary not found; please check your guile-3.x installation.])
 fi
 
 dnl Hall auto-generated guile-module dependencies
