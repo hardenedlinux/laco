@@ -77,6 +77,7 @@ SOURCES = laco/assembler/sasm.scm \
           laco/env.scm \
           laco/codegen.scm \
           laco/macro.scm \
+          laco/reserved.scm \
           laco.scm
 
 TESTS = tests/test.scm

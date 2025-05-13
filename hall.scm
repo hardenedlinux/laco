@@ -101,6 +101,8 @@
             (compiled-scheme-file "module")
             (compiled-scheme-file "assembler")
             (compiled-scheme-file "records")
+            (compiled-scheme-file "reserved")
+            (scheme-file "reserved")
             (scheme-file "utils")
             (scheme-file "sasm")
             (scheme-file "records")

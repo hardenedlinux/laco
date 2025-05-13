@@ -60,7 +60,6 @@
             collection-type collection-size
 
             ->special-form
-
             ast->src))
 
 ;; AST type
@@ -74,7 +73,7 @@
 ;; we don't distinct prim call in AST
 (define-record-type call (parent ast) (fields op args))
 (define-record-type closure (parent ast)
-  (fields params keys opts nargs def)) ; closure
+                    (fields params keys opts nargs def)) ; closure
 (define-record-type seq (parent ast))              ; sequence
 
 (define-record-type collection (parent ast) (fields type size))

@@ -55,9 +55,7 @@
             lambda-has-vargs!
             lambda-has-vargs?
 
-            no-free-var?
-
-            is-reserved-symbol?))
+            no-free-var?))
 
 ;; NOTE:
 ;; 1. Only toplevel is used for storing actual value.
@@ -186,12 +184,3 @@
 
 (define (no-free-var? env)
   (queue-empty? (env-frees env)))
-
-;; NOTE: we don't allow primitives-redefine, so this list is for checking.
-(define *reserved*
-  `(quote quasiquote unquote unquote-splicing lambda if set!
-          cond and or case let let* letrec begin do define delay
-          ,@(@@ (laco primitives) *prim-table*)))
-
-(define (is-reserved-symbol? sym)
-  (memq sym *reserved*))

@@ -21,6 +21,7 @@
   #:use-module (laco utils)
   #:use-module (laco primitives)
   #:use-module (laco macro)
+  #:use-module (laco reserved)
   #:use-module (ice-9 match)
   #:use-module (srfi srfi-1)
   #:use-module (srfi srfi-11)

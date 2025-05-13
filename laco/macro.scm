@@ -21,6 +21,7 @@
   #:use-module (laco env)
   #:use-module (laco records)
   #:use-module (laco primitives)
+  #:use-module (laco reserved)
   #:use-module (ice-9 match)
   #:use-module (ice-9 control)
   #:use-module (srfi srfi-1)
