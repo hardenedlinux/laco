@@ -21,8 +21,6 @@
   (call-with-input-file (format #f "tests/result/~a.txt" name) get-string-all))
 
 (define (check case-name name)
-  (when (string=? name "numbers")
-    (test-expect-fail 2))
   (test-group case-name
               (test-equal name
                           (get-result name)
