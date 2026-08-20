@@ -17,3 +17,4 @@ scripts/laco
 pre-inst-env
 tests/*.trs
 config.status
+.aider*

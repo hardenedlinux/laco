@@ -21,6 +21,7 @@
 (define *reserved*
   `(quote quasiquote unquote unquote-splicing lambda if set!
           cond and or case let let* letrec begin do define delay
+          let-syntax letrec-syntax syntax-rules define-syntax
           ,@(@@ (laco primitives) *prim-table*)))
 
 (define (is-reserved-symbol? sym)

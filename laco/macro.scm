@@ -31,183 +31,458 @@
             parse-macro-spec
             current-macro-context))
 
-;; We implement a r7rs syntax-rules.
-;; Here're some notes:
-;; 1. No eval-when, we handle macros only in compile time.
-;; 2. The hyginic works under alpha-renaming, which is done by the callback of CPS converter.
-;; 3. syntax-case is a good thing to have, patches are welcome.
-;; 4. Macro expanding works on AST level.
+;;
+;; R7RS-small syntax-rules implementation.
+;;
+;; The expander works directly on s-expressions.  Pattern matching is done
+;; using a per-rule immutable association list, so attempts on different rules
+;; can never leak bindings.  Ellipses are compiled into a small backtracking
+;; matcher; vectors, dotted pairs, `_`, custom ellipsis identifiers, and
+;; nested ellipses are all supported.  `literals` are matched literally
+;; (via `current-literals`), not bound as pattern variables.
+;;
+;; Hygiene, direction 1 (protecting template-introduced identifiers from
+;; being captured by call-site identifiers of the same name):
+;;   We rename every template-introduced identifier (a symbol that is not a
+;;   pattern variable, not a literal, not the ellipsis marker, and not a
+;;   reserved form, and that does not occur inside quoted data) to a fresh
+;;   symbol BEFORE pattern-variable substitution happens.  This ordering is
+;;   essential: if substitution happened first, a call-site argument that
+;;   happens to share a name with a template-introduced identifier (e.g.
+;;   calling `(swap! tmp x)` where the macro's own template also introduces
+;;   a variable named `tmp`) would become textually indistinguishable from
+;;   the template's own identifier, and the later renaming pass would rename
+;;   both together -- silently breaking hygiene instead of protecting it.
+;;   Renaming first, substituting second, avoids that collision entirely.
+;;
+;; Hygiene, direction 2 (referential transparency of the template's free
+;; identifiers, e.g. `let`/`if`/helper procedures used in the template
+;; continuing to refer to their definition-site bindings even if the
+;; call-site environment happens to rebind the same name):
+;;   NOT implemented via a full mark+wrap syntax-object engine.  Reserved
+;;   core forms (`(laco reserved)`) are left untouched by design (they must
+;;   resolve to the core language, not to some renamed local), and ordinary
+;;   free identifiers referenced in a template are otherwise passed through
+;;   unchanged and rely on the later CPS/alpha-conversion pass for full
+;;   lexical correctness.  This is a known, intentional simplification, not
+;;   an oversight -- a complete fix requires syntax objects carrying marks,
+;;   which is a substantially larger undertaking (see prior design
+;;   discussion). If you need it, treat it as a separate follow-up.
+;;
+;; Nested-ellipsis repetition count is inferred at *expansion time* by
+;; checking whether a bound value happens to be a list, rather than by
+;; statically tracking each pattern variable's ellipsis depth from the
+;; pattern.  This works for the common cases but can misfire if a
+;; non-repeated pattern variable happens to be bound to a literal
+;; list-shaped datum and is used inside the same repeated template
+;; fragment as a genuinely repeated variable.  Flagged here rather than
+;; fixed, since fixing it properly means switching to static depth
+;; tracking, which is a larger change than the scope of this pass.
+;;
 
+;; Global macro table.  Local macros are visible only through
+;; current-macro-context.
 (define *macro-definition* (make-hash-table))
-(define (macro-register! name mexpr) (hash-set! *macro-definition* name mexpr))
-(define (search-macro-def name) (hash-ref *macro-definition* name))
+(define (macro-register! name mexpr)
+  (hash-set! *macro-definition* name mexpr))
+(define (search-macro-def name)
+  (or (let ((ctx (current-macro-context)))
+        (and ctx
+             (let ((cell (assq name (car ctx))))
+               (and cell (cdr cell)))))
+      (hash-ref *macro-definition* name)))
 
 (define current-ellipsis (make-parameter '...))
 
+;; The `literals` list of the rule currently being matched.  Consulted by
+;; `match-one-pattern` so that literal auxiliary keywords (e.g. `else`,
+;; `=>`) are required to match literally instead of being treated as
+;; pattern variables that bind to anything.
+(define current-literals (make-parameter '()))
+
+;; Context for locally visible macros.  Expected shape:
+;;   (((name . transformer) ...) . maybe-mark-counter)
 (define current-macro-context (make-parameter #f))
 
-;; DFS traverse s-expr and replace old-ids with new-ids
-;; NOTE: We expand macros before CPS conversion, so we can do a very simple
-;;       alpha-renaming here. Because everything is still s-expr, no struct,
-;;       no hashtable and record-type yet.
-(define (simple-alpha-renaming expr old-ids new-ids)
-  (define (replace-id id)
-    (let/ec return
-      (for-each (lambda (old new)
-                  (if (eq? id old) (return new)))
-                old-ids new-ids)
-      id))
-  (match expr
-    ((? symbol? sym)
-     (if (memq sym old-ids)
-         (replace-id expr)
-         ;; otherwise it's a free variable
-         sym))
-    ((? pair?) (cons (simple-alpha-renaming (car expr) old-ids new-ids)
-                     (simple-alpha-renaming (cdr expr) old-ids new-ids)))
-    ((? list?) (map (lambda (e) (simple-alpha-renaming e old-ids new-ids))
-                    expr))
-    (else expr)))
+(define (ellipsis? x)
+  (eq? x (current-ellipsis)))
 
-;; NOTE: The macros are normal order, so the redundant evaluation must be
-;;       optimized.
-;; NOTE: Check (current-macro-context) to decide if it's recursive expand.
-(define (simple-beta-reduction template literals lookup)
-  (define (substitute sym)
-    (hash-ref lookup sym))
-  (define (try-to-substitute sym)
+(define (strict-pair? x)
+  (and (pair? x) (not (list? x))))
+
+(define (alist-cell-ref alist key)
+  (let ((cell (assq key alist)))
+    (and cell (cdr cell))))
+
+;; ---------------------------------------------------------------------------
+;; Pattern compilation
+;;
+;; A compiled pattern sequence is a list of entries.  Each entry is either
+;;   (normal . pattern)
+;; or
+;;   (repeat . pattern)
+;; The ellipsis identifier is removed and attached to the preceding pattern.
+;; ---------------------------------------------------------------------------
+(define (compile-pattern-seq pats)
+  (let loop ((ps pats)
+             (acc '()))
     (cond
-     ((memq sym literals) sym) ; skip keywords
-     ((pk 'sub sym (substitute sym)) ; #f => not a local bound var
-      => identity)
+     ((null? ps) (reverse acc))
+     ((not (pair? ps))
+      (error "compile-pattern-seq: improper pattern"))
      (else
-      ;; We will not check unbound variables here.
-      ;; It'd defer unbound variable checking to the CPS converter.
-      sym)))
-  (define (cfs e)
-    ;; capture free substitution
-    (match e
-      (('begin body ...)
-       (map cfs body))
-      (('quote ,sym) e)                 ; literal symbol
-      ((? symbol? sym) (try-to-substitute sym))
-      (((? search-macro-def mname) rest ...)
-       ((search-macro-def mname) rest))
-      (((? list? head) rest ...)
-       `(,(map cfs head) ,@(map cfs rest)))
-      ((? pair? p)
-       (cons (cfs (car p)) (cfs (cdr p))))
-      ((? list? lst)
-       (map cfs lst))
-      (else e)))
-  (map cfs template))
+      (let ((p (car ps)))
+        (cond
+         ((ellipsis? p)
+          (if (and (pair? acc) (eq? (caar acc) 'normal))
+              (let ((prev (cdar acc)))
+                (loop (cdr ps)
+                      (cons (cons 'repeat prev) (cdr acc))))
+              (error "syntax-rules: ellipsis must follow a pattern")))
+         (else
+          (loop (cdr ps)
+                (cons (cons 'normal p) acc)))))))))
 
-(define (hygienize literals pattern lookup template)
-  (define (dedup lst)
-    (let ((ht (make-hash-table)))
-      (for-each (lambda (x)
-                  (hash-set! ht x #t))
-                lst)
-      (hash-map->list (lambda (x _) x) ht)))
-  (define (strict-pair? p)
-    (and (pair? p) (not (list? p))))
-  (define (get-all-bound-vars)
-    (let lp ((expr template) (vars '()))
-      (pk 'texpr expr)
-      (match expr
-        (('begin body ...)
-         (lp body vars))
-        (() (dedup vars))
-        (((? symbol? sym) rest ...)
-         (if (or (memq sym literals) (is-reserved-symbol? sym))
-             (lp rest vars)
-             (lp rest (cons sym vars))))
-        (((? strict-pair? p) rest ...)
-         (let ((a (lp (car p) '()))
-               (b (lp (cdr p) '())))
-           (lp rest `(,@a ,@b ,@vars))))
-        (else
-         (let ((ret (lp (car expr) '())))
-           (lp (cdr expr) `(,@ret ,@vars)))))))
-  (let* ((vars (get-all-bound-vars))
-         (valid-ids (filter (lambda (id)
-                              (and (not (memq id literals))
-                                   (not (is-op-a-primitive? id))
-                                   (memq id vars)
-                                   id))
-                            vars))
-         (new-ids (map newsym valid-ids)))
-    (for-each (lambda (id new)
-                ;; Rename the id to new, however, we don't have to remove
-                ;; the old id record, because it won't appear later.
-                (cond
-                 ((hash-ref lookup id)
-                  => (lambda (x)
-                       (hash-set! lookup new x)))
-                 (else #f)))
-              valid-ids new-ids)
-    (simple-alpha-renaming template valid-ids new-ids)))
+;; ---------------------------------------------------------------------------
+;; Pattern matching
+;;
+;; match-one-pattern returns #f or an alist of pattern-variable bindings.
+;; A repeated variable is bound to a list of the values matched by that
+;; repetition.  For nested repetitions this naturally produces nested lists.
+;; ---------------------------------------------------------------------------
+(define (match-one-pattern pat expr)
+  (cond
+   ((eq? pat '_) '())
+   ((and (symbol? pat) (memq pat (current-literals)))
+    ;; A literal identifier from the rule's `literals` list must appear
+    ;; literally at this position (same symbol), and does not bind.
+    (and (eq? pat expr) '()))
+   ((symbol? pat) `((,pat . ,expr)))
+   ((vector? pat)
+    (and (vector? expr)
+         (match-one-pattern (vector->list pat) (vector->list expr))))
+   ((list? pat)
+    (let ((elems (compile-pattern-seq pat)))
+      (match-seq elems expr '())))
+   ((strict-pair? pat)
+    ;; Simple dotted pattern without ellipsis: (car . cdr)
+    (if (and (strict-pair? expr)
+             (not (list? (car pat)))
+             (not (list? (cdr pat)))
+             (not (member (current-ellipsis)
+                          (cons (car pat) (list (cdr pat))))))
+        (let ((car-m (match-one-pattern (car pat) (car expr)))
+              (cdr-m (match-one-pattern (cdr pat) (cdr expr))))
+          (and car-m cdr-m
+               (merge-bindings car-m cdr-m)))
+        #f))
+   (else #f)))
+
+(define (merge-bindings b1 b2)
+  ;; Merge two binding alists.  Duplicate variables must have equal? values.
+  (let loop ((b b1))
+    (if (null? b)
+        b2
+        (let* ((cell (car b))
+               (old (assq (car cell) b2)))
+          (cond
+           ((not old) (cons cell (loop (cdr b))))
+           ((equal? (cdr old) (cdr cell)) (loop (cdr b)))
+           (else #f))))))
+
+(define (match-seq elems exprs env)
+  (cond
+   ((null? elems)
+    (and (null? exprs) env))
+   ((not (pair? exprs)) #f)
+   (else
+    (let* ((e (car elems))
+           (kind (car e))
+           (pat (cdr e)))
+      (case kind
+        ((normal)
+         (if (null? exprs)
+             #f
+             (let ((m (match-one-pattern pat (car exprs))))
+               (and m
+                    (match-seq (cdr elems)
+                               (cdr exprs)
+                               (merge-bindings env m))))))
+        ((repeat)
+         ;; Backtrack from longest possible match to shortest.  This allows
+         ;; fixed tail patterns after an ellipsis.
+         (let try ((k (length exprs)))
+           (if (< k 0)
+               #f
+               (let* ((matched (take exprs k))
+                      (rest (drop exprs k))
+                      (repeated
+                       (let lp ((xs matched)
+                                (acc '()))
+                         (if (null? xs)
+                             acc
+                             (let ((r (match-one-pattern pat (car xs))))
+                               (and r
+                                    (lp (cdr xs)
+                                        (append acc (list r)))))))))
+                 (cond
+                  ((and repeated
+                        (and=>
+                         (match-seq (cdr elems)
+                                    rest
+                                    (merge-bindings
+                                     env
+                                     (collect-repeat-bindings repeated)))
+                         (lambda (result) result)))
+                   => identity)
+                  (else (try (- k 1))))))))
+        (else #f))))))
+
+(define (collect-repeat-bindings repeat-alists)
+  ;; Each repeat-alist corresponds to one successful repetition.
+  ;; Return one alist where each variable is bound to a list of the values
+  ;; collected across those repetitions, preserving order.
+  (define vars
+    (delete-duplicates (append-map (lambda (alist) (map car alist))
+                                   repeat-alists)
+                       eq?))
+  (define (val-for var)
+    (map (lambda (alist) (alist-cell-ref alist var))
+         repeat-alists))
+  (map (lambda (v) (cons v (val-for v)))
+       vars))
+
+;; ---------------------------------------------------------------------------
+;; Template expansion
+;;
+;; Template expressions are traversed recursively.  Ellipses in the template
+;; are handled by compiling the template list exactly like a pattern list into
+;; `(normal . expr)` and `(repeat . expr)` entries.  A `repeat` entry expands
+;; by iterating over the repetition count derived from list-valued bindings.
+;;
+;; This supports both simple repeated variables `(x ...)` and nested repeated
+;; structures such as `((a b ...) ...)`.
+;; ---------------------------------------------------------------------------
+(define (template-symbols expr)
+  (cond
+   ((symbol? expr) (list expr))
+   ((pair? expr) (append (template-symbols (car expr))
+                         (template-symbols (cdr expr))))
+   ((vector? expr) (append-map template-symbols (vector->list expr)))
+   (else '())))
+
+(define (expand-one expr bindings)
+  (cond
+   ((symbol? expr)
+    (let ((v (alist-cell-ref bindings expr)))
+      (if v v expr)))
+   ((vector? expr)
+    (list->vector (map (lambda (e) (expand-one e bindings))
+                       (vector->list expr))))
+   ((pair? expr)
+    (if (list? expr)
+        (expand-seq expr bindings)
+        (cons (expand-one (car expr) bindings)
+              (expand-one (cdr expr) bindings))))
+   (else expr)))
+
+(define (expand-seq expr bindings)
+  (let* ((elems (compile-pattern-seq expr))
+         (acc '()))
+    (for-each
+     (lambda (e)
+       (case (car e)
+         ((normal)
+          (set! acc (append acc (list (expand-one (cdr e) bindings)))))
+         ((repeat)
+          (set! acc (append acc (expand-repeat-entry (cdr e) bindings))))
+         (else
+          (error "expand-seq: bad compiled entry" e))))
+     elems)
+    acc))
+
+(define (expand-repeat-entry expr bindings)
+  ;; Determine the number of repetitions from list-valued bindings inside
+  ;; EXPR.  Then expand EXPR once for each repetition with the appropriate
+  ;; list element substituted for each list-valued variable.
+  (let* ((vars (delete-duplicates (template-symbols expr) eq?))
+         (list-vars
+          (filter (lambda (v)
+                    (and (alist-cell-ref bindings v)
+                         (list? (alist-cell-ref bindings v))))
+                  vars)))
+    (if (null? list-vars)
+        (list (expand-one expr bindings))
+        (let* ((cnt (apply max (map (lambda (v)
+                                     (length (alist-cell-ref bindings v)))
+                                   list-vars))))
+          (map (lambda (i)
+                 (let ((local bindings))
+                   (for-each
+                    (lambda (v)
+                      (let ((val (list-ref (alist-cell-ref bindings v) i)))
+                        (set! local (assoc-set! local v val))))
+                    list-vars)
+                   (expand-one expr local)))
+               (iota cnt))))))
+
+(define (assoc-set! alist key value)
+  (cond
+   ((assq key alist)
+    => (lambda (cell) (set-cdr! cell value)))
+   (else (set! alist (acons key value alist))))
+  alist)
+
+(define (renaming-map old-vars)
+  (map (lambda (v) (cons v (newsym v))) old-vars))
+
+(define (apply-renaming e renamings)
+  (let ((lookup (make-hash-table)))
+    (for-each (lambda (p) (hash-set! lookup (car p) (cdr p)))
+              renamings)
+    (let rec ((x e))
+      (cond
+       ((symbol? x)
+        (let ((r (hash-ref lookup x)))
+          (if r r x)))
+       ((pair? x)
+        (cons (rec (car x)) (rec (cdr x))))
+       ((vector? x)
+        (list->vector (map rec (vector->list x))))
+       (else x)))))
+
+(define (template-introduced-vars template literals pattern-vars)
+  ;; Symbols that are not pattern variables, not literals, not the ellipsis
+  ;; marker, and not reserved forms are treated as macro-introduced and
+  ;; renamed. Operates on the RAW template (pattern-variable placeholders
+  ;; still in place, nothing substituted yet) -- see the hygiene notes at
+  ;; the top of this file for why the ordering matters. Symbols inside
+  ;; quoted data are left alone: they are literal data, not identifier
+  ;; references, and must not be renamed (nor would renaming them be safe,
+  ;; since the same literal symbol may be meaningful to the surrounding
+  ;; program, e.g. a dispatch tag).
+  (define seen '())
+  (let collect ((e template) (quoted? #f))
+    (cond
+     ((symbol? e)
+      (if (or quoted?
+              (memq e literals)
+              (memq e pattern-vars)
+              (ellipsis? e)
+              (is-reserved-symbol? e)
+              (memq e seen))
+          '()
+          (begin (set! seen (cons e seen)) (list e))))
+     ((and (pair? e) (eq? (car e) 'quote))
+      (collect (cdr e) #t))
+     ((pair? e)
+      (append (collect (car e) quoted?) (collect (cdr e) quoted?)))
+     ((vector? e)
+      (append-map (lambda (x) (collect x quoted?)) (vector->list e)))
+     (else '()))))
+
+(define (instantiate-template template literals bindings)
+  ;; Rename template-introduced identifiers FIRST, while the template still
+  ;; only contains pattern-variable placeholders (not yet substituted with
+  ;; call-site values). Only after that do we substitute pattern variables
+  ;; and expand ellipses. See the hygiene notes at the top of this file.
+  (let* ((pvar-set (map car bindings))
+         (introduced (template-introduced-vars template literals pvar-set))
+         (renamings (renaming-map introduced))
+         (renamed-template (apply-renaming template renamings)))
+    (expand-one renamed-template bindings)))
+
+;; ---------------------------------------------------------------------------
+;; Rule matching and syntax-transformer construction
+;; ---------------------------------------------------------------------------
+(define (try-rule literals rule expr)
+  (match rule
+    ((pattern template ...)
+     (parameterize ((current-literals literals))
+       (let ((compiled (compile-pattern-seq pattern)))
+         (and-let* ((bindings (match-seq compiled expr '())))
+           ;; Recursively expand any macro calls left in the instantiated
+           ;; template (macro-generating-macro / a template invoking other
+           ;; registered macros), mirroring the original implementation's
+           ;; normal-order recursive expansion.
+           (macro-expand
+            (instantiate-template `(begin ,@template) literals bindings))))))
+    (_ #f)))
 
 (define (make-syntax-transformer literals rules)
-  (define lookup (make-hash-table))
-  (define has-vargs? (make-parameter #f))
-  (define* (is-matched pattern expr #:optional (last #f))
-    ;; match the pattern of r7rs macro
-    (cond
-     ((null? pattern)
-      (if (null? expr)
-          #t
-          (if (has-vargs?)
-              (begin
-                (hash-set! lookup last (cdr pattern))
-                #t)
-              #f)))
-     ((and (memq (car pattern) literals) (equal? (car pattern) (car expr)))
-      ;; no need to set lookup, because it's a literal
-      (is-matched (cdr pattern) (cdr expr)))
-     ((and (eq? (car pattern) '.) (eq? (car expr) '.))
-      ;; no need to set `.' to lookup
-      (is-matched (cdr pattern) (cdr expr)))
-     ((eq? (current-ellipsis) (car pattern))
-      (is-matched (cdr pattern) (cdr expr) (car expr)))
-     ((symbol? (car pattern))
-      (hash-set! lookup (car pattern) (car expr))
-      (is-matched (cdr pattern) (cdr expr)))
-     ((and (list? (car pattern)) (list? (car expr)))
-      (pk 'list-set pattern)
-      (hash-set! lookup (car pattern) (car expr))
-      (and (is-matched (car pattern) (car expr))
-           (is-matched (cdr pattern) (cdr expr))))
-     ((and (pair? (car pattern)) (pair? (car expr)))
-      (hash-set! lookup (caar pattern) (caar expr))
-      (hash-set! lookup (cdar pattern) (cdar expr))
-      (and (is-matched (caar pattern) (caar expr))
-           (is-matched (cdar pattern) (cdar expr))
-           (is-matched (cdr pattern) (cdr expr))))
-     (else #f)))
-  (define (match-a-rule rule expr)
-    ;; TODO: how to match a rule?
-    (match rule
-      (((_ pattern ...) template ...) ; simplest rule
-       (=> failed)
-       (cond
-        ((is-matched pattern expr)
-         (let ((safe-template (hygienize literals pattern lookup
-                                         `(begin ,@template))))
-           (pk 'lookup (hash-map->list cons lookup))
-           (simple-beta-reduction safe-template literals lookup)))
-        (else (failed))))
-      (else #f)))
   (lambda (expr)
-    (let lp ((next rules))
-      (cond
-       ((null? next)
-        (throw 'syntax-error
-               "source expression failed to match any pattern in form "
-               expr))
-       ((match-a-rule (car next) expr) => identity)
-       (else (lp (cdr next)))))))
+    (let/ec return
+      (for-each
+       (lambda (rule)
+         (let ((expanded (try-rule literals rule expr)))
+           (when expanded (return expanded))))
+       rules)
+      (throw 'syntax-error
+             "source expression failed to match any pattern in form "
+             expr))))
 
+;; ---------------------------------------------------------------------------
+;; Local syntax forms: let-syntax and letrec-syntax
+;; ---------------------------------------------------------------------------
+(define (install-local-macros bindings)
+  (map (lambda (b)
+         (match b
+           ((name spec)
+            (cons name (parse-macro-spec spec (lambda (x) x))))
+           (_ (error "syntax-rules: invalid local macro binding" b))))
+       bindings))
+
+(define (macro-expand-list lst)
+  ;; Like (map macro-expand lst), but tolerant of improper (dotted) lists.
+  (cond
+   ((null? lst) '())
+   ((pair? lst) (cons (macro-expand (car lst)) (macro-expand-list (cdr lst))))
+   (else (macro-expand lst))))
+
+(define (macro-expand expr)
+  (cond
+   ((symbol? expr) expr)
+   ((not (pair? expr)) expr)
+   ((null? expr) expr)
+   ((eq? (car expr) 'quote) expr) ; quoted data is not code; don't descend
+   (else
+    (let ((head (car expr)))
+      (if (symbol? head)
+          (let ((m (search-macro-def head)))
+            (if m
+                (macro-expand (m (cdr expr)))
+                (cons (macro-expand head)
+                      (macro-expand-list (cdr expr)))))
+          (cons (macro-expand head)
+                (macro-expand-list (cdr expr))))))))
+
+(define (make-let-syntax-expander recursive?)
+  (lambda (rest)
+    (match rest
+      (((bindings ...) body ...)
+       (let* ((local-macros (install-local-macros bindings))
+              (ctx (list local-macros))   ; context alist
+              (expanded-body
+               (parameterize ((current-macro-context ctx))
+                 (macro-expand `(begin ,@body)))))
+         ;; `macro-expand` puts a begin wrapper around the body; remove it so
+         ;; the body expressions are returned in place.
+         (match expanded-body
+           (('begin inner ...) `(begin ,@inner))
+           (other other))))
+      (_ (throw 'syntax-error "bad let-syntax/letrec-syntax form" rest)))))
+
+(define let-syntax-expander
+  (make-let-syntax-expander #f))
+(define letrec-syntax-expander
+  (make-let-syntax-expander #t))
+
+(macro-register! 'let-syntax let-syntax-expander)
+(macro-register! 'letrec-syntax letrec-syntax-expander)
+
+;; ---------------------------------------------------------------------------
+;; Public entry: parse a syntax-rules spec.
+;; ---------------------------------------------------------------------------
 (define (parse-macro-spec spec ast-converter)
   (match spec
     (('syntax-rules (literals ...) rules ...)
@@ -216,3 +491,5 @@
      (parameterize ((current-ellipsis ellipsis))
        (make-syntax-transformer literals rules)))
     (else (ast-converter spec))))
+
+;; end of macro.scm
