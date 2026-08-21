@@ -331,17 +331,21 @@
                    (for-each
                     (lambda (v)
                       (let ((val (list-ref (alist-cell-ref bindings v) i)))
-                        (set! local (assoc-set! local v val))))
+                        (set! local (bindings-extend local v val))))
                     list-vars)
                    (expand-one expr local)))
                (iota cnt))))))
 
-(define (assoc-set! alist key value)
-  (cond
-   ((assq key alist)
-    => (lambda (cell) (set-cdr! cell value)))
-   (else (set! alist (acons key value alist))))
-  alist)
+(define (bindings-extend bindings key value)
+  ;; Purely functional update: returns a NEW alist with KEY bound to VALUE,
+  ;; never mutating BINDINGS in place. Guile's own `(ice-9 alist)` already
+  ;; has a same-named `assoc-set!` with different (and, despite the `!`,
+  ;; also non-mutating) semantics; we avoid that name entirely to prevent
+  ;; confusion, and we avoid any destructive update here because BINDINGS
+  ;; may be shared with sibling template entries in the same `expand-seq`
+  ;; call -- mutating a shared cell in place would corrupt bindings still
+  ;; needed by those siblings.
+  (acons key value (alist-delete key bindings eq?)))
 
 (define (renaming-map old-vars)
   (map (lambda (v) (cons v (newsym v))) old-vars))
