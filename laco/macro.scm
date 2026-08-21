@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2022-2025
+;;  Copyright (C) 2022-2026
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -25,6 +25,7 @@
   #:use-module (ice-9 match)
   #:use-module (ice-9 control)
   #:use-module (srfi srfi-1)
+  #:use-module (srfi srfi-2) ; for and-let*
   #:use-module (srfi srfi-11) ; for let-values
   #:export (macro-register!
             search-macro-def
@@ -80,15 +81,15 @@
 ;; tracking, which is a larger change than the scope of this pass.
 ;;
 
-;; Global macro table.  Local macros are visible only through
-;; current-macro-context.
+;; Global macro table.  Local macros (let-syntax/letrec-syntax) are visible
+;; only through current-local-macros, defined further below.
 (define *macro-definition* (make-hash-table))
 (define (macro-register! name mexpr)
   (hash-set! *macro-definition* name mexpr))
 (define (search-macro-def name)
-  (or (let ((ctx (current-macro-context)))
-        (and ctx
-             (let ((cell (assq name (car ctx))))
+  (or (let ((locals (current-local-macros)))
+        (and locals
+             (let ((cell (assq name locals)))
                (and cell (cdr cell)))))
       (hash-ref *macro-definition* name)))
 
@@ -100,9 +101,18 @@
 ;; pattern variables that bind to anything.
 (define current-literals (make-parameter '()))
 
-;; Context for locally visible macros.  Expected shape:
-;;   (((name . transformer) ...) . maybe-mark-counter)
+;; NOTE: `current-macro-context` is part of this module's public export
+;; surface and predates this rewrite -- other parts of the compiler
+;; (parser/env) may already parameterize or read it for their own purposes
+;; with a shape we don't control (e.g. simply the name of the macro
+;; currently being expanded, for diagnostics). We deliberately do NOT read
+;; or write it here, to avoid a shape collision. Local-macro visibility for
+;; `let-syntax`/`letrec-syntax` uses its own private parameter instead.
 (define current-macro-context (make-parameter #f))
+
+;; Private: alist of (name . transformer) for macros introduced by an
+;; enclosing let-syntax/letrec-syntax, or #f when none are in scope.
+(define current-local-macros (make-parameter #f))
 
 (define (ellipsis? x)
   (eq? x (current-ellipsis)))
@@ -399,7 +409,18 @@
   (match rule
     ((pattern template ...)
      (parameterize ((current-literals literals))
-       (let ((compiled (compile-pattern-seq pattern)))
+       ;; The caller invokes the transformer with `expr` already stripped of
+       ;; the macro keyword (see `macro-expand`: `(m (cdr expr))`), so the
+       ;; pattern's own leading keyword-position element must be dropped
+       ;; before matching too. Per R7RS this position is never matched or
+       ;; bound regardless of what identifier appears there (`_`, the
+       ;; macro's own name for self-recursive templates, etc.) -- we simply
+       ;; never look at it, rather than binding it to a placeholder, so
+       ;; self-recursive macros that use their own name in pattern position
+       ;; (a common idiom) aren't accidentally captured as a pattern
+       ;; variable and substituted away in the template.
+       (let* ((pattern-args (if (pair? pattern) (cdr pattern) '()))
+              (compiled (compile-pattern-seq pattern-args)))
          (and-let* ((bindings (match-seq compiled expr '())))
            ;; Recursively expand any macro calls left in the instantiated
            ;; template (macro-generating-macro / a template invoking other
@@ -461,9 +482,8 @@
     (match rest
       (((bindings ...) body ...)
        (let* ((local-macros (install-local-macros bindings))
-              (ctx (list local-macros))   ; context alist
               (expanded-body
-               (parameterize ((current-macro-context ctx))
+               (parameterize ((current-local-macros local-macros))
                  (macro-expand `(begin ,@body)))))
          ;; `macro-expand` puts a begin wrapper around the body; remove it so
          ;; the body expressions are returned in place.
