@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020-2022
+;;  Copyright (C) 2020-2026
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -522,7 +522,6 @@
          *definition-in-cps*))))
     (($ binding ($ ast _ body) ($ ref _ var) value)
      (let* ((jname (new-id "#jcont-"))
-            (ov (new-id var #f))
             (nv (new-id var))
             (fk (new-id "#letcont/k-"))
             (jcont (new-lambda/k
@@ -530,10 +529,28 @@
                     (alpha-renaming (ast->cps body cont)
                                     (list var) (list nv))
                     #:kont cont)))
+       ;; NOTE: `value' is evaluated in the OUTER scope, before `nv' comes
+       ;; into existence -- per (let ((v val)) body) semantics, occurrences
+       ;; of `var' inside `val' must NOT be captured by this binding's own
+       ;; fresh `nv'. They should resolve exactly as they would if this
+       ;; `let' didn't exist, i.e. via whatever enclosing binding (if any)
+       ;; already renamed them, or remain free otherwise. So `value's CPS
+       ;; is intentionally left un-renamed here.
+       ;;
+       ;; This also matters for hygienic macro expansion: a template such
+       ;; as `(let ((tmp a)) ...)' instantiated with a call-site argument
+       ;; that happens to share a name with `tmp' (e.g. `(swap! tmp x)')
+       ;; produces `(let ((tmp tmp)) ...)' after substitution. Renaming
+       ;; `value' here would incorrectly bind the new `tmp' to itself
+       ;; instead of to the call-site's outer `tmp', breaking the swap.
+       ;;
+       ;; (letrec/letrec* never hits this path with a real `value': their
+       ;; desugaring always sets `value' to `#f' and moves the actual
+       ;; recursive value into `body' via `set!', which IS renamed above,
+       ;; correctly giving it access to `nv'. So this change does not
+       ;; affect recursive-binding correctness.)
        (new-letcont/k jname jcont
-                      (alpha-renaming (ast->cps value jname)
-                                      (list (id-name ov))
-                                      (list nv))
+                      (ast->cps value jname)
                       #:kont cont)))
     (($ branch ($ ast _ (cnd b1 b2)))
      (let* ((kname (new-id "#kcont-branch-"))
