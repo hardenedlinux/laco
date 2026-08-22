@@ -347,64 +347,39 @@
   ;; needed by those siblings.
   (acons key value (alist-delete key bindings eq?)))
 
-(define (renaming-map old-vars)
-  (map (lambda (v) (cons v (newsym v))) old-vars))
-
-(define (apply-renaming e renamings)
-  (let ((lookup (make-hash-table)))
-    (for-each (lambda (p) (hash-set! lookup (car p) (cdr p)))
-              renamings)
-    (let rec ((x e))
-      (cond
-       ((symbol? x)
-        (let ((r (hash-ref lookup x)))
-          (if r r x)))
-       ((pair? x)
-        (cons (rec (car x)) (rec (cdr x))))
-       ((vector? x)
-        (list->vector (map rec (vector->list x))))
-       (else x)))))
-
-(define (template-introduced-vars template literals pattern-vars)
-  ;; Symbols that are not pattern variables, not literals, not the ellipsis
-  ;; marker, and not reserved forms are treated as macro-introduced and
-  ;; renamed. Operates on the RAW template (pattern-variable placeholders
-  ;; still in place, nothing substituted yet) -- see the hygiene notes at
-  ;; the top of this file for why the ordering matters. Symbols inside
-  ;; quoted data are left alone: they are literal data, not identifier
-  ;; references, and must not be renamed (nor would renaming them be safe,
-  ;; since the same literal symbol may be meaningful to the surrounding
-  ;; program, e.g. a dispatch tag).
-  (define seen '())
-  (let collect ((e template) (quoted? #f))
-    (cond
-     ((symbol? e)
-      (if (or quoted?
-              (memq e literals)
-              (memq e pattern-vars)
-              (ellipsis? e)
-              (is-reserved-symbol? e)
-              (memq e seen))
-          '()
-          (begin (set! seen (cons e seen)) (list e))))
-     ((and (pair? e) (eq? (car e) 'quote))
-      (collect (cdr e) #t))
-     ((pair? e)
-      (append (collect (car e) quoted?) (collect (cdr e) quoted?)))
-     ((vector? e)
-      (append-map (lambda (x) (collect x quoted?)) (vector->list e)))
-     (else '()))))
-
+;; ---------------------------------------------------------------------------
+;; Template instantiation
+;; ---------------------------------------------------------------------------
+;;
+;; NOTE: this module used to also rename template-introduced identifiers
+;; here (a pre-emptive alpha-renaming pass over the raw template, before
+;; pattern-variable substitution) to protect them from being captured by a
+;; same-named call-site argument -- e.g. `(swap! tmp x)` where the macro's
+;; own template also has an internal variable named `tmp`.
+;;
+;; That renaming pass has been removed. Laco's CPS-conversion stage
+;; (`laco cps`, in `ast->cps`/`comp-cps`'s handling of `binding` nodes)
+;; already performs exactly this kind of alpha-renaming, per binding form,
+;; based purely on AST nesting structure -- it does not matter whether a
+;; given `(let ((tmp tmp)) ...)` came from hand-written source or from a
+;; macro expansion; the same correct shadowing resolution applies either
+;; way, once CPS conversion runs. Keeping a second, independent renaming
+;; pass here was not just redundant: it was actively harmful, because it
+;; could not distinguish "a symbol newly BOUND by the template" from "a
+;; symbol the template merely REFERENCES" (e.g. a call to some existing
+;; global helper function). Every free reference in a template that wasn't
+;; a pattern variable, literal, or reserved word -- including perfectly
+;; ordinary calls to global procedures -- was being renamed to a fresh
+;; gensym that no longer refers to anything, breaking macros as simple as:
+;;
+;;   (define-syntax double (syntax-rules () ((_ x) (my-helper x))))
+;;
+;; So: pattern-variable substitution and ellipsis expansion happen here;
+;; nothing else. Alpha-renaming for newly-introduced bindings is left
+;; entirely to the CPS stage, where it can be done correctly and without
+;; needing to guess which identifiers are bindings versus references.
 (define (instantiate-template template literals bindings)
-  ;; Rename template-introduced identifiers FIRST, while the template still
-  ;; only contains pattern-variable placeholders (not yet substituted with
-  ;; call-site values). Only after that do we substitute pattern variables
-  ;; and expand ellipses. See the hygiene notes at the top of this file.
-  (let* ((pvar-set (map car bindings))
-         (introduced (template-introduced-vars template literals pvar-set))
-         (renamings (renaming-map introduced))
-         (renamed-template (apply-renaming template renamings)))
-    (expand-one renamed-template bindings)))
+  (expand-one template bindings))
 
 ;; ---------------------------------------------------------------------------
 ;; Rule matching and syntax-transformer construction

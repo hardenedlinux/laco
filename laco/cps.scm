@@ -444,7 +444,6 @@
                      #:kont cont)))
     (($ binding ($ ast _ body) ($ ref _ var) value)
      (let* ((jname (new-id "#jcont-"))
-            (ov (new-id var #f))
             (nv (new-id var))
             (fk (new-id "#letcont/k-"))
             (jcont (new-lambda/k
@@ -452,8 +451,11 @@
                     (alpha-renaming (comp-cps body cont)
                                     (list var) (list nv))
                     #:kont cont)))
+       ;; See the matching case in `ast->cps' below for why `value' must
+       ;; NOT be alpha-renamed here: it is evaluated in the OUTER scope,
+       ;; before `nv' exists, per (let ((v val)) body) semantics.
        (new-letcont/k jname jcont
-                      (alpha-renaming (ast->cps value jname) (list var) (list nv))
+                      (ast->cps value jname)
                       #:kont cont)))
     (($ branch ($ ast _ (cnd b1 b2)))
      (let* ((jname (new-id "#jcont-branch-"))
