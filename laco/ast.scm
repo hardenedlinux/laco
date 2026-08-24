@@ -29,6 +29,9 @@
             ref make-ref ref?
             ref-var
 
+            toplevel-ref make-toplevel-ref toplevel-ref?
+            toplevel-ref-var
+
             assign make-assign assign?
             assign-var
 
@@ -66,6 +69,7 @@
 (define-record-type ast (fields subx))
 
 (define-record-type ref (parent ast) (fields var)) ; var ref
+(define-record-type toplevel-ref (parent ast) (fields var)) ; global/toplevel reference
 (define-record-type def (parent ast) (fields var)) ; var define
 (define-record-type assign (parent ast) (fields var)) ; var assignment
 (define-record-type branch (parent ast)) ; condition
@@ -105,6 +109,7 @@
     (($ def ($ ast _ subx) v) `(define ,(ast->src v) ,(ast->src subx)))
     (($ macro ($ ast _ subx) name src _) `(define-syntax ,name ,src))
     (($ ref _ v) (ast->src v))
+    (($ toplevel-ref _ v) (ast->src v))
     (($ assign ($ ast _ subx) v) `(set! ,(ast->src v) ,(ast->src subx)))
     (($ branch ($ ast _ subx))
      (match subx

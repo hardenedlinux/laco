@@ -361,12 +361,41 @@
               vl)
     ht))
 
+;; Self-contained registry marking which `id' objects are protected
+;; macro-generated toplevel/global references (produced by a
+;; `(%%toplevel-ref name)' marker from macro.scm's hygiene handling).
+;;
+;; This is deliberately NOT a field on the `id' record itself: it does
+;; not require `(laco types)' (or wherever `id' is actually defined) to
+;; add any new field, export, or constructor argument. It's a plain
+;; identity-keyed (`eq?', via `hashq-*') table local to this file, so it
+;; can't collide with anything else and needs no coordination with other
+;; files' definitions of `id'.
+(define *toplevel-ref-ids* (make-hash-table))
+(define (mark-toplevel-ref-id! id) (hashq-set! *toplevel-ref-ids* id #t))
+(define (toplevel-ref-id? id) (hashq-ref *toplevel-ref-ids* id #f))
+
 ;; cps -> symbol-list -> id-list
 (define (alpha-renaming expr old new)
   (define (new->index eid)
     (list-index (lambda (sym) (eq? sym (id-name eid))) old))
   (define (rename eid)
     (cond
+     ;; NOTE: protection is a property of the *id object itself* -- set
+     ;; once, when the id is created for a macro-generated
+     ;; `toplevel-ref' -- not a property of whichever specific app/k
+     ;; node this id object happens to be sitting inside of at any
+     ;; given moment. The same id object legitimately appears in more
+     ;; than one structural position as CPS conversion proceeds (first
+     ;; as an argument to the continuation that binds it, later as the
+     ;; function position of the actual call once that binding is
+     ;; resolved) -- checking a `'toplevel-ref' attribute on one
+     ;; specific app/k node only ever protects that one occurrence.
+     ;; Checking `toplevel-ref-id?' here, at the single point where any
+     ;; bare id actually gets a chance to be renamed, protects every
+     ;; occurrence of this id object no matter where in the tree it
+     ;; ends up.
+     ((toplevel-ref-id? eid) eid)
      ((new->index eid)
       => (lambda (i) (list-ref new i)))
      (else eid)))
@@ -388,6 +417,15 @@
      expr)
     (($ app/k _ f e)
      ;;(format #t "alpha 1 ~a~%" expr)
+     ;; NOTE: this used to special-case a `'toplevel-ref' attribute on
+     ;; this specific app/k node to decide whether to skip renaming its
+     ;; argument ids. That's now handled uniformly, for every position
+     ;; (func or args) and every app/k, by `toplevel-ref-id?' inside `rename'
+     ;; above -- see the comment there for why per-node attribute
+     ;; checking isn't sufficient. Both the function position and the
+     ;; argument list are alpha-renamed the same, ordinary way here;
+     ;; whether a given id actually gets renamed is decided once, in
+     ;; `rename', not per call site.
      (app/k-func-set! expr (alpha-renaming f old new))
      (app/k-args-set! expr (map (lambda (ee) (alpha-renaming ee old new)) e))
      expr)
@@ -650,6 +688,37 @@
                              #:attr '((binding-body . #t)))))
                 e el)))
        (comp-cps (or is-prim? func) (new-lambda/k (list fn) k #:kont fn))))
+    (($ toplevel-ref _ sym)
+     ;; A macro-expansion marker used to force toplevel/global resolution.
+     ;; It must never be captured by local bindings or alpha-renamed as a
+     ;; lexical variable.
+     ;;
+     ;; We create the underlying id with the original user-visible name
+     ;; (`(new-id sym #f)`, i.e. not gensym-renamed), then register it in
+     ;; `*toplevel-ref-ids*' -- this is a property of the id object, not
+     ;; of any particular app/k it happens to be sitting in. `alpha-
+     ;; renaming' checks `toplevel-ref-id?' once, centrally, wherever it
+     ;; encounters a bare id (see `rename' in `alpha-renaming'), so this
+     ;; reference stays protected no matter which structural position it
+     ;; later ends up in (argument, function position, etc.) as CPS
+     ;; conversion continues.
+     ;; An earlier version of this attempted to mark only the specific
+     ;; app/k node produced here (via a `'toplevel-ref' attribute), but
+     ;; that only protected this one occurrence of the id -- once the
+     ;; continuation machinery moved the same id object into the function
+     ;; position of a later, unmarked app/k (the actual call), it was
+     ;; alpha-renamed like any ordinary lexical reference.
+     (cond
+      ((is-op-a-primitive? sym)
+       => (lambda (p)
+            (new-app/k cont p #:kont cont)))
+      ((symbol? sym)
+       (let ((global-id (new-id sym #f)))
+         (mark-toplevel-ref-id! global-id)
+         (new-app/k cont global-id #:kont cont)))
+      (else
+       (throw 'laco-error 'ast->cps
+              "BUG: toplevel-ref should be symbol! `~a'" sym))))
     (($ ref _ sym)
      (cond
       ((is-op-a-primitive? sym)

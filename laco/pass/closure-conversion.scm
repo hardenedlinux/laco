@@ -26,7 +26,7 @@
   #:use-module (ice-9 match)
   #:use-module (ice-9 pretty-print)
   #:use-module (ice-9 regex)
-  #:use-module ((srfi srfi-1) #:select (fold-right))
+  #:use-module ((srfi srfi-1) #:select (fold-right any))
   #:export (var-conversion))
 
 ;; NOTE:
@@ -91,6 +91,45 @@
 (define (is-tmp-var? sym)
   (let ((name (symbol->string sym)))
     (string-match "#(global|local)-tmp-" name)))
+
+;; Structural, local check: does EXPR contain an `assign/k' whose target
+;; is (by object identity, via `id-eq?') the same id as TARGET?
+;;
+;; This is deliberately NOT implemented via the global, name-keyed
+;; `*effect-vars*' registry (`is-effect-var?'/`any-effect-var?'). That
+;; registry is populated once, when a source-level `set!' is first
+;; converted from AST to CPS (in `ast->cps'), keyed by whatever the
+;; assigned variable's id-name is *at that time*. `alpha-renaming' (in
+;; (laco cps)) knows to carry that registration forward whenever *it*
+;; renames a variable, but closure-conversion's own `cfs'-based
+;; substitutions below (introducing a freshly-created id, e.g. a
+;; synthesized top-level temp, in place of another) have no equivalent
+;; carry-forward step. So a variable that closure-conversion is about to
+;; make the target of a `set!' (once substitution completes) can still
+;; report `any-effect-var?' => #f for its new identity, even though it
+;; is, in fact, about to be mutated. Walking the actual body once, right
+;; here, sidesteps that gap entirely instead of relying on a registry
+;; that isn't guaranteed to have followed the substitution.
+(define (mutates-var? expr target)
+  (match expr
+    (($ assign/k _ v e)
+     (or (id-eq? v target) (mutates-var? e target)))
+    (($ app/k _ f args)
+     (or (mutates-var? f target)
+         (any (lambda (a) (mutates-var? a target)) args)))
+    (($ lambda/k _ _ body) (mutates-var? body target))
+    (($ closure/k _ _ body) (mutates-var? body target))
+    (($ seq/k _ exprs) (any (lambda (e) (mutates-var? e target)) exprs))
+    ((? bind-special-form/k?)
+     (or (mutates-var? (bind-special-form/k-value expr) target)
+         (mutates-var? (bind-special-form/k-body expr) target)))
+    (($ branch/k _ cnd b1 b2)
+     (or (mutates-var? cnd target)
+         (mutates-var? b1 target)
+         (mutates-var? b2 target)))
+    (($ collection/k _ _ _ _ value)
+     (any (lambda (v) (mutates-var? v target)) value))
+    (else #f)))
 
 (define* (cc expr #:optional (mode 'normal) #:key (finish? #f))
   (match expr
@@ -276,8 +315,26 @@
                ;; and already used two clauses below in this same file for
                ;; the analogous direct-application case) is the shared check
                ;; for this.
+               ;;
+               ;; That guard alone isn't sufficient, though: it only checks
+               ;; whether the LET'S OWN bound variable (`jargs') gets
+               ;; mutated. The symmetric failure mode is `arg' itself (when
+               ;; it's a plain variable reference) getting mutated *later*
+               ;; in `jbody', after the point where this binding is supposed
+               ;; to freeze a snapshot of its value. Direct substitution
+               ;; turns "read a value captured once, at binding time" into
+               ;; "read the live variable, wherever it's referenced" --
+               ;; sound only if that variable never changes over the
+               ;; lifetime of `jbody'. This is exactly what broke the
+               ;; hygienic `swap!' macro once its caller's own bindings (the
+               ;; things `swap!'s temporary got substituted down to) were
+               ;; themselves mutated by the swap: substituting away the
+               ;; macro's `tmp' turned its "frozen copy of the original
+               ;; value" into a second live reference to a variable that the
+               ;; very next statement had already reassigned.
                ((and (or (id? arg) (app/k? arg))
-                     (not (any-effect-var? (list jargs))))
+                     (not (any-effect-var? (list jargs)))
+                     (not (and (id? arg) (mutates-var? jbody arg))))
                 (cc (cfs jbody
                          (list jargs)
                          (list arg))))

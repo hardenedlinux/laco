@@ -391,6 +391,8 @@
     (('unquote-splicing s) `(unquote-splicing ,(parse-it s)))
     (('quasiquote q)
      (list-comprehension->ast (_quasiquote q) parse-it))
+    (('%%toplevel-ref name)
+     (make-toplevel-ref #f name))
     (('cons x y) (make-collection (map parse-it (list x y)) 'pair 2))
     (('list e ...) (make-collection (map parse-it e)
                                     'list (length e)))
