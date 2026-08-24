@@ -63,6 +63,7 @@
 (check "Named Let 3" "named-let-3")
 (check "Named Let Loop" "named-let-loop")
 (check "Named Let Loop in Function" "named-let-loop-in-func")
+(check "Let var naming" "let-var-naming")
 (check "Applicative order 1" "applicative-order-1")
 (check "list-ref" "list-ref")
 (check "add_sub" "add_sub")
