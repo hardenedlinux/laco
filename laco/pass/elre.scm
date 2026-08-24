@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020-2021
+;;  Copyright (C) 2020-2026
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -87,14 +87,6 @@
          (let ((ne (map elre (eliminate-non-tail-return exprs))))
            (seq/k-exprs-set! expr ne)
            expr)))))
-    #;
-    (($ app/k ($ cps _ kont _ _) k ((? branch/k? b)))
-    ;; case-4: (k branch/k) -> branch/k
-    (=> failed!)
-    (cond
-    ((kont-eq? kont k)
-    (elre b))
-    (else (failed!))))
     (($ app/k ($ cps _ kont name _) ($ lambda/k ($ cps _ _ _ attr) args1 body) args2)
      ;; case-5: ((lambda params body) args) -> body[params/args]
      (=> failed!)
@@ -126,6 +118,8 @@
      (=> failed!)
      (cond
       ((and (is-closure-in-pcall?) (id-eq? f kont))
+       (when (null? args)
+         (throw 'laco-error elre "case-7: (k expr) has no expr to reduce to"))
        (elre (car args)))
       (else (failed!))))
     (($ app/k _ f args)
@@ -134,7 +128,16 @@
      ;; e.g: (define a (return 123)) -> (define a 123)
      (=> failed!)
      (cond
-      ((and (not (inside-lambda?)) (eq? prim:return f))
+      ;; NOTE: compare by name (like `eliminate-non-tail-return' above),
+      ;; not `eq?' against the `prim:return' singleton object. `eq?'
+      ;; only works if `prim:return' is guaranteed to be the one and
+      ;; only `return' object threaded through the whole pipeline; if
+      ;; any earlier pass ever reconstructs an equivalent-but-distinct
+      ;; `return' primitive node, an object-identity check would
+      ;; silently stop matching while a name-based check still works.
+      ((and (not (inside-lambda?)) (eq? 'return (cps->name f)))
+       (when (null? args)
+         (throw 'laco-error elre "case-8: (return e) has no e to reduce to"))
        (elre (car args)))
       (else (failed!))))
     (($ closure/k ($ cps _ name _ attr) env body)

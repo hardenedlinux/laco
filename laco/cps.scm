@@ -95,7 +95,7 @@
             cont-apply
 
             union diff insec
-            free-vars names bound-vars all-ref-vars
+            free-vars names bound-vars all-ref-vars any-effect-var?
             make-ref-table
 
             alpha-renaming
@@ -328,6 +328,22 @@
 ;; NOTE: free-vars <= names, so diff is enough
 (define (bound-vars expr) (apply diff (names expr) (free-vars expr)))
 (define (all-ref-vars expr) (vars-fold all-ref-vars append append expr))
+
+;; The single shared answer to "is it safe to substitute/inline away a
+;; binding for any of these variables" -- i.e. is any of them ever the
+;; target of a `set!' anywhere in the currently-compiled unit.
+;;
+;; This exists so that every pass that performs some form of beta
+;; reduction / copy propagation (`normalize''s admin-redex elimination,
+;; `elre''s case-5, and anything else added later) asks the *same*
+;; question the *same* way, against `is-effect-var?', instead of each
+;; hand-rolling its own version -- which can silently drift apart (e.g.
+;; one only checking a lambda's formal parameters, another checking
+;; every variable referenced in its body) and reintroduce the exact
+;; kind of "same fact computed two different ways" bug this codebase
+;; has run into more than once.
+(define (any-effect-var? vars)
+  (any (lambda (v) (is-effect-var? (id-name v))) vars))
 
 ;; The all-ref-vars will count all appear variables, include the local definition,
 ;; so it has to be performed after these two steps:

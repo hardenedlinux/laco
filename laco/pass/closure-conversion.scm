@@ -261,15 +261,79 @@
             (cond
              ((toplevel? (current-env))
               (cond
-               ((or (id? arg) (app/k? arg))
+               ;; NOTE: This used to be `(or (id? arg) (app/k? arg))' with no
+               ;; further check, unconditionally substituting `jargs' (the
+               ;; let-bound variable, here still correctly alpha-renamed and
+               ;; distinct from any same-named outer variable) with `arg'
+               ;; (the right-hand-side expression) throughout `jbody' via
+               ;; `cfs'. That is only sound when `jargs' is never the target
+               ;; of a `set!' inside `jbody' -- otherwise the substitution
+               ;; makes the `set!' operate directly on whatever `arg' is,
+               ;; e.g. `(let ((tmp tmp)) (set! tmp x) ...)' at the top level
+               ;; would collapse the fresh local `tmp' into the outer/global
+               ;; `tmp' it was supposed to shadow. `any-effect-var?' (also
+               ;; used by `normalize' and `elre' for the exact same purpose,
+               ;; and already used two clauses below in this same file for
+               ;; the analogous direct-application case) is the shared check
+               ;; for this.
+               ((and (or (id? arg) (app/k? arg))
+                     (not (any-effect-var? (list jargs))))
                 (cc (cfs jbody
                          (list jargs)
                          (list arg))))
                (else
-                (top-level-set! (id-name tmpvar) (cc arg))
-                (cc (cfs jbody
-                         (list jargs)
-                         (list tmpvar))))))
+                ;; NOTE: This used to do
+                ;;   (top-level-set! (id-name tmpvar) (cc arg))
+                ;; i.e. stash `arg''s CPS directly as `tmpvar''s *define-time*
+                ;; initializer. `top-level-set!' just drops an entry into a
+                ;; flat hash table (see (laco env)'s `*top-level*'), and
+                ;; `top-level->body-list' dumps ALL such entries as `define's
+                ;; ahead of the executable `begin' body, in unspecified
+                ;; (hash-table) order -- there is no dependency tracking at
+                ;; all. That's fine when the initializer is self-contained
+                ;; (a constant, a fresh closure), but `arg' can itself be a
+                ;; reference to another top-level variable, e.g.
+                ;; `(let ((tmp tmp)) (set! tmp x) ...)' at the top level,
+                ;; where `arg' is the outer `tmp'. Emitting that as a
+                ;; define-time initializer can legally end up placed BEFORE
+                ;; `tmp' itself is defined, which is not just wrong output
+                ;; order -- it changes *when* `arg' is evaluated, silently
+                ;; reading `tmp' at module-load time instead of at the point
+                ;; in program order where the original `let' appeared. Left
+                ;; alone this doesn't always fail loudly: it only threw
+                ;; `cps->lir' here because forward references aren't
+                ;; supported at all, but with a different shape it could
+                ;; just as easily read a stale/placeholder value with no
+                ;; error whatsoever.
+                ;;
+                ;; The fix follows the same convention `ast->cps' already
+                ;; uses when a second top-level `define' for an existing
+                ;; global is really an assignment (see the `def' case in
+                ;; (laco cps)): `top-level-set!' only reserves the global's
+                ;; slot (with an inert placeholder), and the actual value is
+                ;; written via a real `assign/k', spliced into the `begin'
+                ;; body in the correct program-order position -- exactly
+                ;; where the eliminated `letcont/k' used to sit.
+                ;; NOTE: `*laco/unspecified*' is not a placeholder
+                ;; `create-constant-object' (in (laco object)) knows how to
+                ;; build -- it only handles integer/list/char/real/complex/
+                ;; rational/string/symbol/keyword/boolean/bytevector, and
+                ;; throws "Invalid type `unspecified'!" the moment `cps->lir'
+                ;; tries to turn this placeholder into a real constant object.
+                ;; `gen-constant' (exported by (laco types), already used
+                ;; throughout the compiler for turning a raw Scheme value into
+                ;; the right constant/type pair) with `#f' gives a genuinely
+                ;; constructible placeholder -- its value is never read before
+                ;; the real `assign/k' below overwrites it, so any constructible
+                ;; inert value works.
+                (top-level-set! (id-name tmpvar) (new-constant/k (gen-constant #f)))
+                (make-seq/k
+                 (list kont name attr)
+                 (list
+                  (new-assign/k tmpvar (cc arg))
+                  (cc (cfs jbody
+                           (list jargs)
+                           (list tmpvar))))))))
              (else
               (let ((def (id-name jargs)))
                 (env-local-push! (current-env) tmpvar)

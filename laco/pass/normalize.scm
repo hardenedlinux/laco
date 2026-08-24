@@ -1,5 +1,5 @@
 ;;  -*-  indent-tabs-mode:nil; coding: utf-8 -*-
-;;  Copyright (C) 2020
+;;  Copyright (C) 2020-2026
 ;;      "Mu Lei" known as "NalaGinrut" <mulei@gnu.org>
 ;;  Laco is free software: you can redistribute it and/or modify
 ;;  it under the terms of the GNU General Public License published
@@ -25,8 +25,21 @@
             normalize/preserving
             beta-reduction/preserving))
 
-;; NOTE: After normalize, there's no ((lambda ...) args), all the applications will
-;;       be (id args). This is useful in codegen.
+;; NOTE: Before this fix, normalize claimed there's no ((lambda ...) args)
+;;       left after this pass runs, all the applications would be (id args).
+;;       That is no longer strictly true: `beta-reduction'/`beta-reduction/preserving'
+;;       now deliberately LEAVES an ((lambda ...) args) form in place (does not
+;;       substitute/inline it) whenever the lambda's parameter is ever the
+;;       target of a `set!' in its body (see `params-has-effect?' below) --
+;;       doing the substitution anyway would be unsound, not just non-canonical.
+;;       Any later pass, and codegen itself, that was relying on "no applied
+;;       lambda survives normalize" as an invariant needs to be checked against
+;;       this, since normalize can now hand off a real `(app/k (lambda/k ...) args)'
+;;       node instead of always flattening it to `(id args)'. `elre''s case-5
+;;       already expects and safely handles this exact shape later in the
+;;       pipeline, which is some reassurance that this shape isn't unprecedented,
+;;       but it's worth double-checking anything running between normalize and
+;;       elre that pattern-matches on app/k shapes.
 ;;
 ;; NOTE: We can even perform normalization for applicative-order language like
 ;;       Scheme after CPS transformation, since the result of all the expressions
@@ -110,14 +123,41 @@
      (substitute expr))
     (else expr)))
 
+;; NOTE: substituting a lambda's formal parameters with the actual
+;; argument expressions (beta-reduction/`cfs') is only sound when none
+;; of those parameters is ever the target of a `set!' inside the body.
+;; If a parameter IS mutated, substituting it away means the `set!'
+;; ends up operating directly on whatever expression was passed in --
+;; e.g. `((lambda (tmp) (set! tmp x) ...) outer-tmp)' would, after an
+;; unconditional substitution, turn into `(set! outer-tmp x) ...',
+;; silently merging a fresh local binding into whatever the caller
+;; passed, such as an outer/global variable of the same shadowed name.
+;;
+;; `any-effect-var?' (in (laco cps)) is the single shared check for
+;; this, also used by `elre''s case-5, so both passes agree on exactly
+;; what "safe to inline" means instead of drifting apart. It's safe to
+;; call here even though this pass runs before `effect-analysis',
+;; because the underlying *effect-vars* table is already populated
+;; during CPS construction (see `comp-cps' and `alpha-renaming' in
+;; (laco cps)) -- `effect-analysis' isn't the only writer, just an
+;; additional pass over it.
+(define (params-has-effect? params)
+  (any-effect-var? params))
+
 (define (beta-reduction expr)
   (match expr
     (($ app/k _ ($ lambda/k _ params body) args)
      ;;(display "beta 0\n")
-     (beta-reduction
-      (cfs (beta-reduction body)
-           params
-           (beta-reduction args))))
+     (cond
+      ((params-has-effect? params)
+       (app/k-func-set! expr (beta-reduction (app/k-func expr)))
+       (app/k-args-set! expr (map beta-reduction args))
+       expr)
+      (else
+       (beta-reduction
+        (cfs (beta-reduction body)
+             params
+             (beta-reduction args))))))
     (($ app/k _ f args)
      (app/k-args-set! expr (map beta-reduction args))
      expr)
@@ -151,10 +191,16 @@
   (match expr
     (($ app/k _ ($ lambda/k _ params body) args)
      ;;(display "beta 0\n")
-     (beta-reduction/preserving
-      (cfs (beta-reduction/preserving body)
-           params
-           (beta-reduction/preserving args))))
+     (cond
+      ((params-has-effect? params)
+       (app/k-func-set! expr (beta-reduction/preserving (app/k-func expr)))
+       (app/k-args-set! expr (map beta-reduction/preserving args))
+       expr)
+      (else
+       (beta-reduction/preserving
+        (cfs (beta-reduction/preserving body)
+             params
+             (beta-reduction/preserving args))))))
     (($ app/k _ f args)
      (app/k-args-set! expr (map beta-reduction/preserving args))
      expr)
