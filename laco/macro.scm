@@ -43,18 +43,32 @@
 ;; (via `current-literals`), not bound as pattern variables.
 ;;
 ;; Hygiene, direction 1 (protecting template-introduced identifiers from
-;; being captured by call-site identifiers of the same name):
-;;   We rename every template-introduced identifier (a symbol that is not a
-;;   pattern variable, not a literal, not the ellipsis marker, and not a
-;;   reserved form, and that does not occur inside quoted data) to a fresh
-;;   symbol BEFORE pattern-variable substitution happens.  This ordering is
-;;   essential: if substitution happened first, a call-site argument that
-;;   happens to share a name with a template-introduced identifier (e.g.
-;;   calling `(swap! tmp x)` where the macro's own template also introduces
-;;   a variable named `tmp`) would become textually indistinguishable from
-;;   the template's own identifier, and the later renaming pass would rename
-;;   both together -- silently breaking hygiene instead of protecting it.
-;;   Renaming first, substituting second, avoids that collision entirely.
+;; being captured by call-site identifiers of the same name, e.g. calling
+;; `(swap! tmp x)` where the macro's own template also has an internal
+;; variable named `tmp`):
+;;   NOT handled by renaming anything here. Pattern-variable substitution
+;;   and ellipsis expansion are all this module does (see
+;;   `instantiate-template` below); a template-introduced binding such as
+;;   `(let ((tmp tmp)) ...)` is emitted as plain, unrenamed source text,
+;;   with whatever name the template author wrote. Protection from
+;;   call-site capture is left entirely to Laco's CPS-conversion stage
+;;   (`(laco cps)`, in `ast->cps'/`comp-cps'`'s handling of `binding'
+;;   nodes), which alpha-renames each binding based on actual AST nesting
+;;   structure once it can see which occurrences are the binding and which
+;;   are references -- it doesn't matter whether a given
+;;   `(let ((tmp tmp)) ...)` came from hand-written source or from a macro
+;;   expansion, the same correct shadowing resolution applies either way.
+;;   An earlier version of this module tried to protect against capture
+;;   here instead, by renaming every template-introduced identifier before
+;;   substitution. That was removed: working on raw s-expressions, it had
+;;   no way to distinguish "a symbol newly BOUND by the template" from "a
+;;   symbol the template merely REFERENCES" (e.g. a call to some existing
+;;   global helper function), so it renamed both alike -- breaking macros
+;;   as simple as
+;;     (define-syntax double (syntax-rules () ((_ x) (my-helper x))))
+;;   by renaming `my-helper` to a fresh gensym that no longer refers to
+;;   anything. The CPS stage doesn't have this problem, since it operates
+;;   on the binding structure itself rather than guessing from raw text.
 ;;
 ;; Hygiene, direction 2 (referential transparency of the template's free
 ;; identifiers, e.g. `let`/`if`/helper procedures used in the template
@@ -351,33 +365,11 @@
 ;; Template instantiation
 ;; ---------------------------------------------------------------------------
 ;;
-;; NOTE: this module used to also rename template-introduced identifiers
-;; here (a pre-emptive alpha-renaming pass over the raw template, before
-;; pattern-variable substitution) to protect them from being captured by a
-;; same-named call-site argument -- e.g. `(swap! tmp x)` where the macro's
-;; own template also has an internal variable named `tmp`.
-;;
-;; That renaming pass has been removed. Laco's CPS-conversion stage
-;; (`laco cps`, in `ast->cps`/`comp-cps`'s handling of `binding` nodes)
-;; already performs exactly this kind of alpha-renaming, per binding form,
-;; based purely on AST nesting structure -- it does not matter whether a
-;; given `(let ((tmp tmp)) ...)` came from hand-written source or from a
-;; macro expansion; the same correct shadowing resolution applies either
-;; way, once CPS conversion runs. Keeping a second, independent renaming
-;; pass here was not just redundant: it was actively harmful, because it
-;; could not distinguish "a symbol newly BOUND by the template" from "a
-;; symbol the template merely REFERENCES" (e.g. a call to some existing
-;; global helper function). Every free reference in a template that wasn't
-;; a pattern variable, literal, or reserved word -- including perfectly
-;; ordinary calls to global procedures -- was being renamed to a fresh
-;; gensym that no longer refers to anything, breaking macros as simple as:
-;;
-;;   (define-syntax double (syntax-rules () ((_ x) (my-helper x))))
-;;
-;; So: pattern-variable substitution and ellipsis expansion happen here;
-;; nothing else. Alpha-renaming for newly-introduced bindings is left
-;; entirely to the CPS stage, where it can be done correctly and without
-;; needing to guess which identifiers are bindings versus references.
+;; Pattern-variable substitution and ellipsis expansion happen here; nothing
+;; else. In particular this does NOT rename template-introduced identifiers
+;; -- see "Hygiene, direction 1" in the file-level comment at the top of
+;; this file for why, and why that responsibility belongs to the CPS stage
+;; instead.
 (define (instantiate-template template literals bindings)
   (expand-one template bindings))
 
