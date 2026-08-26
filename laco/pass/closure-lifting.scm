@@ -118,6 +118,12 @@
        ;; generated.
        (app/k-args-set! expr (map cl args))
        expr)
+      ((kont-eq? kont func)
+       ;; func IS the enclosing continuation -- calling it is a return, not a
+       ;; procedure call, so no new stack frame is generated either. A
+       ;; closure literal passed here must not be lifted via new-letcont/k.
+       (app/k-args-set! expr (map cl args))
+       expr)
       ((toplevel? (current-env))
        (app/k-func-set! expr (cl func))
        (app/k-args-set! expr (map cl args))
