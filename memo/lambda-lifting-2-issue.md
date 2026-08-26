@@ -6,6 +6,27 @@ or broke `raise-cont`. Do not re-attempt without reading this whole
 document first — every "obviously safe" incremental fix tried here had a
 non-obvious interaction with `with-exception-handler`.**
 
+**Important, session-closing discovery: every single test in the suite —
+including `lambda-lifting-2` — passes under `GC_BACKEND=tiny`.** Only
+`GC_BACKEND=obg` exhibits this failure. This means the root cause below
+(`apply_proc` never setting `vm->local`/`vm->closure` before jumping) is
+either (a) not the whole story — something about *obg's pool-based memory
+reuse specifically* is what turns "reads a stale `vm->local`" into an
+observable crash, where tiny gc's different allocation strategy (BDW,
+never reuses freed slots the same way, likely zero/consistently-patterned
+memory) happens not to surface it, or (b) the calling-convention bug is
+real and backend-independent, but only obg's specific memory layout turns
+the resulting garbage read into something that crashes instead of merely
+being silently wrong. Either way: **this needs to be re-investigated with
+the tiny-vs-obg contrast in mind, not treated as a pure `vm.c` calling-
+convention bug in isolation.** A useful next step for a future session:
+reproduce the exact `0xbebebec2`-style garbage under obg and check whether
+that address pattern corresponds to a *freed-and-reused pool slot*
+specifically (i.e. `map`'s own stale `vm->local` happens to point at a
+`pair_free_pool`/`obj_free_pool` slot that obg's pool reuse subsequently
+overwrote) — if so, the fix might belong partly in how obg pool reuse
+interacts with stale stack-register reads, not purely in `apply_proc`.
+
 ## Test
 
 ```scheme
@@ -252,10 +273,22 @@ this — confirmed empirically, repeatedly, below.
 
 ## Recommendation
 
-Given six rounds already spent (each requiring a full recompile + full
-test-suite run), and that `raise-cont` (general exception handling) is
-almost certainly higher-value than this one `map`-plus-lifted-lambda edge
-case: **do not resume work on this without first getting complete,
-authoritative answers to the open questions above.** Trial-and-error on
-this specific function has a demonstrated high cost of introducing new
-regressions in `raise-cont` for each attempted improvement.
+**First thing to check next time, before anything else:** why does this
+pass under `GC_BACKEND=tiny` but not `GC_BACKEND=obg`? If the calling-
+convention gap (`vm->local`/`vm->closure` never set by `apply_proc`) were
+the *whole* story, it should misbehave identically under both backends —
+`vm->local` is a plain VM register, nothing to do with which GC backend is
+compiled in. The fact that it only surfaces under obg strongly suggests
+the actual trigger involves *obg's pool-based slot reuse* specifically
+(see the note at the top of this document). Confirming or ruling this out
+first could redirect the whole investigation somewhere more productive
+than another round of `apply_proc` tweaking.
+
+Given six rounds already spent on `apply_proc` itself (each requiring a
+full recompile + full test-suite run), and that `raise-cont` (general
+exception handling) is almost certainly higher-value than this one
+`map`-plus-lifted-lambda edge case: **do not resume work on this without
+first getting complete, authoritative answers to the open questions
+above.** Trial-and-error on this specific function has a demonstrated
+high cost of introducing new regressions in `raise-cont` for each
+attempted improvement.

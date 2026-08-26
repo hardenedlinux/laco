@@ -286,3 +286,28 @@ once, right after `vm_init(vm)` — currently wired into `animula.c`'s
   IR/bytecode gets lowered/converted to a heap closure somewhere in the
   compiler before it would ever reach the runtime. Worth remembering if a
   future crash trace ever mentions `closure_on_stack`.
+
+## 12. A pattern worth naming: "invisible under tiny gc" is not the same as "correct"
+
+Every single bug found and fixed this session — the RB-tree dead code, the
+missing `vector`/`bytevector` cases, the double-free, the `non_shared`
+sign confusion, the `vm->globals`/top-level frame scanning gaps, all of
+it — was **completely invisible under `USE_TINY_GC`**, because `gc.c`'s
+entire body compiles out under that backend (see §8). This is expected
+and correct: tiny gc genuinely doesn't need any of this machinery.
+
+What's more interesting, and was only confirmed at the very end of the
+session: **the one remaining unresolved bug (`lambda-lifting-2`, see the
+separate issue doc) *also* only reproduces under obg**, even though the
+root cause identified (`apply_proc` never setting `vm->local`/`vm->closure`
+before jumping into a lifted procedure) reads like a pure `vm.c` calling-
+convention bug that should misbehave identically regardless of GC backend
+— `vm->local` is just a VM register. This was flagged as an open question
+in the issue doc rather than resolved: either the calling-convention gap
+interacts specifically with obg's pool-based slot reuse to produce a
+crash (vs. silently-wrong-but-non-crashing behavior under tiny gc's
+different allocation pattern), or there's a second, still-undiscovered
+obg-specific bug layered on top of the calling-convention one. Don't
+assume "only happens under obg" automatically means "it's a `gc.c` bug"
+— this session's evidence is that it can also mean "obg's memory layout
+is what turns an unrelated latent bug into a visible crash."
