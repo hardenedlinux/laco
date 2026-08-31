@@ -287,27 +287,118 @@ once, right after `vm_init(vm)` — currently wired into `animula.c`'s
   compiler before it would ever reach the runtime. Worth remembering if a
   future crash trace ever mentions `closure_on_stack`.
 
-## 12. A pattern worth naming: "invisible under tiny gc" is not the same as "correct"
+## 12. Postmortem: `lambda-lifting-2` was never a GC bug at all
 
-Every single bug found and fixed this session — the RB-tree dead code, the
-missing `vector`/`bytevector` cases, the double-free, the `non_shared`
-sign confusion, the `vm->globals`/top-level frame scanning gaps, all of
-it — was **completely invisible under `USE_TINY_GC`**, because `gc.c`'s
-entire body compiles out under that backend (see §8). This is expected
-and correct: tiny gc genuinely doesn't need any of this machinery.
+This is a follow-up session's postmortem, kept here because the failure
+mode looked exactly like a GC problem for a long time and cost several
+rounds of GC-flavored speculation before the real, unrelated cause
+surfaced. Filed under the GC memo specifically as a warning against
+pattern-matching "obg-only failure" to "GC bug" too quickly.
 
-What's more interesting, and was only confirmed at the very end of the
-session: **the one remaining unresolved bug (`lambda-lifting-2`, see the
-separate issue doc) *also* only reproduces under obg**, even though the
-root cause identified (`apply_proc` never setting `vm->local`/`vm->closure`
-before jumping into a lifted procedure) reads like a pure `vm.c` calling-
-convention bug that should misbehave identically regardless of GC backend
-— `vm->local` is just a VM register. This was flagged as an open question
-in the issue doc rather than resolved: either the calling-convention gap
-interacts specifically with obg's pool-based slot reuse to produce a
-crash (vs. silently-wrong-but-non-crashing behavior under tiny gc's
-different allocation pattern), or there's a second, still-undiscovered
-obg-specific bug layered on top of the calling-convention one. Don't
-assume "only happens under obg" automatically means "it's a `gc.c` bug"
-— this session's evidence is that it can also mean "obg's memory layout
-is what turns an unrelated latent bug into a visible crash."
+**Symptom:** `(display (map (lambda (x) (* x 2)) '(1 2 3)))` SEGV'd only
+under obg, never under tiny gc, with `AddressSanitizer: SEGV on unknown
+address 0xbebebec2` inside `list_printer`'s `SLIST_NEXT` walk, reading a
+garbage `node` pointer. `lambda-lifting.scm` was involved only
+incidentally — it lifts the argument lambda to a top-level `procedure`,
+which routes the call through `map`'s `apply_proc` path, but this fact
+turned out to be a total red herring for the actual bug.
+
+**Wrong turn #1 — blamed `apply_proc`'s calling convention.** The initial
+(and initially plausible) theory: `apply_proc` never set up `vm->local`/
+`vm->closure`/`vm->attr.shadow` before jumping into the lifted procedure's
+`tail-call`-mode entry (whose `SAVE_ENV()` is a deliberate no-op, see §
+"Animula: calling conventions" in the architecture notes) — so the callee
+would read/write through stale registers. Several variations were tried
+(see the separate, now-obsolete `lambda-lifting-2-issue.md` for the full
+blow-by-blow); each either left the crash unchanged or broke `raise-cont`.
+**Fully reverted** — `apply_proc` needed zero changes.
+
+**Wrong turn #2 — blamed GC-rooting in `map`.** The next theory: `map`
+builds its input list (`lst`) and result list (`new_list`) purely in C
+locals, and `build_active_root` (§3 above) only ever walks VM stack
+frames, the top-level region, and globals — never C locals. So a `gc()`
+triggered mid-loop by the per-element call would find both lists
+unreachable and sweep them, and the `0xbebebe...` pattern was assumed to
+be obg's pool-poison-on-free value. The fix parked both lists as real
+Objects on the VM stack so `build_active_root` would see them. **This had
+zero effect — byte-identical crash address, same call frame, before and
+after.** That non-result was itself the important clue: a real GC-timing
+bug would not reproduce at the *exact* same address run after run, since
+nothing here is randomized; identical addresses across independent runs
+point at a deterministic logic bug, not a reachability/timing one.
+**Also fully reverted.**
+
+**Actual root cause — `animula_new_list()` never initializes
+`list.slh_first`.** `object.c`'s `animula_new_list()` is a bare
+`CREATE_NEW_OBJ`-style allocation: it hands back memory from
+`gc_pool_malloc`/`GC_MALLOC` and nothing else — no field is ever zeroed or
+set. `List.list.slh_first` (the `SLIST_HEAD`'s head pointer) therefore
+starts as **whatever bytes were already there**, not `NULL`. `map`'s
+construction loop (`SLIST_INSERT_HEAD`/`SLIST_INSERT_AFTER`, standard BSD
+queue-macro semantics) always makes a newly-inserted node inherit
+whatever "next" value was already sitting at the insertion point, and
+never overwrites that inherited value with `NULL` — so the uninitialized
+garbage isn't ever discarded, only handed forward, node after node, until
+it ends up sitting in the *actual final tail node's* `next` field. The
+list looks fully linked and correctly ordered right up until the last
+node, whose "end of list" marker is silent garbage instead of `NULL`.
+Iterating/printing past that point dereferences the garbage as if it were
+a valid `ListNode*`.
+
+**Why this was obg-only:** tiny gc's `GC_MALLOC` is Boehm's `GC_malloc()`,
+which **zeroes the memory it returns** — a well-known BDW-GC property.
+That made `slh_first` come out as `0`/`NULL` purely by accident, so the
+chain always happened to terminate correctly under tiny gc. obg's
+`GC_MALLOC` fallback (used whenever `gc_pool_malloc` has nothing free) is
+a raw, non-zeroing `os_malloc()`; under AddressSanitizer, that
+freshly-returned-but-never-written memory is filled with ASan's default
+`malloc_fill_byte` (`0xbe`) — which is exactly the `0xbebebe...` pattern
+seen in the crash address. **Not a free-then-read pattern, not GC pool
+poisoning on collection — an allocate-then-read-before-write pattern.**
+This is a strictly stronger, more specific claim than §"GC backend
+differences are amplifiers, not root causes" elsewhere in this memo: here
+tiny gc doesn't just fail to *amplify* the bug, it actively (if
+accidentally) *fixes* it, via an unrelated allocator property neither
+backend's design ever made a contract of.
+
+**The fix:** `animula_new_list()` now explicitly sets
+`o->list.slh_first = NULL;` and `o->non_shared = 0;` right after
+allocation, before returning — establishing the invariant once, at the
+single constructor every caller (`map`, and any future primitive that
+builds a fresh list via `NEW_INNER_OBJ(list)`) goes through, rather than
+requiring every call site to remember to do it themselves. `vm.c` and
+`vm.h` needed **no changes at all** and were reverted to their original
+baseline; the entire fix is contained in `object.c`.
+
+**Lessons for next time:**
+
+- **An "only obg fails" symptom is not on its own evidence of a GC bug.**
+  It is evidence that *something* differs between the two allocators'
+  behavior — and "zeroes memory vs. doesn't" is just as plausible a
+  difference as anything in the GC's reachability/collection logic
+  proper. Check the allocator's raw-memory contract (zeroing, alignment,
+  poisoning) before assuming the bug lives in collection/rooting logic.
+- **An identical crash address across independent runs, with no
+  intervening randomization, is itself diagnostic.** It argues *against*
+  a GC-timing/reachability theory (which would predict some variation as
+  allocation history shifts) and *for* a deterministic logic bug that
+  fires the same way every time regardless of when or whether a
+  collection cycle runs.
+- **`0xbebebe...` was mis-attributed to "obg pool poisons freed slots on
+  collection"** in earlier analysis of this same bug, without ever
+  actually grepping `gc.c` for that byte pattern. It isn't written by
+  `gc.c` at all — it's ASan's own `malloc_fill_byte` default for
+  freshly-`malloc`'d, never-written memory. Always verify a "the tool
+  wrote this poison value" claim by finding where it's actually written,
+  rather than treating it as self-evidently a GC-collection artifact.
+- **`CREATE_NEW_OBJ`-style constructors (`animula_new_pair`,
+  `animula_new_vector`, `animula_new_list`, `animula_new_bytevector`,
+  `animula_new_mut_bytevector`) allocate raw memory and initialize
+  nothing.** `animula_new_list` needed a bespoke, non-macro constructor
+  (mirroring how `make_closure` already has its own hand-written
+  constructor) specifically because `List` has an invariant
+  (`slh_first == NULL` for "empty") that the generic macro can't know
+  about. Worth auditing whether `pair`/`vector`/`bytevector`/
+  `mut_bytevector` have any similar "must start as X, not garbage"
+  invariants hiding the same way — none are known today, but none were
+  specifically checked for either.
